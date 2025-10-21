@@ -7,5 +7,9 @@
       "source.organizeImports": "explicit"
     }
   },
-  "ruff.enable": true
+  "ruff.enable": true,
+  "cSpell.words": [
+    "binance",
+    "levelname"
+  ]
 }
