@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Always, whenever the user asks for something, you must review your current task list and update it with the new instructions, managing it through the todo_write tool.
+
+First, evaluate the task’s impact and complexity. Based on this evaluation, break down large tasks into smaller, well-organized, sequential subtasks to achieve the objectives. Additionally, always include at the end a task for a second critical validation, to re-analyze the implementation and ensure it was executed correctly without causing issues or side effects.
