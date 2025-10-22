@@ -95,12 +95,6 @@ class DownloadCandlestickData:
         if start_time is None:
             start_time = self.start_time
 
-        progress = self._get_progress(start_time=start_time, end_time=self.end_time)
-
-        self.log.info(
-            f"Downloading {self.symbol} {self.timeframe}, progress: {progress:.2f}%"
-        )
-
         while True:
             if start_time > self.end_time:
                 self.log.info("Download finished successfully.")
@@ -108,6 +102,15 @@ class DownloadCandlestickData:
 
             candlesticks = polars.DataFrame()
             base_url = "https://api.binance.com/api/v3/klines"
+            progress = self._get_progress(start_time=start_time, end_time=self.end_time)
+
+            self.log.info(
+                f"Downloading {self.symbol} {self.timeframe}"
+                f" | Starting time: {datetime.datetime.fromtimestamp(self.start_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
+                f" | Current time: {datetime.datetime.fromtimestamp(start_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
+                f" | Ending time: {datetime.datetime.fromtimestamp(self.end_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
+                f" | Progress: {progress:.2f}%"
+            )
 
             try:
                 params = {
@@ -126,9 +129,6 @@ class DownloadCandlestickData:
                 self.log.error(f"Error downloading candlestick data: {e}")
                 raise e
 
-            finally:
-                response.close()
-
             last_item = candlesticks[-1]
             last_time = int(last_item["kline_close_time"].timestamp())
             file_name = f"{last_time}.parquet"
@@ -146,8 +146,8 @@ class DownloadCandlestickData:
             candlesticks = polars.DataFrame(candlesticks)
             candlesticks.write_parquet(file_path, compression="zstd")
 
+            start_time = last_time * 1000
             sleep(0.25)
-            self.download(start_time=last_time * 1000)
 
 
 if __name__ == "__main__":
