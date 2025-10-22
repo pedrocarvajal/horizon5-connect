@@ -1,0 +1,2 @@
+class AssetInterface:
+    pass
