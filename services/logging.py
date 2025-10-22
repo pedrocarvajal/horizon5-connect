@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from helpers.get_slug import get_slug
 
@@ -10,11 +10,8 @@ class LoggingService:
     _name: str
     _logs_folder: ClassVar[Path] = Path("logs")
 
-    def debug(self, message: dict | list | str) -> None:
-        if isinstance(message, (dict, list)):
-            self.logger.debug(f"\n{json.dumps(message, indent=2, ensure_ascii=False)}")
-        else:
-            self.logger.debug(message)
+    def debug(self, message: Any) -> None:
+        self.logger.debug(message)
 
     def info(self, message: str) -> None:
         self.logger.info(message)
