@@ -34,6 +34,8 @@ class LoggingService:
         log_file_name = get_slug(name) + ".log"
         log_file_path = self._logs_folder / log_file_name
 
+        self.logger = logging.getLogger(log_file_name)
+
         formatter = logging.Formatter(
             fmt="[%(asctime)s] [%(levelname)s] > %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
@@ -51,5 +53,3 @@ class LoggingService:
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
         self.logger.propagate = False
-
-        self.logger = logging.getLogger(log_file_name)
