@@ -10,6 +10,8 @@
   "ruff.enable": true,
   "cSpell.words": [
     "binance",
+    "BTCUSDT",
+    "kline",
     "levelname"
   ]
 }
