@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, computed_field
 
 
-class Candlestick(BaseModel):
+class CandlestickModel(BaseModel):
     _kline_open_time: int
     _open_price: float
     _high_price: float

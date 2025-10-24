@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, computed_field
 
 
-class Tick(BaseModel):
+class TickModel(BaseModel):
     _timestamp: datetime.datetime
     _price: float
     _: Any

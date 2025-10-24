@@ -9,8 +9,9 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from structs.candlestick import CandlestickStruct
+
 from services.logging import LoggingService
-from structs.candlestick import Candlestick
 
 
 class DownloadCandlestickData:
@@ -48,12 +49,12 @@ class DownloadCandlestickData:
             end_time=end_time,
         )
 
-    def _parse(self, data: list[Any]) -> list[Candlestick]:
+    def _parse(self, data: list[Any]) -> list[CandlestickStruct]:
         response = []
 
         for item in data:
             try:
-                candlestick = Candlestick()
+                candlestick = CandlestickModel()
                 candlestick.kline_open_time = item[0]
                 candlestick.open_price = float(item[1])
                 candlestick.high_price = float(item[2])

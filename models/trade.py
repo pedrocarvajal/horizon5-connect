@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
 
-class Trade(BaseModel):
+class TradeModel(BaseModel):
     pass
