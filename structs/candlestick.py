@@ -41,6 +41,9 @@ class Candlestick(BaseModel):
 
     @open_price.setter
     def open_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Open price must be greater than 0")
+
         self._open_price = value
 
     @computed_field
@@ -50,6 +53,9 @@ class Candlestick(BaseModel):
 
     @high_price.setter
     def high_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("High price must be greater than 0")
+
         self._high_price = value
 
     @computed_field
@@ -59,6 +65,9 @@ class Candlestick(BaseModel):
 
     @low_price.setter
     def low_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Low price must be greater than 0")
+
         self._low_price = value
 
     @computed_field
@@ -68,6 +77,9 @@ class Candlestick(BaseModel):
 
     @close_price.setter
     def close_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Close price must be greater than 0")
+
         self._close_price = value
 
     @computed_field
@@ -77,6 +89,9 @@ class Candlestick(BaseModel):
 
     @volume.setter
     def volume(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Volume must be greater than 0")
+
         self._volume = value
 
     @computed_field
@@ -97,6 +112,9 @@ class Candlestick(BaseModel):
 
     @quote_asset_volume.setter
     def quote_asset_volume(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Quote asset volume must be greater than 0")
+
         self._quote_asset_volume = value
 
     @computed_field
@@ -106,6 +124,9 @@ class Candlestick(BaseModel):
 
     @number_of_trades.setter
     def number_of_trades(self, value: int) -> None:
+        if value < 0:
+            raise ValueError("Number of trades must be greater than 0")
+
         self._number_of_trades = value
 
     @computed_field
@@ -115,6 +136,9 @@ class Candlestick(BaseModel):
 
     @taker_buy_base_asset_volume.setter
     def taker_buy_base_asset_volume(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Taker buy base asset volume must be greater than 0")
+
         self._taker_buy_base_asset_volume = value
 
     @computed_field
@@ -124,4 +148,7 @@ class Candlestick(BaseModel):
 
     @taker_buy_quote_asset_volume.setter
     def taker_buy_quote_asset_volume(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Taker buy quote asset volume must be greater than 0")
+
         self._taker_buy_quote_asset_volume = value
