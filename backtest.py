@@ -78,10 +78,12 @@ class Backtest:
 
         records = 0
         current_date = self._from_date - datetime.timedelta(days=1)
+        starting_date = current_date
         ticks_folder = self._ticks_folder / self._asset.symbol
 
         if ticks_folder.exists():
-            shutil.rmtree(ticks_folder)
+            shutil.rmtree(ticks_folder, ignore_errors=True)
+            self._log.info(f"Ticks folder removed: {ticks_folder}")
 
         ticks_folder.mkdir(parents=True, exist_ok=True)
 
@@ -105,6 +107,21 @@ class Backtest:
             )
 
             data.write_parquet(data_path)
+
+            traveled_time = current_date.timestamp() - starting_date.timestamp()
+            total_time = self._to_date.timestamp() - starting_date.timestamp()
+            progress = (traveled_time / total_time) * 100 if total_time != 0 else 100.0
+            current_date_formatted = current_date.strftime("%Y-%m-%d %H:%M:%S")
+            start_date_formatted = starting_date.strftime("%Y-%m-%d %H:%M:%S")
+            end_date_formatted = self._to_date.strftime("%Y-%m-%d %H:%M:%S")
+
+            self._log.info(
+                f"Preparing symbol: {self._asset.symbol}"
+                f" | Starting time: {start_date_formatted}"
+                f" | Current time: {current_date_formatted}"
+                f" | Ending time: {end_date_formatted}"
+                f" | Progress: {progress:.2f}%"
+            )
 
         self._log.info(f"{records} records prepared to be filled.")
 
