@@ -1,4 +1,5 @@
 import datetime
+import shutil
 from pathlib import Path
 
 import polars
@@ -13,6 +14,8 @@ from services.logging import LoggingService
 
 class Backtest:
     _ticks_folder: Path = Path("storage/ticks")
+    _data_total_files: int = 100
+    _data_total_missing_prices: int = 0
 
     def __init__(
         self,
@@ -38,13 +41,31 @@ class Backtest:
         self._log.info(f"Initializing backtest for {self._asset._symbol}")
 
     def run(self) -> None:
-        current_date = self._from_date
+        ticks_folder = self._ticks_folder / self._asset.symbol
+        files = polars.scan_parquet(ticks_folder / "*.parquet")
+        ticks = files.collect(engine="streaming")
 
-        self._log.info(f"Running backtest from {self._from_date} to {self._to_date}")
+        for tick in ticks.iter_rows(named=True):
+            tick_model = TickModel()
+            tick_model.date = datetime.datetime.fromtimestamp(tick["id"], tz=TIMEZONE)
+            tick_model.price = tick["price"]
 
-        while current_date <= self._to_date:
-            current_date += datetime.timedelta(minutes=1)
-            self._asset.on_tick(self._get_tick(current_date))
+            self._data_total_files += 1
+
+            if tick_model.price == 0:
+                self._data_total_missing_prices += 1
+                continue
+
+            self._asset.on_tick(tick_model)
+
+        quality = (
+            (self._data_total_files - self._data_total_missing_prices)
+            / self._data_total_files
+        ) * 100
+
+        self._log.info(f"Data quality: {quality:.2f}%")
+        self._log.info(f"Total files: {self._data_total_files}")
+        self._log.info(f"Total missing prices: {self._data_total_missing_prices}")
 
         self._asset.on_end()
 
@@ -53,22 +74,21 @@ class Backtest:
 
     def _prepare_data(self) -> None:
         if not self._restore_data:
-            self._log.info("Data will not be restored, using existing data.")
             return
 
         records = 0
         current_date = self._from_date - datetime.timedelta(days=1)
         ticks_folder = self._ticks_folder / self._asset.symbol
-        ticks_folder.parent.mkdir(parents=True, exist_ok=True)
+
+        if ticks_folder.exists():
+            shutil.rmtree(ticks_folder)
+
+        ticks_folder.mkdir(parents=True, exist_ok=True)
 
         self._log.info(f"Preparing data for {self._asset.symbol}")
         self._log.info(f"From date: {self._from_date}")
         self._log.info(f"To date: {self._to_date}")
         self._log.info(f"Ticks folder: {ticks_folder}")
-
-        for item in ticks_folder.glob("*"):
-            if item.is_file():
-                item.unlink()
 
         while current_date <= self._to_date:
             records += 1
@@ -78,10 +98,9 @@ class Backtest:
             data_path.parent.mkdir(parents=True, exist_ok=True)
             data = polars.DataFrame(
                 {
-                    "id": timestamp,
-                    "price": 0.0,
-                    "_": None,
-                    "updated_at": datetime.datetime.now(tz=TIMEZONE),
+                    "id": [timestamp],
+                    "price": [0.0],
+                    "updated_at": [datetime.datetime.now(tz=TIMEZONE)],
                 }
             )
 
@@ -90,6 +109,9 @@ class Backtest:
         self._log.info(f"{records} records prepared to be filled.")
 
     def _download_data(self) -> None:
+        if not self._restore_data:
+            return
+
         self._log.info(f"Downloading data for {self._asset.symbol}")
         self._log.info(f"From date: {self._from_date}")
         self._log.info(f"To date: {self._to_date}")
@@ -112,19 +134,17 @@ class Backtest:
 
             for kline in klines:
                 timestamp = int(kline.kline_open_time.timestamp())
-                data_file_name = f"{timestamp}.parquet"
-                data_path = self._ticks_folder / self._asset.symbol / data_file_name
-                data_path_exists = data_path.exists()
+                ticks_folder = self._ticks_folder / self._asset.symbol
+                data_path = ticks_folder / f"{timestamp}.parquet"
 
-                if not data_path_exists:
+                if not data_path.exists():
                     continue
 
                 data = polars.DataFrame(
                     {
-                        "id": timestamp,
-                        "price": kline.open_price,
-                        "_": kline.to_dict(),
-                        "updated_at": datetime.datetime.now(tz=TIMEZONE),
+                        "id": [timestamp],
+                        "price": [kline.open_price],
+                        "updated_at": [datetime.datetime.now(tz=TIMEZONE)],
                     }
                 )
 
@@ -154,9 +174,7 @@ class Backtest:
         )
 
     def _get_duration(self) -> str:
-        start_at = getattr(self, "_start_at", None)
-        end_at = getattr(self, "_end_at", None)
-        total_seconds = (end_at - start_at).total_seconds()
+        total_seconds = (self._end_at - self._start_at).total_seconds()
         seconds_in_minute = 60
         seconds_in_hour = 3600
         seconds_in_day = 86400
@@ -187,7 +205,7 @@ class Backtest:
 if __name__ == "__main__":
     backtest = Backtest(
         asset=ASSETS["btcusdt"],
-        from_date=datetime.datetime(2025, 9, 1, tzinfo=TIMEZONE),
+        from_date=datetime.datetime(2019, 10, 1, tzinfo=TIMEZONE),
         to_date=datetime.datetime(2025, 10, 1, tzinfo=TIMEZONE),
         restore_data=True,
     )
