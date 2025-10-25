@@ -5,7 +5,7 @@ from pydantic import BaseModel, computed_field
 
 
 class TickModel(BaseModel):
-    _timestamp: datetime.datetime
+    _date: datetime.datetime
     _price: float
     _: Any
 
@@ -17,12 +17,12 @@ class TickModel(BaseModel):
 
     @computed_field
     @property
-    def timestamp(self) -> datetime.datetime:
-        return self._timestamp
+    def date(self) -> datetime.datetime:
+        return self._date
 
-    @timestamp.setter
-    def timestamp(self, value: datetime.datetime) -> None:
-        self._timestamp = value
+    @date.setter
+    def date(self, value: datetime.datetime) -> None:
+        self._date = value
 
     @computed_field
     @property

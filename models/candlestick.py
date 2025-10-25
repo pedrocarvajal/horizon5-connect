@@ -1,10 +1,13 @@
 import datetime
 from typing import Any
 
+from configs.timezone import TIMEZONE
 from pydantic import BaseModel, computed_field
 
 
 class CandlestickModel(BaseModel):
+    _source: str
+    _symbol: str
     _kline_open_time: int
     _open_price: float
     _high_price: float
@@ -25,9 +28,27 @@ class CandlestickModel(BaseModel):
 
     @computed_field
     @property
+    def symbol(self) -> str:
+        return self._symbol
+
+    @symbol.setter
+    def symbol(self, value: str) -> None:
+        self._symbol = value
+
+    @computed_field
+    @property
+    def source(self) -> str:
+        return self._source
+
+    @source.setter
+    def source(self, value: str) -> None:
+        self._source = value
+
+    @computed_field
+    @property
     def kline_open_time(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(
-            self._kline_open_time / 1000, tz=datetime.UTC
+            self._kline_open_time / 1000, tz=TIMEZONE
         )
 
     @kline_open_time.setter
@@ -98,7 +119,7 @@ class CandlestickModel(BaseModel):
     @property
     def kline_close_time(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(
-            self._kline_close_time / 1000, tz=datetime.UTC
+            self._kline_close_time / 1000, tz=TIMEZONE
         )
 
     @kline_close_time.setter

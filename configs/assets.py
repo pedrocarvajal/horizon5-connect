@@ -1,6 +1,6 @@
 # Import your assets here
-from assets.xauusd import XAUUSD
+from assets.btcusdt import BTCUSDT
 
-ASSETS = [
-    XAUUSD,
-]
+ASSETS = {
+    "btcusdt": BTCUSDT,
+}

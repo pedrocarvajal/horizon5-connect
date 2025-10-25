@@ -9,12 +9,14 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from structs.candlestick import CandlestickStruct
-
+from models.candlestick import CandlestickModel
+from configs.timezone import TIMEZONE
 from services.logging import LoggingService
 
 
 class DownloadCandlestickData:
+    _file_path: Path
+
     def __init__(
         self,
         logging: LoggingService,
@@ -23,13 +25,15 @@ class DownloadCandlestickData:
         start_time: int | None = None,
         end_time: int | None = None,
     ) -> None:
-        self.symbol = symbol
+        self.symbol = symbol.lower()
         self.timeframe = timeframe
         self.start_time = start_time
         self.end_time = end_time
 
         self.log = logging
         self.log.setup(__name__)
+
+        self.setup()
 
     @classmethod
     def create(
@@ -49,12 +53,22 @@ class DownloadCandlestickData:
             end_time=end_time,
         )
 
-    def _parse(self, data: list[Any]) -> list[CandlestickStruct]:
+    def setup(self) -> None:
+        self._file_path = Path(f"storage/ticks/{self.symbol}")
+        self._file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        for item in self._file_path.glob("*"):
+            if item.is_file():
+                item.unlink()
+
+    def _parse(self, data: list[Any]) -> list[CandlestickModel]:
         response = []
 
         for item in data:
             try:
                 candlestick = CandlestickModel()
+                candlestick.source = "binance"
+                candlestick.symbol = self.symbol
                 candlestick.kline_open_time = item[0]
                 candlestick.open_price = float(item[1])
                 candlestick.high_price = float(item[2])
@@ -87,6 +101,11 @@ class DownloadCandlestickData:
 
         return float((traveled_time / total_time) * 100)
 
+    def _get_formatted_time(self, time: int) -> str:
+        return datetime.datetime.fromtimestamp(time / 1000, tz=TIMEZONE).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
     def download(
         self,
         start_time: int | None = None,
@@ -107,15 +126,15 @@ class DownloadCandlestickData:
 
             self.log.info(
                 f"Downloading {self.symbol} {self.timeframe}"
-                f" | Starting time: {datetime.datetime.fromtimestamp(self.start_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
-                f" | Current time: {datetime.datetime.fromtimestamp(start_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
-                f" | Ending time: {datetime.datetime.fromtimestamp(self.end_time / 1000, tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')}"
+                f" | Starting time: {self._get_formatted_time(start_time)}"
+                f" | Current time: {self._get_formatted_time(start_time)}"
+                f" | Ending time: {self._get_formatted_time(self.end_time)}"
                 f" | Progress: {progress:.2f}%"
             )
 
             try:
                 params = {
-                    "symbol": self.symbol,
+                    "symbol": self.symbol.upper(),
                     "interval": self.timeframe,
                     "startTime": start_time,
                     "endTime": self.end_time,
@@ -124,6 +143,11 @@ class DownloadCandlestickData:
 
                 response = requests.get(base_url, params=params)
                 data = response.json()
+
+                if not data:
+                    self.log.warning("No data found")
+                    break
+
                 candlesticks = self._parse(data=data)
 
             except requests.exceptions.RequestException as e:
@@ -133,15 +157,7 @@ class DownloadCandlestickData:
             last_item = candlesticks[-1]
             last_time = int(last_item["kline_close_time"].timestamp())
             file_name = f"{last_time}.parquet"
-            file_path = (
-                Path("storage")
-                / "binance"
-                / "candlesticks"
-                / self.symbol
-                / self.timeframe
-                / file_name
-            )
-
+            file_path = self._file_path / file_name
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
             candlesticks = polars.DataFrame(candlesticks)
@@ -153,7 +169,7 @@ class DownloadCandlestickData:
 
 if __name__ == "__main__":
     start_time = datetime.datetime.fromisoformat("2019-10-01 00:00:00")
-    end_time = datetime.datetime.now(datetime.UTC)
+    end_time = datetime.datetime.now(TIMEZONE)
 
     download_candlestick_data = DownloadCandlestickData.create(
         symbol="BTCUSDT",

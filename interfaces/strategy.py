@@ -1,16 +1,16 @@
-from structs.tick import Tick
-from structs.trade import Trade
+from models.tick import TickModel
+from models.trade import TradeModel
 
 
 class StrategyInterface:
-    def init(self) -> None:
+    def on_start(self) -> None:
         pass
 
-    def on_tick(self, tick: Tick) -> None:
+    def on_tick(self, tick: TickModel) -> None:
         pass
 
-    def on_transaction(self, trade: Trade) -> None:
+    def on_transaction(self, trade: TradeModel) -> None:
         pass
 
-    def on_deinit(self) -> None:
+    def on_end(self) -> None:
         pass
