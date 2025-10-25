@@ -1,6 +1,8 @@
 import datetime
 from pathlib import Path
 
+import polars
+
 from configs.assets import ASSETS
 from configs.timezone import TIMEZONE
 from interfaces.asset import AssetInterface
@@ -25,10 +27,10 @@ class Backtest:
         self._asset.on_start()
 
         self._log = LoggingService()
-        self._log.setup(__name__)
+        self._log.setup("backtest")
 
         self._prepare_data()
-        self._test_data_quality()
+        self._download_data()
 
         self._log.info(f"Initializing backtest for {self._asset._symbol}")
 
@@ -51,25 +53,39 @@ class Backtest:
             self._log.info("Data will not be restored, using existing data.")
             return
 
+        records = 0
         current_date = self._from_date
         ticks_folder = Path(f"storage/ticks/{self._asset.symbol}")
         ticks_folder.parent.mkdir(parents=True, exist_ok=True)
-
-        for item in ticks_folder.glob("*"):
-            if item.is_file():
-                item.unlink()
 
         self._log.info(f"Preparing data for {self._asset.symbol}")
         self._log.info(f"From date: {self._from_date}")
         self._log.info(f"To date: {self._to_date}")
         self._log.info(f"Ticks folder: {ticks_folder}")
 
+        for item in ticks_folder.glob("*"):
+            if item.is_file():
+                item.unlink()
+
         while current_date <= self._to_date:
+            records += 1
             current_date += datetime.timedelta(minutes=1)
             timestamp = int(current_date.timestamp())
-            # tick_file = ticks_folder / f"{timestamp}.parquet"
+            data_path = ticks_folder / f"{timestamp}.parquet"
+            data_path.parent.mkdir(parents=True, exist_ok=True)
+            data = polars.DataFrame(
+                {
+                    "id": timestamp,
+                    "prices": [],
+                    "updated_at": datetime.datetime.now(tz=TIMEZONE),
+                }
+            )
 
-    def _test_data_quality(self) -> None:
+            data.write_parquet(data_path)
+
+        self._log.info(f"{records} records prepared to be filled.")
+
+    def _download_data(self) -> None:
         pass
 
     def _get_duration(self) -> str:

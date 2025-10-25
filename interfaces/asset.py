@@ -1,14 +1,18 @@
 from models.tick import TickModel
 from models.trade import TradeModel
+from services.gateway import GatewayService
 from services.logging import LoggingService
 
 
 class AssetInterface:
     _symbol: str
+    _gateway: str
 
     def __init__(self) -> None:
         self._log = LoggingService()
-        self._log.setup(self._symbol)
+        self._log.setup(f"asset-{self._symbol}")
+
+        self._gateway = GatewayService(self._gateway)
 
     def on_start(self) -> None:
         self._log.info(f"Initializing {self._symbol}")
@@ -41,3 +45,7 @@ class AssetInterface:
     @property
     def log(self) -> LoggingService:
         return self._log
+
+    @property
+    def gateway(self) -> GatewayService:
+        return self._gateway

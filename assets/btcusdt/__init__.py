@@ -1,9 +1,10 @@
-from interfaces.asset import AssetInterface
 from models.tick import TickModel
+from services.asset import AssetService
 
 
-class BTCUSDT(AssetInterface):
+class BTCUSDT(AssetService):
     _symbol = "BTCUSDT"
+    _gateway = "binance"
 
     def __init__(self) -> None:
         super().__init__()
@@ -13,5 +14,3 @@ class BTCUSDT(AssetInterface):
 
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
-
-        # self.log.info(f"Tick at {tick.date}: {tick.price}")

@@ -33,7 +33,7 @@ class LoggingService:
         self.logger = logging.getLogger(log_file_name)
 
         formatter = logging.Formatter(
-            fmt="[%(asctime)s] [%(levelname)s] > %(message)s",
+            fmt="[%(asctime)s] [%(levelname)s] [%(name)s] > %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 

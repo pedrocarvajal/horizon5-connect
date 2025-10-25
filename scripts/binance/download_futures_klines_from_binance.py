@@ -30,7 +30,7 @@ class DownloadCandlestickData:
         self.end_time = end_time
 
         self.log = LoggingService()
-        self.log.setup(__name__)
+        self.log.setup("download_futures_klines_from_binance")
 
         self.setup()
 
