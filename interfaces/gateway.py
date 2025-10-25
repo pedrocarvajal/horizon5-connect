@@ -1,7 +1,7 @@
 from typing import Any
 
 
-class ExchangeInterface:
+class GatewayInterface:
     _api_key: str
     _api_secret: str
 

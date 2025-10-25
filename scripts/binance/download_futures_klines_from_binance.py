@@ -9,8 +9,8 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from models.candlestick import CandlestickModel
 from configs.timezone import TIMEZONE
+from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
@@ -19,7 +19,6 @@ class DownloadCandlestickData:
 
     def __init__(
         self,
-        logging: LoggingService,
         symbol: str = "BTCUSDT",
         timeframe: str = "1m",
         start_time: int | None = None,
@@ -30,28 +29,10 @@ class DownloadCandlestickData:
         self.start_time = start_time
         self.end_time = end_time
 
-        self.log = logging
+        self.log = LoggingService()
         self.log.setup(__name__)
 
         self.setup()
-
-    @classmethod
-    def create(
-        cls,
-        symbol: str = "BTCUSDT",
-        timeframe: str = "1m",
-        start_time: int | None = None,
-        end_time: int | None = None,
-    ) -> "DownloadCandlestickData":
-        logging_service = LoggingService()
-
-        return cls(
-            logging=logging_service,
-            symbol=symbol,
-            timeframe=timeframe,
-            start_time=start_time,
-            end_time=end_time,
-        )
 
     def setup(self) -> None:
         self._file_path = Path(f"storage/ticks/{self.symbol}")
@@ -60,51 +41,6 @@ class DownloadCandlestickData:
         for item in self._file_path.glob("*"):
             if item.is_file():
                 item.unlink()
-
-    def _parse(self, data: list[Any]) -> list[CandlestickModel]:
-        response = []
-
-        for item in data:
-            try:
-                candlestick = CandlestickModel()
-                candlestick.source = "binance"
-                candlestick.symbol = self.symbol
-                candlestick.kline_open_time = item[0]
-                candlestick.open_price = float(item[1])
-                candlestick.high_price = float(item[2])
-                candlestick.low_price = float(item[3])
-                candlestick.close_price = float(item[4])
-                candlestick.volume = float(item[5])
-                candlestick.kline_close_time = item[6]
-                candlestick.quote_asset_volume = float(item[7])
-                candlestick.number_of_trades = int(item[8])
-                candlestick.taker_buy_base_asset_volume = float(item[9])
-                candlestick.taker_buy_quote_asset_volume = float(item[10])
-
-                response.append(candlestick.to_dict())
-
-            except Exception as e:
-                self.log.error(f"Error parsing candlestick data: {e}")
-                self.log.debug(data)
-                self.log.debug(item)
-                raise e
-
-        return response
-
-    def _get_progress(self, start_time: int, end_time: int) -> float:
-        starting_time = self.start_time
-        current_time = start_time
-        destination_time = end_time
-
-        traveled_time = current_time - starting_time
-        total_time = destination_time - starting_time
-
-        return float((traveled_time / total_time) * 100)
-
-    def _get_formatted_time(self, time: int) -> str:
-        return datetime.datetime.fromtimestamp(time / 1000, tz=TIMEZONE).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
 
     def download(
         self,
@@ -165,6 +101,51 @@ class DownloadCandlestickData:
 
             start_time = last_time * 1000
             sleep(0.25)
+
+    def _parse(self, data: list[Any]) -> list[CandlestickModel]:
+        response = []
+
+        for item in data:
+            try:
+                candlestick = CandlestickModel()
+                candlestick.source = "binance"
+                candlestick.symbol = self.symbol
+                candlestick.kline_open_time = item[0]
+                candlestick.open_price = float(item[1])
+                candlestick.high_price = float(item[2])
+                candlestick.low_price = float(item[3])
+                candlestick.close_price = float(item[4])
+                candlestick.volume = float(item[5])
+                candlestick.kline_close_time = item[6]
+                candlestick.quote_asset_volume = float(item[7])
+                candlestick.number_of_trades = int(item[8])
+                candlestick.taker_buy_base_asset_volume = float(item[9])
+                candlestick.taker_buy_quote_asset_volume = float(item[10])
+
+                response.append(candlestick.to_dict())
+
+            except Exception as e:
+                self.log.error(f"Error parsing candlestick data: {e}")
+                self.log.debug(data)
+                self.log.debug(item)
+                raise e
+
+        return response
+
+    def _get_progress(self, start_time: int, end_time: int) -> float:
+        starting_time = self.start_time
+        current_time = start_time
+        destination_time = end_time
+
+        traveled_time = current_time - starting_time
+        total_time = destination_time - starting_time
+
+        return float((traveled_time / total_time) * 100)
+
+    def _get_formatted_time(self, time: int) -> str:
+        return datetime.datetime.fromtimestamp(time / 1000, tz=TIMEZONE).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
 
 if __name__ == "__main__":
