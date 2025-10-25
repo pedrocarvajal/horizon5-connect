@@ -73,7 +73,7 @@ class Binance(GatewayInterface):
                 candlestick.number_of_trades = int(item[8])
                 candlestick.taker_buy_base_asset_volume = float(item[9])
                 candlestick.taker_buy_quote_asset_volume = float(item[10])
-                candlesticks.append(candlestick.to_dict())
+                candlesticks.append(candlestick)
 
             last_item = candlesticks[-1]
             last_time = int(last_item.kline_close_time.timestamp())
