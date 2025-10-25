@@ -1,5 +1,6 @@
 import datetime
 import shutil
+import tempfile
 from pathlib import Path
 
 import polars
@@ -13,7 +14,7 @@ from services.logging import LoggingService
 
 
 class Backtest:
-    _ticks_folder: Path = Path("storage/ticks")
+    _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
     _data_total_files: int = 100
     _data_total_missing_prices: int = 0
 
