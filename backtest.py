@@ -19,7 +19,7 @@ class Backtest(BacktestService):
 
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
-    from_date = to_date - datetime.timedelta(days=365)
+    from_date = to_date - datetime.timedelta(days=365 * 6)
 
     backtest = Backtest(
         asset=ASSETS["btcusdt"],

@@ -8,7 +8,6 @@ from services.logging import LoggingService
 
 
 class CandleHandler:
-    _started: bool
     _max_candles_in_memory: int
     _timeframes: list[Timeframe]
     _candlesticks: dict[Timeframe, list[CandlestickModel]]
@@ -16,7 +15,6 @@ class CandleHandler:
     def __init__(self) -> None:
         self._candlesticks = {}
         self._max_candles_in_memory = MAX_CANDLES_IN_MEMORY
-        self._started = False
 
         self._log = LoggingService()
         self._log.setup("candles_handler")
@@ -34,6 +32,26 @@ class CandleHandler:
         self._log.info(f"Setup {_timeframes} timeframes")
 
     def on_tick(self, tick: TickModel) -> None:
+        # for timeframe in self._timeframes:
+        #     if not self._candlesticks[timeframe]:
+        #         self._candlesticks[timeframe] = []
+
+        #     if len(self._candlesticks[timeframe]) == 0:
+        #         candle = CandlestickModel()
+        #         candle.source = self._asset.gateway.gateway_name
+        #         candle.symbol = self._asset.symbol
+        #         candle.kline_open_time = tick.date.timestamp() * 1000
+        #         candle.open_price = tick.price
+        #         candle.high_price = tick.price
+        #         candle.low_price = tick.price
+        #         candle.close_price = tick.price
+        #         candle.volume = 0
+        #         candle.kline_close_time = tick.date.timestamp() * 1000
+
+        #         self._candlesticks[timeframe].append(candle)
+
+        #     last_candle = self._candlesticks[timeframe][-1]
+
         pass
 
     def on_end(self) -> None:

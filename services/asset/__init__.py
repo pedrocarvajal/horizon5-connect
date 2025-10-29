@@ -7,12 +7,17 @@ from models.tick import TickModel
 from models.trade import TradeModel
 from services.analytic import AnalyticService
 from services.asset.handlers.candle import CandleHandler
+from services.gateway import GatewayService
 from services.logging import LoggingService
 
 
 class AssetService(AssetInterface):
     _strategies: list[StrategyInterface]
     _timeframes: list[Timeframe]
+    _gateway: GatewayService
+    _analytic: AnalyticService
+    _candle: CandleHandler
+    _log: LoggingService
 
     def __init__(self) -> None:
         self._log = LoggingService()
@@ -20,6 +25,7 @@ class AssetService(AssetInterface):
 
         self._analytic = AnalyticService()
         self._candle = CandleHandler()
+        self._gateway = GatewayService(self._gateway)
 
     def setup(self, **kwargs: Any) -> None:
         self._candle.setup(self._timeframes, **kwargs)
@@ -60,6 +66,10 @@ class AssetService(AssetInterface):
 
         for strategy in self._strategies:
             strategy.on_end()
+
+    @property
+    def gateway(self) -> GatewayService:
+        return self._gateway
 
     @property
     def analytic(self) -> AnalyticService:
