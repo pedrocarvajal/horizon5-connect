@@ -37,7 +37,15 @@ Execute each task step-by-step (in that specific order). For each task, follow t
 - Perform self-critical analysis: verify all unnecessary comments were removed or code was refactored
 - Confirm only acceptable comments remain (mathematical formulas with references)
 
-### Task 3: Class Organization
+### Task 3: Type Annotations
+
+- Read `docs/clean-code/typings.md`
+- Apply all guidelines to the code
+- Re-read `docs/clean-code/typings.md`
+- Perform self-critical analysis: verify instance vs class types, optional/union syntax, collection types, property return types
+- Confirm all type hints follow modern Python standards (no Optional, Union, List, Dict imports)
+
+### Task 4: Class Organization
 
 - Read `docs/clean-code/class-organization.md`
 - Apply all guidelines to the code
@@ -45,7 +53,7 @@ Execute each task step-by-step (in that specific order). For each task, follow t
 - Perform self-critical analysis: verify section order is correct (public vars, private vars, constructor, methods, getters, helpers)
 - Confirm access modifiers are properly assigned
 
-### Task 4: Code Smells Analysis
+### Task 5: Code Smells Analysis
 
 - Read `docs/clean-code/code-smells.md`
 - Analyze the code without modifying it
