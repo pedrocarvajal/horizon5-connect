@@ -3,6 +3,9 @@ from models.trade import TradeModel
 
 
 class StrategyInterface:
+    _enabled: bool
+    _name: str
+
     def setup(self) -> None:
         pass
 

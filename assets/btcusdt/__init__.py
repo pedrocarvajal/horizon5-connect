@@ -1,23 +1,14 @@
-from models.tick import TickModel
-from models.trade import TradeModel
+from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
+from strategies.ema5_breakout import EMA5BreakoutStrategy
 
 
 class BTCUSDT(AssetService):
     _symbol = "BTCUSDT"
     _gateway = "binance"
+    _strategies: list[type[StrategyInterface]]
 
     def __init__(self) -> None:
         super().__init__()
 
-    def setup(self) -> None:
-        super().setup()
-
-    def on_tick(self, tick: TickModel) -> None:
-        super().on_tick(tick)
-
-    def on_transaction(self, trade: TradeModel) -> None:
-        super().on_transaction(trade)
-
-    def on_end(self) -> None:
-        super().on_end()
+        self._strategies = [EMA5BreakoutStrategy()]
