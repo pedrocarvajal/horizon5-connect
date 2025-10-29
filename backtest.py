@@ -15,8 +15,6 @@ from services.logging import LoggingService
 
 class Backtest:
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
-    _data_total_ticks: int = 0
-    _data_total_missing_prices: int = 0
 
     def __init__(
         self,
@@ -42,6 +40,8 @@ class Backtest:
         ticks_folder = self._ticks_folder / self._asset.symbol
         start_timestamp = int(self._from_date.timestamp())
         end_timestamp = int(self._to_date.timestamp())
+        expected_ticks = int((end_timestamp - start_timestamp) / 60)
+
         ticks_file = polars.scan_parquet(ticks_folder / "ticks.parquet")
         ticks = (
             ticks_file.filter(
@@ -53,13 +53,19 @@ class Backtest:
         )
 
         self._log.info(f"Total ticks: {ticks.height}")
+        self._log.info(f"Expected ticks: {expected_ticks}")
 
         for tick in ticks.iter_rows(named=True):
             tick_model = TickModel()
             tick_model.date = datetime.datetime.fromtimestamp(tick["id"], tz=TIMEZONE)
             tick_model.price = tick["price"]
-
             self._asset.on_tick(tick_model)
+
+        quality = (ticks.height / expected_ticks) * 100
+        missing_ticks = expected_ticks - ticks.height
+
+        self._log.info(f"Data quality: {quality:.2f}%")
+        self._log.info(f"Missing ticks: {missing_ticks}")
 
         self._asset.on_end()
 
@@ -156,13 +162,13 @@ class Backtest:
 
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
-    from_date = to_date - datetime.timedelta(days=7)
+    from_date = to_date - datetime.timedelta(days=365)
 
     backtest = Backtest(
         asset=ASSETS["btcusdt"],
         from_date=from_date,
         to_date=to_date,
-        restore_data=False,
+        # restore_data=True,
     )
 
     backtest.run()
