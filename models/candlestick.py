@@ -1,8 +1,9 @@
 import datetime
 from typing import Any
 
-from configs.timezone import TIMEZONE
 from pydantic import BaseModel, computed_field
+
+from configs.timezone import TIMEZONE
 
 
 class CandlestickModel(BaseModel):

@@ -1,5 +1,6 @@
 from typing import Any
 
+from enums.timeframe import Timeframe
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
@@ -11,6 +12,7 @@ from services.logging import LoggingService
 
 class AssetService(AssetInterface):
     _strategies: list[StrategyInterface]
+    _timeframes: list[Timeframe]
 
     def __init__(self) -> None:
         self._log = LoggingService()
@@ -20,7 +22,7 @@ class AssetService(AssetInterface):
         self._candle = CandleHandler()
 
     def setup(self, **kwargs: Any) -> None:
-        self._candle.setup()
+        self._candle.setup(self._timeframes, **kwargs)
         self._analytic.setup()
         self._db = kwargs.get("db")
         self._session = kwargs.get("session")
