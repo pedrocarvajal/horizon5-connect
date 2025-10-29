@@ -1,13 +1,13 @@
 from interfaces.asset import AssetInterface
-from services.analytics import AnalyticsService
+from services.analytic import AnalyticService
 
 
 class AssetService(AssetInterface):
     def __init__(self) -> None:
         super().__init__()
 
-        self._analytics = AnalyticsService()
+        self._analytic = AnalyticService()
 
     @property
-    def analytics(self) -> AnalyticsService:
-        return self._analytics
+    def analytic(self) -> AnalyticService:
+        return self._analytic
