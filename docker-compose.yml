@@ -1,0 +1,23 @@
+services:
+  horizon-mongodb:
+    image: mongo:7
+    container_name: horizon-mongodb
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-admin}
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - horizon_mongodb_data:/data/db
+    networks:
+      - horizon-network
+
+networks:
+  horizon-network:
+    driver: bridge
+
+volumes:
+  horizon_mongodb_data:
