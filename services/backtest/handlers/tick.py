@@ -10,7 +10,7 @@ from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
-class TicksHandler:
+class TickHandler:
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
     _from_date: datetime.datetime
     _to_date: datetime.datetime

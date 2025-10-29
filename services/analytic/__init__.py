@@ -9,7 +9,7 @@ class AnalyticService:
         self._log.setup("analytic_service")
 
     def on_start(self) -> None:
-        self._log.info(f"Initializing {self._symbol}")
+        pass
 
     def on_tick(self, tick: TickModel) -> None:
         pass

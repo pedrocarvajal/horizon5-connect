@@ -2,7 +2,7 @@ from interfaces.asset import AssetInterface
 from models.tick import TickModel
 from models.trade import TradeModel
 from services.analytic import AnalyticService
-from services.asset.handlers.candles import CandlesHandler
+from services.asset.handlers.candle import CandleHandler
 
 
 class AssetService(AssetInterface):
@@ -10,16 +10,16 @@ class AssetService(AssetInterface):
         super().__init__()
 
         self._analytic = AnalyticService()
-        self._candles = CandlesHandler()
+        self._candle = CandleHandler()
 
     def on_start(self) -> None:
         super().on_start()
-        self._candles.on_start()
+        self._candle.on_start()
         self._analytic.on_start()
 
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
-        self._candles.on_tick(tick)
+        self._candle.on_tick(tick)
         self._analytic.on_tick(tick)
 
     def on_transaction(self, trade: TradeModel) -> None:
@@ -28,7 +28,7 @@ class AssetService(AssetInterface):
 
     def on_end(self) -> None:
         super().on_end()
-        self._candles.on_end()
+        self._candle.on_end()
         self._analytic.on_end()
 
     @property
