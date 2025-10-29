@@ -63,12 +63,17 @@ class BacktestService:
         end_timestamp = int(self._to_date.timestamp())
         expected_tick = int((end_timestamp - start_timestamp) / 60)
         ticks = self._tick.ticks
+        enabled_strategies = len(self._asset.strategies)
 
         self._log.info(f"Total ticks: {ticks.height}")
         self._log.info(f"Expected ticks: {expected_tick}")
 
         if ticks.height == 0:
             self._log.error("No ticks found")
+            return
+
+        if enabled_strategies == 0:
+            self._log.error("No enabled strategies found")
             return
 
         self._update_status(BacktestStatus.RUNNING)

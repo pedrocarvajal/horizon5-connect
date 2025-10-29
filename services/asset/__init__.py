@@ -56,3 +56,7 @@ class AssetService(AssetInterface):
     @property
     def candle(self) -> CandleHandler:
         return self._candle
+
+    @property
+    def strategies(self) -> list[StrategyInterface]:
+        return self._strategies
