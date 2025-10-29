@@ -113,3 +113,6 @@ class BacktestService:
             f"Quality: {quality:.2f}% | "
             f"Session ID: {self._session.id}"
         )
+
+        self._update_status(BacktestStatus.COMPLETED)
+        self._db.close()

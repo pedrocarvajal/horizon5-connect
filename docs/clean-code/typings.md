@@ -43,7 +43,6 @@ class StrategyFactory:
 
 ```python
 _strategies: list[StrategyInterface]
-_timeframes: list[Timeframe]
 _candlesticks: dict[Timeframe, list[CandlestickModel]]
 _config: dict[str, Any]
 ```

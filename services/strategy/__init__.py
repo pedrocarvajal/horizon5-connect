@@ -1,6 +1,9 @@
 from typing import Any
 
 from interfaces.strategy import StrategyInterface
+from services.asset import AssetService
+from services.backtest.handlers.session import SessionHandler
+from services.db import DBService
 from services.logging import LoggingService
 
 
@@ -31,14 +34,18 @@ class StrategyService(StrategyInterface):
     def enabled(self) -> bool:
         return self._enabled
 
-    @enabled.setter
-    def enabled(self, value: bool) -> None:
-        self._enabled = value
-
     @property
     def name(self) -> str:
         return self._name
 
-    @name.setter
-    def name(self, value: str) -> None:
-        self._name = value
+    @property
+    def asset(self) -> AssetService:
+        return self._asset
+
+    @property
+    def db(self) -> DBService:
+        return self._db
+
+    @property
+    def session(self) -> SessionHandler:
+        return self._session

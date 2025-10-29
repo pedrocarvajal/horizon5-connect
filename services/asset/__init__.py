@@ -1,18 +1,22 @@
 from typing import Any
 
-from enums.timeframe import Timeframe
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
 from services.analytic import AnalyticService
+from services.backtest.handlers.session import SessionHandler
+from services.db import DBService
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
 
 class AssetService(AssetInterface):
     _strategies: list[StrategyInterface]
-    _timeframes: list[Timeframe]
+
+    _db: DBService
+    _session: SessionHandler
+
     _gateway: GatewayService
     _analytic: AnalyticService
     _log: LoggingService
@@ -72,3 +76,11 @@ class AssetService(AssetInterface):
     @property
     def strategies(self) -> list[StrategyInterface]:
         return self._strategies
+
+    @property
+    def db(self) -> DBService:
+        return self._db
+
+    @property
+    def session(self) -> SessionHandler:
+        return self._session
