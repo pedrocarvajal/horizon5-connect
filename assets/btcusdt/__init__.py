@@ -1,6 +1,3 @@
-from typing import Any
-
-from enums.timeframe import Timeframe
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
@@ -19,6 +16,3 @@ class BTCUSDT(AssetService):
         self._log.setup("asset_btcusdt")
 
         self._strategies = [EMA5BreakoutStrategy()]
-
-    def setup(self, **kwargs: Any) -> None:
-        super().setup(**kwargs)
