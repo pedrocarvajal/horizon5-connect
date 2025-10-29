@@ -8,7 +8,7 @@ class AnalyticService:
         self._log = LoggingService()
         self._log.setup("analytic_service")
 
-    def on_start(self) -> None:
+    def setup(self) -> None:
         pass
 
     def on_tick(self, tick: TickModel) -> None:

@@ -14,7 +14,7 @@ class AssetInterface:
 
         self._gateway = GatewayService(self._gateway)
 
-    def on_start(self) -> None:
+    def setup(self) -> None:
         self._log.info(f"Initializing {self._symbol}")
 
     def on_tick(self, tick: TickModel) -> None:

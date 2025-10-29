@@ -3,7 +3,7 @@ from models.trade import TradeModel
 
 
 class StrategyInterface:
-    def on_start(self) -> None:
+    def setup(self) -> None:
         pass
 
     def on_tick(self, tick: TickModel) -> None:

@@ -130,7 +130,7 @@ def process_signal():
     if strategy_type == "BREAKOUT":
         if price > resistance:
             if volume > threshold:
-                if time > session_start:
+                if time > sessisetup:
                     pass
     elif strategy_type == "MEAN_REVERSION":
         pass

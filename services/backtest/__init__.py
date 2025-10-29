@@ -32,12 +32,6 @@ class BacktestService:
         self._restore_data = restore_data
         self._queues = {}
 
-        tick_setup = {
-            "from_date": from_date,
-            "to_date": to_date,
-            "restore_data": restore_data,
-        }
-
         self._log = LoggingService()
         self._log.setup("backtest")
 
@@ -45,6 +39,12 @@ class BacktestService:
         self._asset = asset()
         self._session = SessionHandler()
         self._tick = TickHandler()
+
+        tick_setup = {
+            "from_date": from_date,
+            "to_date": to_date,
+            "restore_data": restore_data,
+        }
 
         instances = {
             "db": self._db,
@@ -56,7 +56,7 @@ class BacktestService:
         self._db.setup()
         self._session.setup(**instances)
         self._tick.setup(**instances, **tick_setup)
-        self._asset.on_start()
+        self._asset.setup()
 
     def run(self) -> None:
         start_timestamp = int(self._from_date.timestamp())

@@ -12,10 +12,10 @@ class AssetService(AssetInterface):
         self._analytic = AnalyticService()
         self._candle = CandleHandler()
 
-    def on_start(self) -> None:
-        super().on_start()
-        self._candle.on_start()
-        self._analytic.on_start()
+    def setup(self) -> None:
+        super().setup()
+        self._candle.setup()
+        self._analytic.setup()
 
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)

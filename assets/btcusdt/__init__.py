@@ -10,8 +10,8 @@ class BTCUSDT(AssetService):
     def __init__(self) -> None:
         super().__init__()
 
-    def on_start(self) -> None:
-        super().on_start()
+    def setup(self) -> None:
+        super().setup()
 
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
