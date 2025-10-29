@@ -1,9 +1,7 @@
 import datetime
 
 
-def get_duration_between_two_dates_human_readable(
-    start_at: datetime.datetime, end_at: datetime.datetime
-) -> str:
+def get_duration(start_at: datetime.datetime, end_at: datetime.datetime) -> str:
     total_seconds = (end_at - start_at).total_seconds()
     seconds_in_minute = 60
     seconds_in_hour = 3600

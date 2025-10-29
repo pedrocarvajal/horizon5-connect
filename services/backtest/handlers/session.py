@@ -47,7 +47,7 @@ class SessionHandler:
         backtest_session_repository = BacktestSessionRepository(self._db)
         backtest_session_repository.store(
             {
-                "id": self._session_id,
+                "session_id": self._session_id,
                 "asset_symbol": self._asset.symbol,
                 "folder": str(self._session_folder),
                 "status": BacktestStatus.PENDING.value,

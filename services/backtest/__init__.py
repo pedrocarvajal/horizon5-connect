@@ -2,14 +2,14 @@ import datetime
 import queue
 
 from configs.timezone import TIMEZONE
+from enums.backtest_status import BacktestStatus
 from interfaces.asset import AssetInterface
 from models.tick import TickModel
 from services.backtest.handlers.session import SessionHandler
 from services.backtest.handlers.tick import TickHandler
-from services.backtest.helpers.get_duration_between_two_dates_human_readable import (
-    get_duration_between_two_dates_human_readable,
-)
+from services.backtest.helpers.get_duration import get_duration
 from services.db import DBService
+from services.db.repositories.backtest_session import BacktestSessionRepository
 from services.logging import LoggingService
 
 
@@ -67,6 +67,12 @@ class BacktestService:
         self._log.info(f"Total ticks: {ticks.height}")
         self._log.info(f"Expected ticks: {expected_tick}")
 
+        if ticks.height == 0:
+            self._log.error("No ticks found")
+            return
+
+        self._update_status(BacktestStatus.RUNNING)
+
         for tick in ticks.iter_rows(named=True):
             tick_model = TickModel()
             tick_model.date = datetime.datetime.fromtimestamp(tick["id"], tz=TIMEZONE)
@@ -74,6 +80,17 @@ class BacktestService:
             self._asset.on_tick(tick_model)
 
         self._on_end()
+
+    def _update_status(self, status: BacktestStatus) -> None:
+        backtest_session_repository = BacktestSessionRepository(self._db)
+        backtest_session_repository.update(
+            update={
+                "status": status.value,
+            },
+            where={
+                "session_id": self._session.id,
+            },
+        )
 
     def _on_end(self) -> None:
         start_timestamp = int(self._from_date.timestamp())
@@ -84,7 +101,7 @@ class BacktestService:
 
         end_at = datetime.datetime.now(TIMEZONE)
         quality = (self._tick.ticks.height / expected_tick) * 100
-        duration = get_duration_between_two_dates_human_readable(self._start_at, end_at)
+        duration = get_duration(self._start_at, end_at)
 
         self._log.info(
             f"Backtest completed in: {duration} | "
