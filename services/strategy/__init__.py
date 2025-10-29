@@ -1,3 +1,5 @@
+from typing import Any
+
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
@@ -11,7 +13,24 @@ class StrategyService(StrategyInterface):
         self._log = LoggingService()
         self._log.setup("strategy_service")
 
-    def setup(self) -> None:
+    def setup(self, **kwargs: Any) -> None:
+        self._candle = kwargs.get("candle")
+        self._asset = kwargs.get("asset")
+        self._db = kwargs.get("db")
+        self._session = kwargs.get("session")
+
+        if self._candle is None:
+            raise ValueError("Candle is required")
+
+        if self._asset is None:
+            raise ValueError("Asset is required")
+
+        if self._db is None:
+            raise ValueError("DB is required")
+
+        if self._session is None:
+            raise ValueError("Session is required")
+
         self._log.info(f"Setting up {self.name}")
 
     def on_tick(self, tick: TickModel) -> None:

@@ -56,7 +56,7 @@ class BacktestService:
         self._db.setup()
         self._session.setup(**instances)
         self._tick.setup(**instances, **tick_setup)
-        self._asset.setup()
+        self._asset.setup(**instances)
 
     def run(self) -> None:
         start_timestamp = int(self._from_date.timestamp())

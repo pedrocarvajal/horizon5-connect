@@ -1,3 +1,5 @@
+from typing import Any
+
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
@@ -17,9 +19,17 @@ class AssetService(AssetInterface):
         self._analytic = AnalyticService()
         self._candle = CandleHandler()
 
-    def setup(self) -> None:
+    def setup(self, **kwargs: Any) -> None:
         self._candle.setup()
         self._analytic.setup()
+        self._db = kwargs.get("db")
+        self._session = kwargs.get("session")
+
+        if self._db is None:
+            raise ValueError("DB is required")
+
+        if self._session is None:
+            raise ValueError("Session is required")
 
         for strategy in self._strategies:
             if not strategy.enabled:
@@ -27,7 +37,7 @@ class AssetService(AssetInterface):
                 self._strategies.remove(strategy)
                 continue
 
-            strategy.setup()
+            strategy.setup(candle=self._candle, **kwargs)
 
     def on_tick(self, tick: TickModel) -> None:
         self._candle.on_tick(tick)
