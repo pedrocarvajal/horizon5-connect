@@ -1,4 +1,5 @@
 import datetime
+import queue
 
 from configs.timezone import TIMEZONE
 from interfaces.asset import AssetInterface
@@ -8,12 +9,15 @@ from services.backtest.handlers.tick import TickHandler
 from services.backtest.helpers.get_duration_between_two_dates_human_readable import (
     get_duration_between_two_dates_human_readable,
 )
+from services.db import DBService
 from services.logging import LoggingService
 
 
 class BacktestService:
+    _queues: dict[str, queue.Queue]
     _tick: TickHandler
     _session: SessionHandler
+    _db: DBService
 
     def __init__(
         self,
@@ -26,6 +30,7 @@ class BacktestService:
         self._from_date = from_date
         self._to_date = to_date
         self._restore_data = restore_data
+        self._queues = {}
 
         tick_setup = {
             "from_date": from_date,
@@ -36,12 +41,21 @@ class BacktestService:
         self._log = LoggingService()
         self._log.setup("backtest")
 
+        self._db = DBService()
         self._asset = asset()
-        self._session = SessionHandler(asset=self._asset)
-        self._tick = TickHandler(asset=self._asset)
+        self._session = SessionHandler()
+        self._tick = TickHandler()
 
-        self._session.setup()
-        self._tick.setup(**tick_setup)
+        instances = {
+            "db": self._db,
+            "session": self._session,
+            "tick": self._tick,
+            "asset": self._asset,
+        }
+
+        self._db.setup()
+        self._session.setup(**instances)
+        self._tick.setup(**instances, **tick_setup)
         self._asset.on_start()
 
     def run(self) -> None:

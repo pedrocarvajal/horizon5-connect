@@ -1,11 +1,11 @@
 import datetime
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import polars
 
 from helpers.get_progress_between_dates import get_progress_between_dates
-from interfaces.asset import AssetInterface
 from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
@@ -16,21 +16,31 @@ class TickHandler:
     _to_date: datetime.datetime
     _restore_data: bool
 
-    def __init__(self, asset: AssetInterface) -> None:
-        self._asset = asset
-
+    def __init__(self) -> None:
         self._log = LoggingService()
         self._log.setup("ticks_handler")
 
-    def setup(
-        self,
-        from_date: datetime.datetime,
-        to_date: datetime.datetime,
-        restore_data: bool = False,
-    ) -> None:
-        self._from_date = from_date
-        self._to_date = to_date
-        self._restore_data = restore_data
+    def setup(self, **kwargs: Any) -> None:
+        self._asset = kwargs.get("asset")
+        self._db = kwargs.get("db")
+        self._from_date = kwargs.get("from_date")
+        self._to_date = kwargs.get("to_date")
+        self._restore_data = kwargs.get("restore_data")
+
+        if self._asset is None:
+            raise ValueError("Asset is required")
+
+        if self._db is None:
+            raise ValueError("DB is required")
+
+        if self._from_date is None:
+            raise ValueError("From date is required")
+
+        if self._to_date is None:
+            raise ValueError("To date is required")
+
+        if self._restore_data is None:
+            raise ValueError("Restore data is required")
 
         self._download()
 
