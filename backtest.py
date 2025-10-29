@@ -1,20 +1,17 @@
 import datetime
+from typing import Any
 
 from configs.assets import ASSETS
 from configs.timezone import TIMEZONE
-from interfaces.asset import AssetInterface
 from services.backtest import BacktestService
 
 
 class Backtest(BacktestService):
     def __init__(
         self,
-        asset: AssetInterface,
-        from_date: datetime.datetime,
-        to_date: datetime.datetime,
-        restore_data: bool = False,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(asset, from_date, to_date, restore_data)
+        super().__init__(**kwargs)
 
     def run(self) -> None:
         super().run()
