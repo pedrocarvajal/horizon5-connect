@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 from enums.timeframe import Timeframe
 from interfaces.candle import CandleInterface
@@ -11,11 +12,11 @@ class CandleService(CandleInterface):
     def __init__(
         self,
         timeframe: Timeframe,
-        on_close: Callable[[CandlestickModel], None] | None = None,
+        on_close: Optional[Callable[[CandlestickModel], None]] = None,
     ) -> None:
         self._timeframe = timeframe
         self._on_close = on_close
-        self._candles: list[CandlestickModel] = []
+        self._candles: List[CandlestickModel] = []
 
     def on_tick(self, tick: TickModel) -> None:
         self._compute(tick)

@@ -1,4 +1,5 @@
 import datetime
+from typing import List, Optional
 
 from interfaces.indicator import IndicatorInterface
 from models.candlestick import CandlestickModel
@@ -15,15 +16,15 @@ class MAIndicator(IndicatorInterface):
     _period: int
     _price_to_use: str
     _exponential: bool
-    _candles: list[CandlestickModel]
-    _values: list[MAValueModel]
+    _candles: List[CandlestickModel]
+    _values: List[MAValueModel]
 
     def __init__(
         self,
         period: int = 5,
         price_to_use: str = "close_price",
         exponential: bool = False,
-        candles: list[CandlestickModel] | None = None,
+        candles: Optional[List[CandlestickModel]] = None,
     ) -> None:
         self._period = period
         self._price_to_use = price_to_use
@@ -71,7 +72,7 @@ class MAIndicator(IndicatorInterface):
 
         self._values.append(value)
 
-    def _compute_exponential(self, prices: list[float]) -> float:
+    def _compute_exponential(self, prices: List[float]) -> float:
         multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
         exponential_moving_average = prices[0]
 
@@ -82,7 +83,7 @@ class MAIndicator(IndicatorInterface):
 
         return exponential_moving_average
 
-    def _compute_simple(self, prices: list[float]) -> float:
+    def _compute_simple(self, prices: List[float]) -> float:
         return sum(prices) / len(prices)
 
     def _should_refresh(self, candle_close_time: datetime.datetime) -> bool:

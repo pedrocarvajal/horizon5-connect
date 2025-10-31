@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, List
 
 from models.tick import TickModel
 
 
 class IndicatorInterface:
     _name: str
-    _values: list[Any]
+    _values: List[Any]
 
     def on_tick(self, tick: TickModel) -> None:
         pass
@@ -18,5 +18,5 @@ class IndicatorInterface:
         return self._name
 
     @property
-    def values(self) -> list[Any]:
+    def values(self) -> List[Any]:
         return self._values

@@ -40,8 +40,11 @@ select = [
     "RUF",    # ruff-specific rules
 ]
 ignore = [
-    "ANN101",  # self annotation
-    "ANN102",  # cls annotation
+    "ANN401",  # typing.Any
+    "UP045",   # Optional[X] vs X | None
+    "UP006",   # list vs List, dict vs Dict
+    "UP035",   # typing.List/Dict deprecated
+    "UP007",   # Union[X, Y] vs X | Y
 ]
 
 [tool.ruff.lint.per-file-ignores]

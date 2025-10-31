@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, Dict
 
 from configs.timezone import TIMEZONE
 from services.db import DBService
@@ -11,7 +11,7 @@ class BaseRepository:
     def __init__(self, db: DBService) -> None:
         self._db = db
 
-    def store(self, data: dict[str, Any]) -> None:
+    def store(self, data: Dict[str, Any]) -> None:
         self._db.database[self._collection].insert_one(
             {
                 **data,
@@ -22,8 +22,8 @@ class BaseRepository:
 
     def update(
         self,
-        update: dict[str, Any],
-        where: dict[str, Any],
+        update: Dict[str, Any],
+        where: Dict[str, Any],
         update_or_insert: bool = False,
     ) -> None:
         update = {

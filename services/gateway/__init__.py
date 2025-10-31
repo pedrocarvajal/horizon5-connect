@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from configs.gateways import GATEWAYS
 from interfaces.gateway import GatewayInterface
@@ -9,7 +9,7 @@ from services.logging import LoggingService
 
 class GatewayService(GatewayInterface):
     _name: str
-    _credentials: dict[str, str]
+    _credentials: Dict[str, str]
     _gateway: GatewayInterface
 
     def __init__(self, gateway: str) -> None:
@@ -34,9 +34,9 @@ class GatewayService(GatewayInterface):
         self,
         symbol: str,
         timeframe: str,
-        from_date: int | None,
-        to_date: int | None,
-        callback: Callable[[list[CandlestickModel]], None],
+        from_date: Optional[int],
+        to_date: Optional[int],
+        callback: Callable[[List[CandlestickModel]], None],
         **kwargs: Any,
     ) -> None:
         self._gateway.get_klines(

@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from typing import Dict, Optional
 
 
 def ascii(text: str) -> str:
@@ -10,7 +11,7 @@ def ascii(text: str) -> str:
 def get_slug(
     title: str,
     separator: str = "-",
-    dictionary: dict[str, str] | None = None,
+    dictionary: Optional[Dict[str, str]] = None,
 ) -> str:
     if dictionary is None:
         dictionary = {"@": "at"}
@@ -29,7 +30,6 @@ def get_slug(
     for key, val in dict_with_separators.items():
         title = title.replace(key, val)
 
-    # 4. Remove all characters that are not the separator, letters, numbers, or whitespace
     title = title.lower()
     allowed = rf"[^{re.escape(separator)}\w\s]+"
     title = re.sub(allowed, "", title, flags=re.UNICODE)

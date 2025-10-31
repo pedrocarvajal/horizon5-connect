@@ -1,4 +1,5 @@
-from typing import Any
+from multiprocessing import Queue
+from typing import Any, Dict, List
 
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
@@ -6,16 +7,15 @@ from models.tick import TickModel
 from models.trade import TradeModel
 from services.analytic import AnalyticService
 from services.backtest.handlers.session import SessionHandler
-from services.db import DBService
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
 
 class AssetService(AssetInterface):
-    _strategies: list[StrategyInterface]
+    _strategies: List[StrategyInterface]
 
-    _db: DBService
     _session: SessionHandler
+    _queues: Dict[str, Queue]
 
     _gateway: GatewayService
     _analytic: AnalyticService
@@ -30,14 +30,14 @@ class AssetService(AssetInterface):
 
     def setup(self, **kwargs: Any) -> None:
         self._analytic.setup()
-        self._db = kwargs.get("db")
         self._session = kwargs.get("session")
-
-        if self._db is None:
-            raise ValueError("DB is required")
+        self._queues = kwargs.get("queues", {})
 
         if self._session is None:
             raise ValueError("Session is required")
+
+        if self._queues is None:
+            raise ValueError("Queues are required")
 
         for strategy in self._strategies:
             if not strategy.enabled:
@@ -74,12 +74,8 @@ class AssetService(AssetInterface):
         return self._analytic
 
     @property
-    def strategies(self) -> list[StrategyInterface]:
+    def strategies(self) -> List[StrategyInterface]:
         return self._strategies
-
-    @property
-    def db(self) -> DBService:
-        return self._db
 
     @property
     def session(self) -> SessionHandler:

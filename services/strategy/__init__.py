@@ -1,5 +1,6 @@
 import datetime
-from typing import Any
+from multiprocessing import Queue
+from typing import Any, Dict
 
 from enums.timeframe import Timeframe
 from interfaces.candle import CandleInterface
@@ -8,16 +9,16 @@ from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from services.asset import AssetService
 from services.backtest.handlers.session import SessionHandler
-from services.db import DBService
 from services.logging import LoggingService
 
 from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class StrategyService(StrategyInterface):
-    _indicators: dict[str, IndicatorInterface]
-    _candles: dict[Timeframe, CandleInterface]
-    _last_timestamps: dict[Timeframe, datetime.datetime]
+    _queues: Dict[str, Queue]
+    _indicators: Dict[str, IndicatorInterface]
+    _candles: Dict[Timeframe, CandleInterface]
+    _last_timestamps: Dict[Timeframe, datetime.datetime]
 
     def __init__(self) -> None:
         super().__init__()
@@ -31,17 +32,17 @@ class StrategyService(StrategyInterface):
 
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
-        self._db = kwargs.get("db")
         self._session = kwargs.get("session")
+        self._queues = kwargs.get("queues", {})
 
         if self._asset is None:
             raise ValueError("Asset is required")
 
-        if self._db is None:
-            raise ValueError("DB is required")
-
         if self._session is None:
             raise ValueError("Session is required")
+
+        if self._queues is None:
+            raise ValueError("Queues are required")
 
         self._log.info(f"Setting up {self.name}")
 
@@ -114,10 +115,6 @@ class StrategyService(StrategyInterface):
     @property
     def asset(self) -> AssetService:
         return self._asset
-
-    @property
-    def db(self) -> DBService:
-        return self._db
 
     @property
     def session(self) -> SessionHandler:

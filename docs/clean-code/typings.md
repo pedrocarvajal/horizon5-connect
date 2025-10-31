@@ -2,6 +2,14 @@
 
 Standards for using type annotations in Python.
 
+## Required Imports
+
+Always import from `typing` for type annotations:
+
+```python
+from typing import Any, Dict, List, Optional, Union
+```
+
 ## General Rules
 
 | Case                 | Correct                      | Incorrect                        |
@@ -10,10 +18,10 @@ Standards for using type annotations in Python.
 | Class variable       | `_registry: type[BaseClass]` | `_registry: BaseClass`           |
 | Instance return      | `-> GatewayService`          | `-> type[GatewayService]`        |
 | Class return         | `-> type[GatewayService]`    | `-> GatewayService`              |
-| Optional             | `Order \| None`              | `Optional[Order]`                |
-| Union                | `int \| float`               | `Union[int, float]`              |
-| Generic lists        | `list[str]`                  | `List[str]`                      |
-| Generic dictionaries | `dict[str, int]`             | `Dict[str, int]`                 |
+| Optional             | `Optional[Order]`            | `Order \| None`                  |
+| Union                | `Union[int, float]`          | `int \| float`                   |
+| Generic lists        | `List[str]`                  | `list[str]`                      |
+| Generic dictionaries | `Dict[str, int]`             | `dict[str, int]`                 |
 
 ## Instances vs Classes
 
@@ -32,8 +40,10 @@ class AssetService:
 **Classes** (factories/registries):
 
 ```python
+from typing import Dict
+
 class StrategyFactory:
-    _strategies: dict[str, type[StrategyInterface]]
+    _strategies: Dict[str, type[StrategyInterface]]
 
     def register(self, name: str, cls: type[StrategyInterface]) -> None:
         self._strategies[name] = cls
@@ -42,17 +52,21 @@ class StrategyFactory:
 ## Collections
 
 ```python
-_strategies: list[StrategyInterface]
-_config: dict[str, Any]
+from typing import Any, Dict, List
+
+_strategies: List[StrategyInterface]
+_config: Dict[str, Any]
 ```
 
 ## Optional and Union Types
 
 ```python
-def get_order(order_id: str) -> Order | None:
+from typing import Optional, Union
+
+def get_order(order_id: str) -> Optional[Order]:
     pass
 
-def process(value: int | float) -> str | bool:
+def process(value: Union[int, float]) -> Union[str, bool]:
     pass
 ```
 
@@ -61,12 +75,14 @@ def process(value: int | float) -> str | bool:
 Properties must return the attribute type:
 
 ```python
+from typing import List
+
 @property
 def gateway(self) -> GatewayService:
     return self._gateway
 
 @property
-def strategies(self) -> list[StrategyInterface]:
+def strategies(self) -> List[StrategyInterface]:
     return self._strategies
 ```
 
@@ -108,10 +124,12 @@ class CandlestickModel(BaseModel):
 Use `Any` only when necessary:
 
 ```python
+from typing import Any, Dict
+
 def setup(self, **kwargs: Any) -> None:
     pass
 
-_config: dict[str, Any]
+_config: Dict[str, Any]
 ```
 
 Avoid:
@@ -119,4 +137,26 @@ Avoid:
 ```python
 def calculate(data: Any) -> Any:
     pass
+```
+
+## Rationale
+
+Este proyecto usa el estándar de `typing` explícito (`Optional`, `Union`, `List`, `Dict`) en lugar de la sintaxis moderna de Python 3.10+ (`|`, `list`, `dict`) por las siguientes razones:
+
+1. **Compatibilidad con Python 3.9**: Las versiones anteriores no soportan la sintaxis moderna
+2. **Claridad**: `Optional[X]` es más explícito que `X | None`
+3. **Consistencia**: Evita mezclar estilos en el codebase
+4. **Compatibilidad con herramientas**: Algunas librerías aún esperan el estándar de `typing`
+
+### Configuración de Ruff
+
+Las siguientes reglas están deshabilitadas en `pyproject.toml`:
+
+```toml
+ignore = [
+    "UP006",   # list vs List, dict vs Dict
+    "UP007",   # Union[X, Y] vs X | Y
+    "UP035",   # typing.List/Dict deprecated
+    "UP045",   # Optional[X] vs X | None
+]
 ```

@@ -1,4 +1,3 @@
-import queue
 from typing import Any
 
 from pymongo import MongoClient
@@ -15,16 +14,14 @@ from services.logging import LoggingService
 
 
 class DBService:
-    _events: queue.Queue
-
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("db_service")
 
         self._connection = None
         self._database = None
 
-    def setup(self) -> None:
+    def connect(self) -> None:
         uri = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/"
 
         self._connection = MongoClient(uri)
@@ -38,19 +35,3 @@ class DBService:
             self._connection.close()
             self._connection = None
             self._database = None
-
-    def push(self, event: str, data: dict[str, Any]) -> None:
-        self._events.put(
-            {
-                "event": event,
-                "data": data,
-            }
-        )
-
-    @property
-    def connection(self) -> MongoClient:
-        return self._connection
-
-    @property
-    def database(self) -> Database:
-        return self._database

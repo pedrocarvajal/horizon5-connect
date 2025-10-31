@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from time import sleep
-from typing import Any
+from typing import Any, List, Optional
 
 import requests
 
@@ -22,9 +22,9 @@ class Binance(GatewayInterface):
         self,
         symbol: str,
         timeframe: str,
-        from_date: int | None,
-        to_date: int | None,
-        callback: Callable[[list[CandlestickModel]], None],
+        from_date: Optional[int],
+        to_date: Optional[int],
+        callback: Callable[[List[CandlestickModel]], None],
         **kwargs: Any,
     ) -> None:
         limit = kwargs.get("limit", 1000)

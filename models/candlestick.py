@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, Dict, Union
 
 from pydantic import BaseModel, computed_field
 
@@ -21,7 +21,7 @@ class CandlestickModel(BaseModel):
     _taker_buy_base_asset_volume: float = 0.0
     _taker_buy_quote_asset_volume: float = 0.0
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
 
     def to_json(self) -> str:
@@ -53,7 +53,7 @@ class CandlestickModel(BaseModel):
         )
 
     @kline_open_time.setter
-    def kline_open_time(self, value: int | float | datetime.datetime) -> None:
+    def kline_open_time(self, value: Union[int, float, datetime.datetime]) -> None:
         if isinstance(value, datetime.datetime):
             self._kline_open_time = int(value.timestamp() * 1000)
         elif isinstance(value, float):
@@ -129,7 +129,7 @@ class CandlestickModel(BaseModel):
         )
 
     @kline_close_time.setter
-    def kline_close_time(self, value: int | float | datetime.datetime) -> None:
+    def kline_close_time(self, value: Union[int, float, datetime.datetime]) -> None:
         if isinstance(value, datetime.datetime):
             self._kline_close_time = int(value.timestamp() * 1000)
         elif isinstance(value, float):

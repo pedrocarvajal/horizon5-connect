@@ -1,3 +1,5 @@
+from typing import List
+
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
@@ -7,7 +9,7 @@ from strategies.ema5_breakout import EMA5BreakoutStrategy
 class BTCUSDT(AssetService):
     _symbol = "BTCUSDT"
     _gateway = "binance"
-    _strategies: list[type[StrategyInterface]]
+    _strategies: List[type[StrategyInterface]]
 
     def __init__(self) -> None:
         super().__init__()

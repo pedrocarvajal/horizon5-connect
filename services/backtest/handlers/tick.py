@@ -1,7 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import polars
 
@@ -22,16 +22,12 @@ class TickHandler:
 
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
-        self._db = kwargs.get("db")
         self._from_date = kwargs.get("from_date")
         self._to_date = kwargs.get("to_date")
         self._restore_data = kwargs.get("restore_data")
 
         if self._asset is None:
             raise ValueError("Asset is required")
-
-        if self._db is None:
-            raise ValueError("DB is required")
 
         if self._from_date is None:
             raise ValueError("From date is required")
@@ -57,7 +53,7 @@ class TickHandler:
         end_timestamp = int(self._to_date.timestamp())
         candlesticks = []
 
-        def _process_klines(klines: list[CandlestickModel]) -> None:
+        def _process_klines(klines: List[CandlestickModel]) -> None:
             nonlocal current_date
             nonlocal candlesticks
             candlesticks.extend([kline.to_dict() for kline in klines])

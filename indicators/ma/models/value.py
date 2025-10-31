@@ -1,15 +1,15 @@
 import datetime
-from typing import Any
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, computed_field
 
 
 class MAValueModel(BaseModel):
-    _date: datetime.datetime | None = None
+    _date: Optional[datetime.datetime] = None
     _value: float = 0.0
     _: Any = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
 
     def to_json(self) -> str:

@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, Dict
 
 from pydantic import BaseModel, computed_field
 
@@ -9,7 +9,7 @@ class TickModel(BaseModel):
     _price: float
     _: Any
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
 
     def to_json(self) -> str:
