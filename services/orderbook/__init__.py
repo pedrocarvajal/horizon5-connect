@@ -32,12 +32,17 @@ class OrderbookService:
             command = self._orders_commands_queue.get()
             event_name = command.get("event")
             order = command.get("order")
+            tick = command.get("tick")
 
             if event_name == OrderEvent.OPEN_ORDER:
                 order.open(executed_from_orderbook=True)
 
             elif event_name == OrderEvent.CLOSE_ORDER:
-                order.close(executed_from_orderbook=True)
+                if not tick:
+                    self._log.error("Tick is not set")
+                    continue
+
+                order.close(tick=tick, executed_from_orderbook=True)
 
             self._orders_events_queue.put(
                 {

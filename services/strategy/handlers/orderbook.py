@@ -49,15 +49,16 @@ class OrderbookHandler:
                 self._orders_commands_queue.put(
                     {
                         "order": order,
+                        "tick": tick,
                         "event": OrderEvent.CLOSE_ORDER,
                     }
                 )
 
-            # if (
-            #     order.status in [OrderStatus.CANCELLED, OrderStatus.CLOSED]
-            #     and order.id in self._orders
-            # ):
-            #     del self._orders[order.id]
+            if (
+                order.status in [OrderStatus.CANCELLED, OrderStatus.CLOSED]
+                and order.id in self._orders
+            ):
+                del self._orders[order.id]
 
     def push(self, order: OrderModel) -> None:
         if self._orders_commands_queue is None:

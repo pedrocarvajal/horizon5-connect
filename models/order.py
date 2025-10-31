@@ -67,7 +67,6 @@ class OrderModel(BaseModel):
         self.volume = volume
 
         self._log.setup_prefix(f"[{self.id}]")
-        self._log.info(f"Creating order {self.id}")
 
     def check_if_ready_to_close_take_profit(self, tick: TickModel) -> bool:
         return (
@@ -95,7 +94,7 @@ class OrderModel(BaseModel):
             self.executed_volume = self.volume
             self.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
-    def close(self, executed_from_orderbook: bool = False) -> None:
+    def close(self, tick: TickModel, executed_from_orderbook: bool = False) -> None:
         if not executed_from_orderbook:
             self._log.error("Order not executed from orderbook")
             return
@@ -104,6 +103,7 @@ class OrderModel(BaseModel):
             self._log.info("Closing order")
 
             self.status = OrderStatus.CLOSED
+            self.close_price = tick.price
             self.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
     def _get_uuid(self) -> str:
@@ -251,6 +251,23 @@ class OrderModel(BaseModel):
         if value < 0:
             raise ValueError("Stop loss price must be greater than or equal to 0")
         self._stop_loss_price = value
+
+    @property
+    def profit(self) -> float:
+        if self._side is OrderSide.SELL:
+            return (self._price - self._close_price) * self._volume
+
+        return (self._close_price - self._price) * self._volume
+
+    @property
+    def profit_percentage(self) -> float:
+        if self._price == 0:
+            return 0.0
+
+        if self._side is OrderSide.SELL:
+            return (self._price - self._close_price) / self._price
+
+        return (self._close_price - self._price) / self._price
 
     @property
     def created_at(self) -> datetime.datetime:
