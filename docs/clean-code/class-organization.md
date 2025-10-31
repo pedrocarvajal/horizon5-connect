@@ -15,8 +15,8 @@ Follow these organization principles.
 2. Private variables (prefixed with `_`)
 3. Constructor
 4. Main public methods
-5. Properties (use `@property` decorator instead of getters/setters)
-6. Private helper methods (prefixed with `_`)
+5. Private helper methods (prefixed with `_`)
+6. Properties (use `@property` decorator instead of getters/setters)
 
 ## Access Modifiers
 
@@ -43,6 +43,12 @@ class Order:
     def close(self) -> bool:
         pass
 
+    def _validate_price(self, price: float) -> bool:
+        pass
+
+    def _update_internal_state(self) -> None:
+        pass
+
     @property
     def entry_price(self) -> float:
         return self._entry_price
@@ -55,10 +61,4 @@ class Order:
     def stop_loss(self, price: float) -> None:
         if self._validate_price(price):
             self._stop_loss = price
-
-    def _validate_price(self, price: float) -> bool:
-        pass
-
-    def _update_internal_state(self) -> None:
-        pass
 ```
