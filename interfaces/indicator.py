@@ -5,7 +5,7 @@ from models.tick import TickModel
 
 class IndicatorInterface:
     _name: str
-    _elements: list[dict[str, Any]]
+    _values: list[Any]
 
     def on_tick(self, tick: TickModel) -> None:
         pass
@@ -13,12 +13,10 @@ class IndicatorInterface:
     def on_end(self) -> None:
         pass
 
-    def get(self, index: int) -> dict[str, Any] | None:
-        if len(self._elements) == 0 or abs(index) > len(self._elements):
-            return None
-
-        return self._elements[index]
-
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def values(self) -> list[Any]:
+        return self._values

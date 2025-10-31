@@ -13,8 +13,6 @@ class CandleInterface:
     def on_tick(self, tick: TickModel) -> None:
         pass
 
-    def get(self, index: int) -> CandlestickModel | None:
-        if len(self._candles) == 0 or abs(index) > len(self._candles):
-            return None
-
-        return self._candles[index]
+    @property
+    def candles(self) -> list[CandlestickModel]:
+        return self._candles
