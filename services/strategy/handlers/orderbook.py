@@ -46,7 +46,7 @@ class OrderbookHandler:
                 return
 
             if order.status is OrderStatus.ORDER_CANCELLED:
-                self._log.info(f"Order {order.id} cancelled.")
+                self._log.warning(f"Order {order.id} cancelled.")
                 del self._orders[order.id]
 
             if self._on_transaction is not None:

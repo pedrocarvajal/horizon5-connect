@@ -5,7 +5,7 @@ from services.gateway import GatewayService
 
 class AssetInterface:
     _symbol: str
-    _gateway: str
+    _gateway: GatewayService
 
     def setup(self) -> None:
         pass

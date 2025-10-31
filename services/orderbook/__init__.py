@@ -2,11 +2,11 @@ from multiprocessing import Queue
 from typing import Any, Optional
 
 from enums.order_event import OrderEvent
-from interfaces.orderbook import OrderbookInterface
+from enums.order_status import OrderStatus
 from services.logging import LoggingService
 
 
-class OrderbookService(OrderbookInterface):
+class OrderbookService:
     _orders_commands_queue: Optional[Queue]
     _orders_events_queue: Optional[Queue]
 
@@ -33,10 +33,13 @@ class OrderbookService(OrderbookInterface):
             command = self._orders_commands_queue.get()
             event_name = command.get("event")
 
-            self._log.info(f"Received order command: {event_name}")
-
             if event_name == OrderEvent.PUSH:
                 order = command.get("order")
+
+                if order.demo:
+                    order.status = OrderStatus.ORDER_FILLED
+                    self._log.info("Demo order executed")
+
                 self._orders_events_queue.put(
                     {
                         "event": OrderEvent.UPDATE,

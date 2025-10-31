@@ -26,9 +26,7 @@ class GatewayService(GatewayInterface):
             raise ValueError(f"Gateway {self._name} not found")
 
         self._log.info(f"Setting up gateway {self._name}")
-        self._gateway = self._gateways[self._name]["class"](
-            **self._gateways[self._name]["variables"]
-        )
+        self._gateway = self._gateways[self._name]["class"]()
 
     def get_klines(
         self,

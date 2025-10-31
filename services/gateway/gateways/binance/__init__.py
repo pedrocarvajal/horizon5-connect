@@ -15,7 +15,6 @@ class Binance(GatewayInterface):
     def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("dateway_binance")
-
         self._log.info(f"Initializing Binance gateway with kwargs: {kwargs}")
 
     def get_klines(

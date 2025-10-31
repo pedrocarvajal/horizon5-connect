@@ -11,13 +11,15 @@ from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from helpers.get_slug import get_slug
 from models.trade import TradeModel
+from services.gateway import GatewayService
 
 
 class OrderModel(BaseModel):
     _id: str
+    _demo: bool = False
     _client_order_id: str
     _symbol: str
-    _gateway: str
+    _gateway: GatewayService
     _side: Optional[OrderSide]
     _order_type: Optional[OrderType]
     _status: Optional[OrderStatus]
@@ -73,6 +75,15 @@ class OrderModel(BaseModel):
 
     @computed_field
     @property
+    def demo(self) -> bool:
+        return self._demo
+
+    @demo.setter
+    def demo(self, value: bool) -> None:
+        self._demo = value
+
+    @computed_field
+    @property
     def client_order_id(self) -> str:
         return self._client_order_id
 
@@ -91,11 +102,11 @@ class OrderModel(BaseModel):
 
     @computed_field
     @property
-    def gateway(self) -> str:
+    def gateway(self) -> GatewayService:
         return self._gateway
 
     @gateway.setter
-    def gateway(self, value: str) -> None:
+    def gateway(self, value: GatewayService) -> None:
         self._gateway = value
 
     @computed_field
