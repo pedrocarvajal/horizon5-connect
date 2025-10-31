@@ -90,12 +90,16 @@ class StrategyService(StrategyInterface):
     def _trigger_timeframe_event(self, timeframe: Timeframe, tick: TickModel) -> None:
         if timeframe == Timeframe.ONE_MINUTE:
             self.on_new_minute(tick)
+
         elif timeframe == Timeframe.ONE_HOUR:
             self.on_new_hour(tick)
+
         elif timeframe == Timeframe.ONE_DAY:
             self.on_new_day(tick)
+
         elif timeframe == Timeframe.ONE_WEEK:
             self.on_new_week(tick)
+
         elif timeframe == Timeframe.ONE_MONTH:
             self.on_new_month(tick)
 
