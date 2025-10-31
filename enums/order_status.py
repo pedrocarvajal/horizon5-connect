@@ -2,7 +2,8 @@ from enum import Enum
 
 
 class OrderStatus(Enum):
-    PENDING = "pending"
+    OPENING = "opening"
     OPENED = "opened"
+    CLOSING = "closing"
     CLOSED = "closed"
     CANCELLED = "cancelled"

@@ -52,7 +52,7 @@ class OrderModel(BaseModel):
 
         self._id = self._get_uuid()
         self._client_order_id = self._get_client_order_id()
-        self._status = OrderStatus.PENDING
+        self._status = OrderStatus.OPENING
         self._order_type = OrderType.MARKET
         self._created_at = now
         self._updated_at = now

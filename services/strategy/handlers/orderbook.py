@@ -41,13 +41,11 @@ class OrderbookHandler:
             return
 
         for order in list(self._orders.values()):
-            if order.status not in [OrderStatus.OPENED]:
-                continue
-
             ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)
             ready_to_close_stop_loss = order.check_if_ready_to_close_stop_loss(tick)
 
             if ready_to_close_take_profit or ready_to_close_stop_loss:
+                self._orders[order.id].status = OrderStatus.CLOSING
                 self._orders_commands_queue.put(
                     {
                         "order": order,
@@ -55,29 +53,11 @@ class OrderbookHandler:
                     }
                 )
 
-    def listen(self) -> None:
-        while True:
-            event = self._orders_events_queue.get()
-            event_name = event.get("event")
-            order = event.get("order")
-
-            if event_name not in [OrderEvent.OPEN_ORDER, OrderEvent.CLOSE_ORDER]:
-                continue
-
-            if order is None:
-                self._log.warning("Order is None")
-                continue
-
-            if self._on_transaction is not None:
-                self._on_transaction(order)
-
-            if order.status in [OrderStatus.CANCELLED, OrderStatus.CLOSED]:
-                if order.id in self._orders:
-                    del self._orders[order.id]
-
-                continue
-
-            self._orders[order.id] = order
+            # if (
+            #     order.status in [OrderStatus.CANCELLED, OrderStatus.CLOSED]
+            #     and order.id in self._orders
+            # ):
+            #     del self._orders[order.id]
 
     def push(self, order: OrderModel) -> None:
         if self._orders_commands_queue is None:
@@ -103,6 +83,22 @@ class OrderbookHandler:
                 "event": OrderEvent.CLOSE_ORDER,
             }
         )
+
+    def listen(self) -> None:
+        while True:
+            event = self._orders_events_queue.get()
+            event_name = event.get("event")
+            order = event.get("order")
+
+            if event_name not in [OrderEvent.OPEN_ORDER, OrderEvent.CLOSE_ORDER]:
+                continue
+
+            if order is None:
+                self._log.warning("Order is None")
+                continue
+
+            self._orders[order.id] = order
+            self._on_transaction(order)
 
     @property
     def orders(self) -> List[OrderModel]:
