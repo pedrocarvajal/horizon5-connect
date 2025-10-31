@@ -60,7 +60,7 @@ class OrderbookHandler:
             ):
                 del self._orders[order.id]
 
-    def push(self, order: OrderModel) -> None:
+    def open(self, order: OrderModel) -> None:
         if self._orders_commands_queue is None:
             self._log.error("Orders commands queue is not set")
             return
