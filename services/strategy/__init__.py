@@ -57,12 +57,14 @@ class StrategyService(StrategyInterface):
 
     def on_tick(self, tick: TickModel) -> None:
         self._check_timeframe_transitions(tick)
+        self._orderbook.refresh(tick)
 
         for indicator in self._indicators.values():
             indicator.on_tick(tick)
 
         for candle in self._candles.values():
             candle.on_tick(tick)
+
 
     def on_new_minute(self, tick: TickModel) -> None:
         pass

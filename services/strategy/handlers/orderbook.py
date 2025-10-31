@@ -5,11 +5,12 @@ from typing import Callable, Dict, List
 from enums.order_event import OrderEvent
 from enums.order_status import OrderStatus
 from models.order import OrderModel
+from models.tick import TickModel
 from services.logging import LoggingService
 
 
 class OrderbookHandler:
-    _orders: List[Dict[str, OrderModel]]
+    _orders: Dict[str, OrderModel]
     _orders_commands_queue: Queue
     _orders_events_queue: Queue
     _on_transaction: Callable[[OrderModel], None]
@@ -23,6 +24,8 @@ class OrderbookHandler:
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
+        self._orders = {}
+
         self._orders_commands_queue = orders_commands_queue
         self._orders_events_queue = orders_events_queue
 
@@ -32,27 +35,64 @@ class OrderbookHandler:
         self._thread.daemon = True
         self._thread.start()
 
+    def refresh(self, tick: TickModel) -> None:
+        if self._orders_commands_queue is None:
+            self._log.error("Orders commands queue is not set")
+            return
+
+        for order in list(self._orders.values()):
+            if order.status not in [OrderStatus.OPENED]:
+                continue
+
+            ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)
+            ready_to_close_stop_loss = order.check_if_ready_to_close_stop_loss(tick)
+
+            if ready_to_close_take_profit or ready_to_close_stop_loss:
+                self._orders_commands_queue.put(
+                    {
+                        "order": order,
+                        "event": OrderEvent.CLOSE_ORDER,
+                    }
+                )
+
     def listen(self) -> None:
         while True:
             event = self._orders_events_queue.get()
             event_name = event.get("event")
             order = event.get("order")
 
-            if event_name is not OrderEvent.UPDATE:
-                return
+            if event_name not in [OrderEvent.OPEN_ORDER, OrderEvent.CLOSE_ORDER]:
+                continue
 
             if order is None:
                 self._log.warning("Order is None")
-                return
-
-            if order.status is OrderStatus.ORDER_CANCELLED:
-                self._log.warning(f"Order {order.id} cancelled.")
-                del self._orders[order.id]
+                continue
 
             if self._on_transaction is not None:
                 self._on_transaction(order)
 
+            if order.status in [OrderStatus.CANCELLED, OrderStatus.CLOSED]:
+                if order.id in self._orders:
+                    del self._orders[order.id]
+
+                continue
+
+            self._orders[order.id] = order
+
     def push(self, order: OrderModel) -> None:
+        if self._orders_commands_queue is None:
+            self._log.error("Orders commands queue is not set")
+            return
+
+        self._orders[order.id] = order
+        self._orders_commands_queue.put(
+            {
+                "order": order,
+                "event": OrderEvent.OPEN_ORDER,
+            }
+        )
+
+    def close(self, order: OrderModel) -> None:
         if self._orders_commands_queue is None:
             self._log.error("Orders commands queue is not set")
             return
@@ -60,6 +100,10 @@ class OrderbookHandler:
         self._orders_commands_queue.put(
             {
                 "order": order,
-                "event": OrderEvent.PUSH,
+                "event": OrderEvent.CLOSE_ORDER,
             }
         )
+
+    @property
+    def orders(self) -> List[OrderModel]:
+        return self._orders.values()

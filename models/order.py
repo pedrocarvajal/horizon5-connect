@@ -1,8 +1,8 @@
 import datetime
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 
 from configs.system import SYSTEM_PREFIX
 from configs.timezone import TIMEZONE
@@ -10,41 +10,101 @@ from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from helpers.get_slug import get_slug
+from models.tick import TickModel
 from models.trade import TradeModel
 from services.gateway import GatewayService
+from services.logging import LoggingService
 
 
 class OrderModel(BaseModel):
     _id: str
     _demo: bool = False
     _client_order_id: str
-    _symbol: str
-    _gateway: GatewayService
-    _side: Optional[OrderSide]
-    _order_type: Optional[OrderType]
-    _status: Optional[OrderStatus]
+    _symbol: str = ""
+    _gateway: Optional[GatewayService] = None
+    _side: Optional[OrderSide] = None
+    _order_type: Optional[OrderType] = None
+    _status: Optional[OrderStatus] = None
     _volume: float = 0.0
     _executed_volume: float = 0.0
     _price: float = 0.0
+    _close_price: float = 0.0
+    _take_profit_price: float = 0.0
+    _stop_loss_price: float = 0.0
     _created_at: datetime.datetime
     _updated_at: datetime.datetime
     trades: List[TradeModel] = []
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__()
+        now = datetime.datetime.now(tz=TIMEZONE)
+        gateway = kwargs.get("gateway")
+        demo = kwargs.get("demo")
+        symbol = kwargs.get("symbol")
+        side = kwargs.get("side")
+        price = kwargs.get("price")
+        take_profit_price = kwargs.get("take_profit_price")
+        stop_loss_price = kwargs.get("stop_loss_price")
+        volume = kwargs.get("volume")
+
+        self._log = LoggingService()
+        self._log.setup("order_model")
 
         self._id = self._get_uuid()
         self._client_order_id = self._get_client_order_id()
-        self._status = OrderStatus.ORDER_CREATED
+        self._status = OrderStatus.PENDING
         self._order_type = OrderType.MARKET
-        self._created_at = datetime.datetime.now(tz=TIMEZONE).timestamp() * 1000
-        self._updated_at = self._created_at
+        self._created_at = now
+        self._updated_at = now
 
-    def to_dict(self) -> Dict[str, Any]:
-        return self.model_dump()
+        self.gateway = gateway
+        self.demo = demo
+        self.symbol = symbol
+        self.side = side
+        self.price = price
+        self.take_profit_price = take_profit_price
+        self.stop_loss_price = stop_loss_price
+        self.volume = volume
 
-    def to_json(self) -> str:
-        return self.model_dump_json()
+        self._log.setup_prefix(f"[{self.id}]")
+        self._log.info(f"Creating order {self.id}")
+
+    def check_if_ready_to_close_take_profit(self, tick: TickModel) -> bool:
+        return (
+            self.status is OrderStatus.OPENED
+            and self.take_profit_price > 0
+            and tick.price >= self.take_profit_price
+        )
+
+    def check_if_ready_to_close_stop_loss(self, tick: TickModel) -> bool:
+        return (
+            self.status is OrderStatus.OPENED
+            and self.stop_loss_price > 0
+            and tick.price <= self.stop_loss_price
+        )
+
+    def open(self, executed_from_orderbook: bool = False) -> None:
+        if not executed_from_orderbook:
+            self._log.error("Order not executed from orderbook")
+            return
+
+        if self._demo:
+            self._log.info("Executing order")
+
+            self.status = OrderStatus.OPENED
+            self.executed_volume = self.volume
+            self.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+    def close(self, executed_from_orderbook: bool = False) -> None:
+        if not executed_from_orderbook:
+            self._log.error("Order not executed from orderbook")
+            return
+
+        if self._demo:
+            self._log.info("Closing order")
+
+            self.status = OrderStatus.CLOSED
+            self.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
     def _get_uuid(self) -> str:
         return str(uuid.uuid4())
@@ -64,7 +124,6 @@ class OrderModel(BaseModel):
 
         return client_order_id
 
-    @computed_field
     @property
     def id(self) -> str:
         return self._id
@@ -73,7 +132,6 @@ class OrderModel(BaseModel):
     def id(self, value: str) -> None:
         self._id = value
 
-    @computed_field
     @property
     def demo(self) -> bool:
         return self._demo
@@ -82,7 +140,6 @@ class OrderModel(BaseModel):
     def demo(self, value: bool) -> None:
         self._demo = value
 
-    @computed_field
     @property
     def client_order_id(self) -> str:
         return self._client_order_id
@@ -91,7 +148,6 @@ class OrderModel(BaseModel):
     def client_order_id(self, value: str) -> None:
         self._client_order_id = value
 
-    @computed_field
     @property
     def symbol(self) -> str:
         return self._symbol
@@ -100,16 +156,14 @@ class OrderModel(BaseModel):
     def symbol(self, value: str) -> None:
         self._symbol = value
 
-    @computed_field
     @property
-    def gateway(self) -> GatewayService:
+    def gateway(self) -> Optional[GatewayService]:
         return self._gateway
 
     @gateway.setter
     def gateway(self, value: GatewayService) -> None:
         self._gateway = value
 
-    @computed_field
     @property
     def side(self) -> Optional[OrderSide]:
         return self._side
@@ -118,7 +172,6 @@ class OrderModel(BaseModel):
     def side(self, value: OrderSide) -> None:
         self._side = value
 
-    @computed_field
     @property
     def order_type(self) -> Optional[OrderType]:
         return self._order_type
@@ -127,7 +180,6 @@ class OrderModel(BaseModel):
     def order_type(self, value: OrderType) -> None:
         self._order_type = value
 
-    @computed_field
     @property
     def status(self) -> Optional[OrderStatus]:
         return self._status
@@ -136,7 +188,6 @@ class OrderModel(BaseModel):
     def status(self, value: OrderStatus) -> None:
         self._status = value
 
-    @computed_field
     @property
     def volume(self) -> float:
         return self._volume
@@ -145,10 +196,8 @@ class OrderModel(BaseModel):
     def volume(self, value: float) -> None:
         if value < 0:
             raise ValueError("Volume must be greater than or equal to 0")
-
         self._volume = value
 
-    @computed_field
     @property
     def executed_volume(self) -> float:
         return self._executed_volume
@@ -157,10 +206,12 @@ class OrderModel(BaseModel):
     def executed_volume(self, value: float) -> None:
         if value < 0:
             raise ValueError("Executed volume must be greater than or equal to 0")
-
         self._executed_volume = value
 
-    @computed_field
+    @property
+    def filled(self) -> bool:
+        return self._volume > 0 and self._executed_volume >= self._volume
+
     @property
     def price(self) -> float:
         return self._price
@@ -169,37 +220,50 @@ class OrderModel(BaseModel):
     def price(self, value: float) -> None:
         if value < 0:
             raise ValueError("Price must be greater than or equal to 0")
-
         self._price = value
 
-    @computed_field
+    @property
+    def close_price(self) -> float:
+        return self._close_price
+
+    @close_price.setter
+    def close_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Close price must be greater than or equal to 0")
+        self._close_price = value
+
+    @property
+    def take_profit_price(self) -> float:
+        return self._take_profit_price
+
+    @take_profit_price.setter
+    def take_profit_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Take profit price must be greater than or equal to 0")
+        self._take_profit_price = value
+
+    @property
+    def stop_loss_price(self) -> float:
+        return self._stop_loss_price
+
+    @stop_loss_price.setter
+    def stop_loss_price(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Stop loss price must be greater than or equal to 0")
+        self._stop_loss_price = value
+
     @property
     def created_at(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self._created_at / 1000, tz=TIMEZONE)
+        return self._created_at
 
     @created_at.setter
-    def created_at(self, value: Union[int, float, datetime.datetime]) -> None:
-        if isinstance(value, datetime.datetime):
-            self._created_at = int(value.timestamp() * 1000)
+    def created_at(self, value: datetime.datetime) -> None:
+        self._created_at = value
 
-        elif isinstance(value, float):
-            self._created_at = int(value * 1000)
-
-        else:
-            self._created_at = value
-
-    @computed_field
     @property
     def updated_at(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self._updated_at / 1000, tz=TIMEZONE)
+        return self._updated_at
 
     @updated_at.setter
-    def updated_at(self, value: Union[int, float, datetime.datetime]) -> None:
-        if isinstance(value, datetime.datetime):
-            self._updated_at = int(value.timestamp() * 1000)
-
-        elif isinstance(value, float):
-            self._updated_at = int(value * 1000)
-
-        else:
-            self._updated_at = value
+    def updated_at(self, value: datetime.datetime) -> None:
+        self._updated_at = value

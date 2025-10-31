@@ -2,7 +2,6 @@ from multiprocessing import Queue
 from typing import Any, Optional
 
 from enums.order_event import OrderEvent
-from enums.order_status import OrderStatus
 from services.logging import LoggingService
 
 
@@ -32,17 +31,17 @@ class OrderbookService:
         while True:
             command = self._orders_commands_queue.get()
             event_name = command.get("event")
+            order = command.get("order")
 
-            if event_name == OrderEvent.PUSH:
-                order = command.get("order")
+            if event_name == OrderEvent.OPEN_ORDER:
+                order.open(executed_from_orderbook=True)
 
-                if order.demo:
-                    order.status = OrderStatus.ORDER_FILLED
-                    self._log.info("Demo order executed")
+            elif event_name == OrderEvent.CLOSE_ORDER:
+                order.close(executed_from_orderbook=True)
 
-                self._orders_events_queue.put(
-                    {
-                        "event": OrderEvent.UPDATE,
-                        "order": order,
-                    }
-                )
+            self._orders_events_queue.put(
+                {
+                    "event": event_name,
+                    "order": order,
+                }
+            )

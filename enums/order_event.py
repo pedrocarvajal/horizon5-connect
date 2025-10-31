@@ -2,5 +2,5 @@ from enum import Enum
 
 
 class OrderEvent(Enum):
-    PUSH = "push"
-    UPDATE = "update"
+    OPEN_ORDER = "open_order"
+    CLOSE_ORDER = "close_order"

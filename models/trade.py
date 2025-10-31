@@ -1,9 +1,7 @@
 import datetime
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 from pydantic import BaseModel, computed_field
-
-from configs.timezone import TIMEZONE
 
 
 class TradeModel(BaseModel):
@@ -12,8 +10,8 @@ class TradeModel(BaseModel):
     _symbol: str = ""
     _price: float = 0.0
     _volume: float = 0.0
-    _created_at: int = 0
-    _updated_at: int = 0
+    _created_at: datetime.datetime
+    _updated_at: datetime.datetime
     _is_buyer: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
@@ -78,30 +76,20 @@ class TradeModel(BaseModel):
     @computed_field
     @property
     def created_at(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self._created_at / 1000, tz=TIMEZONE)
+        return self._created_at
 
     @created_at.setter
-    def created_at(self, value: Union[int, float, datetime.datetime]) -> None:
-        if isinstance(value, datetime.datetime):
-            self._created_at = int(value.timestamp() * 1000)
-        elif isinstance(value, float):
-            self._created_at = int(value * 1000)
-        else:
-            self._created_at = value
+    def created_at(self, value: datetime.datetime) -> None:
+        self._created_at = value
 
     @computed_field
     @property
     def updated_at(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self._updated_at / 1000, tz=TIMEZONE)
+        return self._updated_at
 
     @updated_at.setter
-    def updated_at(self, value: Union[int, float, datetime.datetime]) -> None:
-        if isinstance(value, datetime.datetime):
-            self._updated_at = int(value.timestamp() * 1000)
-        elif isinstance(value, float):
-            self._updated_at = int(value * 1000)
-        else:
-            self._updated_at = value
+    def updated_at(self, value: datetime.datetime) -> None:
+        self._updated_at = value
 
     @computed_field
     @property

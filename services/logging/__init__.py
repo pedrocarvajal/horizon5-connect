@@ -7,22 +7,28 @@ from helpers.get_slug import get_slug
 
 class LoggingService:
     _name: str
+    _prefix: str = ""
     _logs_folder: ClassVar[Path] = Path("logs")
 
     def debug(self, message: Any) -> None:
-        self.logger.debug(message)
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.debug(formatted_message)
 
     def info(self, message: str) -> None:
-        self.logger.info(message)
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.info(formatted_message)
 
     def warning(self, message: str) -> None:
-        self.logger.warning(message)
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.warning(formatted_message)
 
     def error(self, message: str) -> None:
-        self.logger.error(message)
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.error(formatted_message)
 
     def critical(self, message: str) -> None:
-        self.logger.critical(message)
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.critical(formatted_message)
 
     def setup(self, name: str) -> None:
         self._logs_folder.mkdir(parents=True, exist_ok=True)
@@ -49,3 +55,6 @@ class LoggingService:
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
         self.logger.propagate = False
+
+    def setup_prefix(self, prefix: str) -> None:
+        self._prefix = prefix
