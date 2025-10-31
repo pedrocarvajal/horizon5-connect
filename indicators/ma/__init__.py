@@ -9,13 +9,14 @@ from .models.value import MAValueModel
 
 
 class MAIndicator(IndicatorInterface):
+    _MULTIPLIER_COEFFICIENT: int = 2
+
     _name: str = "Moving Average"
     _period: int
     _price_to_use: str
     _exponential: bool
     _candles: list[CandlestickModel]
     _values: list[MAValueModel]
-    _updated_at: datetime.datetime | None = None
 
     def __init__(
         self,
@@ -35,35 +36,32 @@ class MAIndicator(IndicatorInterface):
 
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
-        candles = self._candles
 
-        if len(candles) < self._period:
+        if len(self._candles) < self._period:
             return
 
-        last_closed_candle = candles[-2]
-        last_closed_candle_date = last_closed_candle.kline_close_time
+        last_closed_candle = self._candles[-2]
 
-        if self._updated_at is None or self._updated_at < last_closed_candle_date:
-            self._updated_at = last_closed_candle_date
+        if self._should_refresh(last_closed_candle.kline_close_time):
             self.refresh()
 
     def refresh(self) -> None:
         prices = [
-            getattr(k, self._price_to_use)
-            for k in self._candles[-self._period - 1 : -1]
+            getattr(candle, self._price_to_use)
+            for candle in self._candles[-self._period - 1 : -1]
         ]
-        value = MAValueModel()
 
         if len(prices) < self._period:
             return
 
+        value = MAValueModel()
         value.date = self._candles[-2].kline_close_time
 
         if self._exponential:
             if len(self._values) == 0:
                 value.value = self._compute_exponential(prices)
             else:
-                multiplier = 2 / (self._period + 1)
+                multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
                 current_price = getattr(self._candles[-2], self._price_to_use)
                 value.value = (current_price * multiplier) + (
                     self._values[-1].value * (1 - multiplier)
@@ -74,13 +72,21 @@ class MAIndicator(IndicatorInterface):
         self._values.append(value)
 
     def _compute_exponential(self, prices: list[float]) -> float:
-        multiplier = 2 / (self._period + 1)
-        ema = prices[0]
+        multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
+        exponential_moving_average = prices[0]
 
         for price in prices[1:]:
-            ema = (price * multiplier) + (ema * (1 - multiplier))
+            exponential_moving_average = (price * multiplier) + (
+                exponential_moving_average * (1 - multiplier)
+            )
 
-        return ema
+        return exponential_moving_average
 
     def _compute_simple(self, prices: list[float]) -> float:
         return sum(prices) / len(prices)
+
+    def _should_refresh(self, candle_close_time: datetime.datetime) -> bool:
+        if len(self._values) == 0:
+            return True
+
+        return self._values[-1].date < candle_close_time
