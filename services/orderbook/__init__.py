@@ -1,20 +1,18 @@
 from multiprocessing import Queue
-from time import sleep
 from typing import Any, Optional
 
+from enums.order_event import OrderEvent
 from interfaces.orderbook import OrderbookInterface
 from services.logging import LoggingService
 
 
 class OrderbookService(OrderbookInterface):
+    _orders_commands_queue: Optional[Queue]
     _orders_events_queue: Optional[Queue]
-    _db_queries_queue: Optional[Queue]
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self._orders_events_queue: Queue = kwargs.get("orders_events_queue", Queue())
-        self._db_queries_queue: Queue = kwargs.get("db_queries_queue", Queue())
+        self._orders_commands_queue: Queue = kwargs.get("orders_commands_queue")
+        self._orders_events_queue: Queue = kwargs.get("orders_events_queue")
 
         self._log = LoggingService()
         self._log.setup("orderbook_service")
@@ -23,7 +21,25 @@ class OrderbookService(OrderbookInterface):
         self._check_orders_queue()
 
     def _check_orders_queue(self) -> None:
-        while not self._orders_events_queue.empty():
-            event = self._orders_events_queue.get()
-            self._log.debug(event)
-            sleep(0.1)
+        if self._orders_commands_queue is None:
+            self._log.error("Orders commands queue is not set")
+            return
+
+        if self._orders_events_queue is None:
+            self._log.error("Orders events queue is not set")
+            return
+
+        while True:
+            command = self._orders_commands_queue.get()
+            event_name = command.get("event")
+
+            self._log.info(f"Received order command: {command}")
+
+            if event_name == OrderEvent.OPEN:
+                order = command.get("order")
+                self._orders_events_queue.put(
+                    {
+                        "event": OrderEvent.OPENED,
+                        "order": order,
+                    }
+                )

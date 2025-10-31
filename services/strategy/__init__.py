@@ -8,16 +8,18 @@ from interfaces.indicator import IndicatorInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from services.asset import AssetService
-from services.backtest.handlers.session import SessionHandler
 from services.logging import LoggingService
 
+from .handlers.orderbook import OrderbookHandler
 from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class StrategyService(StrategyInterface):
-    _queues: Dict[str, Queue]
+    _orders_commands_queue: Queue
+    _orders_events_queue: Queue
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
+    _orderbook: OrderbookHandler
     _last_timestamps: Dict[Timeframe, datetime.datetime]
 
     def __init__(self) -> None:
@@ -29,20 +31,26 @@ class StrategyService(StrategyInterface):
         self._indicators = {}
         self._candles = {}
         self._last_timestamps = {}
+        self._orderbook = None
 
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
-        self._session = kwargs.get("session")
-        self._queues = kwargs.get("queues", {})
+        self._orders_commands_queue = kwargs.get("orders_commands_queue")
+        self._orders_events_queue = kwargs.get("orders_events_queue")
 
         if self._asset is None:
             raise ValueError("Asset is required")
 
-        if self._session is None:
-            raise ValueError("Session is required")
+        if self._orders_commands_queue is None:
+            raise ValueError("Orders commands queue is required")
 
-        if self._queues is None:
-            raise ValueError("Queues are required")
+        if self._orders_events_queue is None:
+            raise ValueError("Orders events queue is required")
+
+        self._orderbook = OrderbookHandler(
+            orders_commands_queue=self._orders_commands_queue,
+            orders_events_queue=self._orders_events_queue,
+        )
 
         self._log.info(f"Setting up {self.name}")
 
@@ -117,5 +125,5 @@ class StrategyService(StrategyInterface):
         return self._asset
 
     @property
-    def session(self) -> SessionHandler:
-        return self._session
+    def orderbook(self) -> OrderbookHandler:
+        return self._orderbook

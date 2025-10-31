@@ -25,12 +25,16 @@ class Orderbook(OrderbookService):
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
     from_date = to_date - datetime.timedelta(days=365 * 1)
+    orders_commands_queue = Queue()
     orders_events_queue = Queue()
 
     processes = [
         Process(
             target=Orderbook,
-            kwargs={"orders_events_queue": orders_events_queue},
+            kwargs={
+                "orders_commands_queue": orders_commands_queue,
+                "orders_events_queue": orders_events_queue,
+            },
         ),
         Process(
             target=Backtest,
@@ -38,6 +42,7 @@ if __name__ == "__main__":
                 "asset": ASSETS["btcusdt"],
                 "from_date": from_date,
                 "to_date": to_date,
+                "orders_commands_queue": orders_commands_queue,
                 "orders_events_queue": orders_events_queue,
             },
         ),

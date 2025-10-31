@@ -1,21 +1,19 @@
 from multiprocessing import Queue
-from typing import Any, Dict, List
+from typing import Any, List
 
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
 from services.analytic import AnalyticService
-from services.backtest.handlers.session import SessionHandler
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
 
 class AssetService(AssetInterface):
     _strategies: List[StrategyInterface]
-
-    _session: SessionHandler
-    _queues: Dict[str, Queue]
+    _orders_commands_queue: Queue
+    _orders_events_queue: Queue
 
     _gateway: GatewayService
     _analytic: AnalyticService
@@ -30,14 +28,14 @@ class AssetService(AssetInterface):
 
     def setup(self, **kwargs: Any) -> None:
         self._analytic.setup()
-        self._session = kwargs.get("session")
-        self._queues = kwargs.get("queues", {})
+        self._orders_commands_queue = kwargs.get("orders_commands_queue")
+        self._orders_events_queue = kwargs.get("orders_events_queue")
 
-        if self._session is None:
-            raise ValueError("Session is required")
+        if self._orders_commands_queue is None:
+            raise ValueError("Orders commands queue is required")
 
-        if self._queues is None:
-            raise ValueError("Queues are required")
+        if self._orders_events_queue is None:
+            raise ValueError("Orders events queue is required")
 
         for strategy in self._strategies:
             if not strategy.enabled:
@@ -76,7 +74,3 @@ class AssetService(AssetInterface):
     @property
     def strategies(self) -> List[StrategyInterface]:
         return self._strategies
-
-    @property
-    def session(self) -> SessionHandler:
-        return self._session
