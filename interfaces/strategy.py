@@ -1,5 +1,5 @@
+from models.order import OrderModel
 from models.tick import TickModel
-from models.trade import TradeModel
 
 
 class StrategyInterface:
@@ -12,7 +12,7 @@ class StrategyInterface:
     def on_tick(self, tick: TickModel) -> None:
         pass
 
-    def on_transaction(self, trade: TradeModel) -> None:
+    def on_transaction(self, order: OrderModel) -> None:
         pass
 
     def on_end(self) -> None:

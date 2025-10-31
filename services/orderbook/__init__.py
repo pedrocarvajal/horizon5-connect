@@ -33,13 +33,13 @@ class OrderbookService(OrderbookInterface):
             command = self._orders_commands_queue.get()
             event_name = command.get("event")
 
-            self._log.info(f"Received order command: {command}")
+            self._log.info(f"Received order command: {event_name}")
 
-            if event_name == OrderEvent.OPEN:
+            if event_name == OrderEvent.PUSH:
                 order = command.get("order")
                 self._orders_events_queue.put(
                     {
-                        "event": OrderEvent.OPENED,
+                        "event": OrderEvent.UPDATE,
                         "order": order,
                     }
                 )

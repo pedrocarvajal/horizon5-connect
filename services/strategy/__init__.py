@@ -50,6 +50,7 @@ class StrategyService(StrategyInterface):
         self._orderbook = OrderbookHandler(
             orders_commands_queue=self._orders_commands_queue,
             orders_events_queue=self._orders_events_queue,
+            on_transaction=self.on_transaction,
         )
 
         self._log.info(f"Setting up {self.name}")
