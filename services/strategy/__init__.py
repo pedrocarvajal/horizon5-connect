@@ -21,7 +21,6 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     _asset: AssetService
     _allocation: float
-    _balance: float
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
@@ -39,7 +38,6 @@ class StrategyService(StrategyInterface):
         self._last_timestamps = {}
         self._orderbook = None
         self._allocation = kwargs.get("allocation", 0.0)
-        self._balance = 0
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -55,6 +53,7 @@ class StrategyService(StrategyInterface):
 
         self._orderbook = OrderbookHandler(
             balance=self._allocation,
+            allocation=self._allocation,
             on_transaction=self.on_transaction,
         )
 

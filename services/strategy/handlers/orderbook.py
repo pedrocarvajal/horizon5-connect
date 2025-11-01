@@ -10,6 +10,7 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _allocation: float
     _balance: float
     _orders: Dict[str, OrderModel]
     _tick: TickModel
@@ -20,12 +21,14 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     def __init__(
         self,
+        allocation: float,
         balance: float,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
+        self._allocation = allocation
         self._balance = balance
         self._orders = {}
         self._tick = None
@@ -91,3 +94,7 @@ class OrderbookHandler:
     @property
     def balance(self) -> float:
         return self._balance
+
+    @property
+    def allocation(self) -> float:
+        return self._allocation
