@@ -5,7 +5,6 @@ from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
-from services.analytic import AnalyticService
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
@@ -19,7 +18,6 @@ class AssetService(AssetInterface):
     _db_events_queue: Queue
 
     _gateway: GatewayService
-    _analytic: AnalyticService
     _log: LoggingService
 
     # ───────────────────────────────────────────────────────────
@@ -29,14 +27,12 @@ class AssetService(AssetInterface):
         self._log = LoggingService()
         self._log.setup("asset_service")
 
-        self._analytic = AnalyticService()
         self._gateway = GatewayService(self._gateway)
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
-        self._analytic.setup()
         self._db_commands_queue = kwargs.get("db_commands_queue")
         self._db_events_queue = kwargs.get("db_events_queue")
 
@@ -55,20 +51,14 @@ class AssetService(AssetInterface):
             strategy.setup(**kwargs)
 
     def on_tick(self, tick: TickModel) -> None:
-        self._analytic.on_tick(tick)
-
         for strategy in self._strategies:
             strategy.on_tick(tick)
 
     def on_transaction(self, trade: TradeModel) -> None:
-        self._analytic.on_transaction(trade)
-
         for strategy in self._strategies:
             strategy.on_transaction(trade)
 
     def on_end(self) -> None:
-        self._analytic.on_end()
-
         for strategy in self._strategies:
             strategy.on_end()
 
@@ -86,10 +76,6 @@ class AssetService(AssetInterface):
     @property
     def gateway(self) -> GatewayService:
         return self._gateway
-
-    @property
-    def analytic(self) -> AnalyticService:
-        return self._analytic
 
     @property
     def strategies(self) -> List[StrategyInterface]:

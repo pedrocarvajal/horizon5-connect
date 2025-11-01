@@ -1,13 +1,13 @@
 import datetime
 from typing import Any, Dict
 
-from enums.order_status import OrderStatus
 from enums.timeframe import Timeframe
 from interfaces.candle import CandleInterface
 from interfaces.indicator import IndicatorInterface
 from interfaces.strategy import StrategyInterface
 from models.order import OrderModel
 from models.tick import TickModel
+from services.analytic import AnalyticService
 from services.asset import AssetService
 from services.logging import LoggingService
 
@@ -24,6 +24,7 @@ class StrategyService(StrategyInterface):
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
+    _analytic: AnalyticService
     _last_timestamps: Dict[Timeframe, datetime.datetime]
 
     # ───────────────────────────────────────────────────────────
@@ -35,8 +36,9 @@ class StrategyService(StrategyInterface):
 
         self._indicators = {}
         self._candles = {}
-        self._last_timestamps = {}
         self._orderbook = None
+        self._analytic = None
+        self._last_timestamps = {}
         self._allocation = kwargs.get("allocation", 0.0)
 
     # ───────────────────────────────────────────────────────────
@@ -57,11 +59,17 @@ class StrategyService(StrategyInterface):
             on_transaction=self.on_transaction,
         )
 
+        self._analytic = AnalyticService(
+            allocation=self._allocation,
+            balance=self._allocation,
+        )
+
         self._log.info(f"Setting up {self.name}")
 
     def on_tick(self, tick: TickModel) -> None:
         self._check_timeframe_transitions(tick)
         self._orderbook.refresh(tick)
+        self._analytic.on_tick(tick)
 
         for indicator in self._indicators.values():
             indicator.on_tick(tick)
@@ -73,19 +81,29 @@ class StrategyService(StrategyInterface):
         pass
 
     def on_new_hour(self, tick: TickModel) -> None:
-        pass
+        super().on_new_hour(tick)
+        self._analytic.on_new_hour(tick)
 
     def on_new_day(self, tick: TickModel) -> None:
+        super().on_new_day(tick)
         self._orderbook.clean()
+        self._analytic.on_new_day(tick)
 
     def on_new_week(self, tick: TickModel) -> None:
-        pass
+        super().on_new_week(tick)
+        self._analytic.on_new_week(tick)
 
     def on_new_month(self, tick: TickModel) -> None:
-        pass
+        super().on_new_month(tick)
+        self._analytic.on_new_month(tick)
 
     def on_transaction(self, order: OrderModel) -> None:
         super().on_transaction(order)
+        self._analytic.on_transaction(order)
+
+    def on_end(self) -> None:
+        super().on_end()
+        self._analytic.on_end()
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
