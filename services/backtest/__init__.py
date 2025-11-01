@@ -60,9 +60,20 @@ class BacktestService:
             "db_events_queue": db_events_queue,
         }
 
-        self._session.setup(**instances)
-        self._tick.setup(**instances, **tick_setup)
-        self._asset.setup(**instances, **queues)
+        self._session.setup(
+            **instances,
+        )
+
+        self._tick.setup(
+            **instances,
+            **tick_setup,
+        )
+
+        self._asset.setup(
+            backtest=True,
+            **instances,
+            **queues,
+        )
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS

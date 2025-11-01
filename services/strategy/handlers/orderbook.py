@@ -12,6 +12,8 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     _allocation: float
     _balance: float
+    _nav: float
+    _exposure: float
     _orders: Dict[str, OrderModel]
     _tick: TickModel
     _on_transaction: Callable[[OrderModel], None]
@@ -32,6 +34,8 @@ class OrderbookHandler:
         self._balance = balance
         self._orders = {}
         self._tick = None
+        self._nav = 0.0
+        self._exposure = 0.0
         self._on_transaction = on_transaction
 
     # ───────────────────────────────────────────────────────────
@@ -75,7 +79,7 @@ class OrderbookHandler:
         order.close()
 
         if order.status is OrderStatus.CLOSED:
-            self._balance += order.volume * order.close_price
+            self._balance += order.volume * order.price
             self._balance += order.profit
 
         if order.status is OrderStatus.CANCELLED:
@@ -98,3 +102,15 @@ class OrderbookHandler:
     @property
     def allocation(self) -> float:
         return self._allocation
+
+    @property
+    def nav(self) -> float:
+        return self._balance + self.exposure
+
+    @property
+    def exposure(self) -> float:
+        return sum(
+            order.volume * order.price
+            for order in self._orders.values()
+            if order.status == OrderStatus.OPENED
+        )

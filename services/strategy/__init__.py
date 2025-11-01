@@ -20,6 +20,7 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _backtest: bool
     _asset: AssetService
     _allocation: float
     _indicators: Dict[str, IndicatorInterface]
@@ -35,6 +36,7 @@ class StrategyService(StrategyInterface):
         self._log = LoggingService()
         self._log.setup("strategy_service")
 
+        self._backtest = False
         self._indicators = {}
         self._candles = {}
         self._orderbook = None
@@ -47,6 +49,7 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
+        self._backtest = kwargs.get("backtest", False)
 
         if self._asset is None:
             raise ValueError("Asset is required")
@@ -61,8 +64,7 @@ class StrategyService(StrategyInterface):
         )
 
         self._analytic = AnalyticService(
-            allocation=self._allocation,
-            balance=self._allocation,
+            orderbook=self._orderbook,
         )
 
         self._log.info(f"Setting up {self.name}")
@@ -95,6 +97,12 @@ class StrategyService(StrategyInterface):
         self._analytic.on_transaction(order)
 
     def on_end(self) -> None:
+        if self._backtest:
+            self._log.info("Backtest mode detected, closing all orders.")
+
+            for order in self._orderbook.orders:
+                self._orderbook.close(order)
+
         self._analytic.on_end()
 
     # ───────────────────────────────────────────────────────────

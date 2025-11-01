@@ -13,6 +13,7 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _backtest: bool
     _strategies: List[StrategyInterface]
     _db_commands_queue: Queue
     _db_events_queue: Queue
@@ -33,6 +34,7 @@ class AssetService(AssetInterface):
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
+        self._backtest = kwargs.get("backtest", False)
         self._db_commands_queue = kwargs.get("db_commands_queue")
         self._db_events_queue = kwargs.get("db_events_queue")
 
@@ -48,7 +50,9 @@ class AssetService(AssetInterface):
                 self._strategies.remove(strategy)
                 continue
 
-            strategy.setup(**kwargs)
+            strategy.setup(
+                **kwargs,
+            )
 
     def on_tick(self, tick: TickModel) -> None:
         for strategy in self._strategies:

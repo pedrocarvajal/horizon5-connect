@@ -1,30 +1,103 @@
+from typing import Any
+
+from enums.order_status import OrderStatus
 from interfaces.analytic import AnalyticInterface
+from models.order import OrderModel
 from models.tick import TickModel
 from services.logging import LoggingService
+from services.strategy.handlers.orderbook import OrderbookHandler
 
 
 class AnalyticService(AnalyticInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _orderbook: OrderbookHandler
+    _tick: TickModel
     _allocation: float
-    _balance: float
+    _nav: float
+    _nav_peak: float
+    _drawdown: float
+    _drawdown_peak: float
+    _performance: float
+    _performance_in_percentage: float
+    _orders_opened: int
+    _orders_closed: int
+    _orders_cancelled: int
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self, allocation: float, balance: float) -> None:
+    def __init__(
+        self,
+        **kwargs: Any,
+    ) -> None:
         self._log = LoggingService()
         self._log.setup("analytic_service")
 
-        self._allocation = allocation
-        self._balance = balance
+        self._orderbook = kwargs.get("orderbook")
+        self._tick = None
+        self._allocation = self._orderbook.allocation
+        self._nav = self._orderbook.nav
+        self._nav_peak = self._nav
+        self._drawdown = 0.0
+        self._drawdown_peak = 0.0
+        self._orders_opened = 0
+        self._orders_closed = 0
+        self._orders_cancelled = 0
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
+    def on_transaction(self, order: OrderModel) -> None:
+        if order.status is OrderStatus.OPENED:
+            self._orders_opened += 1
+
+        elif order.status is OrderStatus.CLOSED:
+            self._orders_closed += 1
+
+        elif order.status is OrderStatus.CANCELLED:
+            self._orders_cancelled += 1
+
     def on_tick(self, tick: TickModel) -> None:
-        self._log.info(f"Tick: {tick.date} | Price: {tick.price}")
+        self._tick = tick
+
+    def on_new_day(self, tick: TickModel) -> None:
+        self._refresh()
 
     def on_end(self) -> None:
-        self._log.info("Ending...")
+        self._refresh()
+
+        allocation = f"{self._allocation:.2f}"
+        nav = f"{self._nav:.2f}"
+        nav_peak = f"{self._nav_peak:.2f}"
+        drawdown = f"{self._drawdown * 100:.2f}%"
+        drawdown_peak = f"{self._drawdown_peak * 100:.2f}%"
+        performance = f"{self._performance:.2f}"
+        performance_in_percentage = f"{self._performance_in_percentage * 100:.2f}%"
+        orders_opened = self._orders_opened
+        orders_closed = self._orders_closed
+        orders_cancelled = self._orders_cancelled
+
+        self._log.info("Report")
+        self._log.info(f"Allocation: {allocation}")
+        self._log.info(f"Nav: {nav}")
+        self._log.info(f"Nav peak: {nav_peak}")
+        self._log.info(f"Drawdown: {drawdown}")
+        self._log.info(f"Drawdown peak: {drawdown_peak}")
+        self._log.info(f"Performance: {performance}")
+        self._log.info(f"Performance in percentage: {performance_in_percentage}")
+        self._log.info(f"Orders opened: {orders_opened}")
+        self._log.info(f"Orders closed: {orders_closed}")
+        self._log.info(f"Orders cancelled: {orders_cancelled}")
+
+    def _refresh(self) -> None:
+        self._nav = self._orderbook.nav
+        self._allocation = self._orderbook.allocation
+        self._nav_peak = max(self._nav_peak, self._nav)
+        self._drawdown = (self._nav - self._nav_peak) / self._nav_peak
+        self._performance = (self._nav - self._allocation) / self._allocation
+        self._performance_in_percentage = self._performance
+
+        if self._drawdown < 0:
+            self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
