@@ -2,6 +2,7 @@ import datetime
 from typing import Any, Dict
 
 from enums.timeframe import Timeframe
+from interfaces.analytic import AnalyticInterface
 from interfaces.candle import CandleInterface
 from interfaces.indicator import IndicatorInterface
 from interfaces.strategy import StrategyInterface
@@ -24,7 +25,7 @@ class StrategyService(StrategyInterface):
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
-    _analytic: AnalyticService
+    _analytic: AnalyticInterface
     _last_timestamps: Dict[Timeframe, datetime.datetime]
 
     # ───────────────────────────────────────────────────────────
@@ -77,32 +78,23 @@ class StrategyService(StrategyInterface):
         for candle in self._candles.values():
             candle.on_tick(tick)
 
-    def on_new_minute(self, tick: TickModel) -> None:
-        pass
-
     def on_new_hour(self, tick: TickModel) -> None:
-        super().on_new_hour(tick)
         self._analytic.on_new_hour(tick)
 
     def on_new_day(self, tick: TickModel) -> None:
-        super().on_new_day(tick)
         self._orderbook.clean()
         self._analytic.on_new_day(tick)
 
     def on_new_week(self, tick: TickModel) -> None:
-        super().on_new_week(tick)
         self._analytic.on_new_week(tick)
 
     def on_new_month(self, tick: TickModel) -> None:
-        super().on_new_month(tick)
         self._analytic.on_new_month(tick)
 
     def on_transaction(self, order: OrderModel) -> None:
-        super().on_transaction(order)
         self._analytic.on_transaction(order)
 
     def on_end(self) -> None:
-        super().on_end()
         self._analytic.on_end()
 
     # ───────────────────────────────────────────────────────────

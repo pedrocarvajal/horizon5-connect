@@ -1,9 +1,9 @@
-from models.order import OrderModel
+from interfaces.analytic import AnalyticInterface
 from models.tick import TickModel
 from services.logging import LoggingService
 
 
-class AnalyticService:
+class AnalyticService(AnalyticInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
@@ -24,22 +24,7 @@ class AnalyticService:
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
-        pass
-
-    def on_new_hour(self, tick: TickModel) -> None:
-        pass
-
-    def on_new_day(self, tick: TickModel) -> None:
-        pass
-
-    def on_new_week(self, tick: TickModel) -> None:
-        pass
-
-    def on_new_month(self, tick: TickModel) -> None:
-        pass
-
-    def on_transaction(self, order: OrderModel) -> None:
-        pass
+        self._log.info(f"Tick: {tick.date} | Price: {tick.price}")
 
     def on_end(self) -> None:
         self._log.info("Ending...")
