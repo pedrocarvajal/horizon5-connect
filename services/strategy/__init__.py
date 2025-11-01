@@ -28,6 +28,7 @@ class StrategyService(StrategyInterface):
     _orderbook: OrderbookHandler
     _analytic: AnalyticInterface
     _last_timestamps: Dict[Timeframe, datetime.datetime]
+    _tick: TickModel
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -70,6 +71,7 @@ class StrategyService(StrategyInterface):
         self._log.info(f"Setting up {self.name}")
 
     def on_tick(self, tick: TickModel) -> None:
+        self._tick = tick
         self._check_timeframe_transitions(tick)
         self._orderbook.refresh(tick)
         self._analytic.on_tick(tick)
@@ -80,18 +82,18 @@ class StrategyService(StrategyInterface):
         for candle in self._candles.values():
             candle.on_tick(tick)
 
-    def on_new_hour(self, tick: TickModel) -> None:
-        self._analytic.on_new_hour(tick)
+    def on_new_hour(self) -> None:
+        self._analytic.on_new_hour()
 
-    def on_new_day(self, tick: TickModel) -> None:
+    def on_new_day(self) -> None:
         self._orderbook.clean()
-        self._analytic.on_new_day(tick)
+        self._analytic.on_new_day()
 
-    def on_new_week(self, tick: TickModel) -> None:
-        self._analytic.on_new_week(tick)
+    def on_new_week(self) -> None:
+        self._analytic.on_new_week()
 
-    def on_new_month(self, tick: TickModel) -> None:
-        self._analytic.on_new_month(tick)
+    def on_new_month(self) -> None:
+        self._analytic.on_new_month()
 
     def on_transaction(self, order: OrderModel) -> None:
         self._analytic.on_transaction(order)
@@ -124,23 +126,23 @@ class StrategyService(StrategyInterface):
 
             if current_period > last_timestamp:
                 self._last_timestamps[timeframe] = current_period
-                self._trigger_timeframe_event(timeframe, tick)
+                self._trigger_timeframe_event(timeframe)
 
-    def _trigger_timeframe_event(self, timeframe: Timeframe, tick: TickModel) -> None:
+    def _trigger_timeframe_event(self, timeframe: Timeframe) -> None:
         if timeframe == Timeframe.ONE_MINUTE:
-            self.on_new_minute(tick)
+            self.on_new_minute()
 
         elif timeframe == Timeframe.ONE_HOUR:
-            self.on_new_hour(tick)
+            self.on_new_hour()
 
         elif timeframe == Timeframe.ONE_DAY:
-            self.on_new_day(tick)
+            self.on_new_day()
 
         elif timeframe == Timeframe.ONE_WEEK:
-            self.on_new_week(tick)
+            self.on_new_week()
 
         elif timeframe == Timeframe.ONE_MONTH:
-            self.on_new_month(tick)
+            self.on_new_month()
 
     # ───────────────────────────────────────────────────────────
     # GETTERS

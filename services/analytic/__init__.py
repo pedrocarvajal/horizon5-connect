@@ -62,34 +62,11 @@ class AnalyticService(AnalyticInterface):
     def on_tick(self, tick: TickModel) -> None:
         self._tick = tick
 
-    def on_new_day(self, tick: TickModel) -> None:
+    def on_new_day(self) -> None:
         self._refresh()
 
     def on_end(self) -> None:
         self._refresh()
-
-        allocation = f"{self._allocation:.2f}"
-        nav = f"{self._nav:.2f}"
-        nav_peak = f"{self._nav_peak:.2f}"
-        drawdown = f"{self._drawdown * 100:.2f}%"
-        drawdown_peak = f"{self._drawdown_peak * 100:.2f}%"
-        performance = f"{self._performance:.2f}"
-        performance_in_percentage = f"{self._performance_in_percentage * 100:.2f}%"
-        orders_opened = self._orders_opened
-        orders_closed = self._orders_closed
-        orders_cancelled = self._orders_cancelled
-
-        self._log.info("Report")
-        self._log.info(f"Allocation: {allocation}")
-        self._log.info(f"Nav: {nav}")
-        self._log.info(f"Nav peak: {nav_peak}")
-        self._log.info(f"Drawdown: {drawdown}")
-        self._log.info(f"Drawdown peak: {drawdown_peak}")
-        self._log.info(f"Performance: {performance}")
-        self._log.info(f"Performance in percentage: {performance_in_percentage}")
-        self._log.info(f"Orders opened: {orders_opened}")
-        self._log.info(f"Orders closed: {orders_closed}")
-        self._log.info(f"Orders cancelled: {orders_cancelled}")
 
     def _refresh(self) -> None:
         self._nav = self._orderbook.nav
