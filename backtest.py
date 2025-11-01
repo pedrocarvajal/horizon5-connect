@@ -5,7 +5,7 @@ from typing import Any
 from configs.assets import ASSETS
 from configs.timezone import TIMEZONE
 from services.backtest import BacktestService
-from services.orderbook import OrderbookService
+from services.db import DBService
 
 
 class Backtest(BacktestService):
@@ -17,7 +17,7 @@ class Backtest(BacktestService):
         super().run()
 
 
-class Orderbook(OrderbookService):
+class DBManager(DBService):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -25,15 +25,15 @@ class Orderbook(OrderbookService):
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
     from_date = to_date - datetime.timedelta(days=365 * 1)
-    orders_commands_queue = Queue()
-    orders_events_queue = Queue()
+    db_commands_queue = Queue()
+    db_events_queue = Queue()
 
     processes = [
         Process(
-            target=Orderbook,
+            target=DBManager,
             kwargs={
-                "orders_commands_queue": orders_commands_queue,
-                "orders_events_queue": orders_events_queue,
+                "db_commands_queue": db_commands_queue,
+                "db_events_queue": db_events_queue,
             },
         ),
         Process(
@@ -42,8 +42,8 @@ if __name__ == "__main__":
                 "asset": ASSETS["btcusdt"],
                 "from_date": from_date,
                 "to_date": to_date,
-                "orders_commands_queue": orders_commands_queue,
-                "orders_events_queue": orders_events_queue,
+                "db_commands_queue": db_commands_queue,
+                "db_events_queue": db_events_queue,
             },
         ),
     ]

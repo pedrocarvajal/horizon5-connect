@@ -12,8 +12,8 @@ from services.logging import LoggingService
 
 class AssetService(AssetInterface):
     _strategies: List[StrategyInterface]
-    _orders_commands_queue: Queue
-    _orders_events_queue: Queue
+    _db_commands_queue: Queue
+    _db_events_queue: Queue
 
     _gateway: GatewayService
     _analytic: AnalyticService
@@ -28,14 +28,14 @@ class AssetService(AssetInterface):
 
     def setup(self, **kwargs: Any) -> None:
         self._analytic.setup()
-        self._orders_commands_queue = kwargs.get("orders_commands_queue")
-        self._orders_events_queue = kwargs.get("orders_events_queue")
+        self._db_commands_queue = kwargs.get("db_commands_queue")
+        self._db_events_queue = kwargs.get("db_events_queue")
 
-        if self._orders_commands_queue is None:
-            raise ValueError("Orders commands queue is required")
+        if self._db_commands_queue is None:
+            raise ValueError("DB commands queue is required")
 
-        if self._orders_events_queue is None:
-            raise ValueError("Orders events queue is required")
+        if self._db_events_queue is None:
+            raise ValueError("DB events queue is required")
 
         for strategy in self._strategies:
             if not strategy.enabled:

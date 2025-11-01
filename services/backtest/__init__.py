@@ -21,8 +21,8 @@ class BacktestService:
         from_date: datetime.datetime,
         to_date: datetime.datetime,
         restore_data: bool = False,
-        orders_commands_queue: Optional[Queue] = None,
-        orders_events_queue: Optional[Queue] = None,
+        db_commands_queue: Optional[Queue] = None,
+        db_events_queue: Optional[Queue] = None,
     ) -> None:
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
@@ -50,8 +50,8 @@ class BacktestService:
         }
 
         queues = {
-            "orders_commands_queue": orders_commands_queue,
-            "orders_events_queue": orders_events_queue,
+            "db_commands_queue": db_commands_queue,
+            "db_events_queue": db_events_queue,
         }
 
         self._session.setup(**instances)

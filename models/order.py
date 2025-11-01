@@ -31,13 +31,13 @@ class OrderModel(BaseModel):
     _close_price: float = 0.0
     _take_profit_price: float = 0.0
     _stop_loss_price: float = 0.0
+    _debug: dict[str, Any] = {}
     _created_at: datetime.datetime
     _updated_at: datetime.datetime
     trades: List[TradeModel] = []
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__()
-        now = datetime.datetime.now(tz=TIMEZONE)
         gateway = kwargs.get("gateway")
         demo = kwargs.get("demo")
         symbol = kwargs.get("symbol")
@@ -46,6 +46,9 @@ class OrderModel(BaseModel):
         take_profit_price = kwargs.get("take_profit_price")
         stop_loss_price = kwargs.get("stop_loss_price")
         volume = kwargs.get("volume")
+        debug = kwargs.get("debug", {})
+        created_at = kwargs.get("created_at", datetime.datetime.now(tz=TIMEZONE))
+        updated_at = kwargs.get("updated_at", datetime.datetime.now(tz=TIMEZONE))
 
         self._log = LoggingService()
         self._log.setup("order_model")
@@ -54,8 +57,6 @@ class OrderModel(BaseModel):
         self._client_order_id = self._get_client_order_id()
         self._status = OrderStatus.OPENING
         self._order_type = OrderType.MARKET
-        self._created_at = now
-        self._updated_at = now
 
         self.gateway = gateway
         self.demo = demo
@@ -65,6 +66,9 @@ class OrderModel(BaseModel):
         self.take_profit_price = take_profit_price
         self.stop_loss_price = stop_loss_price
         self.volume = volume
+        self.debug = debug
+        self.created_at = created_at
+        self.updated_at = updated_at
 
         self._log.setup_prefix(f"[{self.id}]")
 
@@ -82,29 +86,18 @@ class OrderModel(BaseModel):
             and tick.price <= self.stop_loss_price
         )
 
-    def open(self, executed_from_orderbook: bool = False) -> None:
-        if not executed_from_orderbook:
-            self._log.error("Order not executed from orderbook")
-            return
+    def open(self) -> None:
+        self._log.info("Executing order")
 
         if self._demo:
-            self._log.info("Executing order")
-
             self.status = OrderStatus.OPENED
             self.executed_volume = self.volume
-            self.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
-    def close(self, tick: TickModel, executed_from_orderbook: bool = False) -> None:
-        if not executed_from_orderbook:
-            self._log.error("Order not executed from orderbook")
-            return
+    def close(self) -> None:
+        self._log.info("Closing order")
 
         if self._demo:
-            self._log.info("Closing order")
-
             self.status = OrderStatus.CLOSED
-            self.close_price = tick.price
-            self.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
     def _get_uuid(self) -> str:
         return str(uuid.uuid4())
@@ -268,6 +261,14 @@ class OrderModel(BaseModel):
             return (self._price - self._close_price) / self._price
 
         return (self._close_price - self._price) / self._price
+
+    @property
+    def debug(self) -> dict[str, Any]:
+        return self._debug
+
+    @debug.setter
+    def debug(self, value: dict[str, Any]) -> None:
+        self._debug = value
 
     @property
     def created_at(self) -> datetime.datetime:

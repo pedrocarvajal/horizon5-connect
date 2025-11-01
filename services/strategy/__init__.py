@@ -1,5 +1,4 @@
 import datetime
-from multiprocessing import Queue
 from typing import Any, Dict
 
 from enums.timeframe import Timeframe
@@ -15,8 +14,6 @@ from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class StrategyService(StrategyInterface):
-    _orders_commands_queue: Queue
-    _orders_events_queue: Queue
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
@@ -35,21 +32,11 @@ class StrategyService(StrategyInterface):
 
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
-        self._orders_commands_queue = kwargs.get("orders_commands_queue")
-        self._orders_events_queue = kwargs.get("orders_events_queue")
 
         if self._asset is None:
             raise ValueError("Asset is required")
 
-        if self._orders_commands_queue is None:
-            raise ValueError("Orders commands queue is required")
-
-        if self._orders_events_queue is None:
-            raise ValueError("Orders events queue is required")
-
         self._orderbook = OrderbookHandler(
-            orders_commands_queue=self._orders_commands_queue,
-            orders_events_queue=self._orders_events_queue,
             on_transaction=self.on_transaction,
         )
 
@@ -65,7 +52,6 @@ class StrategyService(StrategyInterface):
         for candle in self._candles.values():
             candle.on_tick(tick)
 
-
     def on_new_minute(self, tick: TickModel) -> None:
         pass
 
@@ -73,7 +59,7 @@ class StrategyService(StrategyInterface):
         pass
 
     def on_new_day(self, tick: TickModel) -> None:
-        pass
+        self._orderbook.clean()
 
     def on_new_week(self, tick: TickModel) -> None:
         pass
