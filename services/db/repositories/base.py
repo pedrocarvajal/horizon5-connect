@@ -2,17 +2,25 @@ import datetime
 from typing import Any, Dict
 
 from configs.timezone import TIMEZONE
-from services.db import DBService
 
 
 class BaseRepository:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _collection: str
 
-    def __init__(self, db: DBService) -> None:
-        self._db = db
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
+    def __init__(self, connection: Any) -> None:
+        self._connection = connection
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def store(self, data: Dict[str, Any]) -> None:
-        self._db.database[self._collection].insert_one(
+        self._connection.database[self._collection].insert_one(
             {
                 **data,
                 "created_at": datetime.datetime.now(tz=TIMEZONE),
@@ -26,11 +34,18 @@ class BaseRepository:
         where: Dict[str, Any],
         update_or_insert: bool = False,
     ) -> None:
-        update = {
-            **update,
-            "updated_at": datetime.datetime.now(tz=TIMEZONE),
+        update_query = {
+            "$set": {
+                **update,
+                "updated_at": datetime.datetime.now(tz=TIMEZONE),
+            }
         }
 
-        self._db.database[self._collection].update_one(
-            where, {"$set": update}, upsert=update_or_insert
+        if update_or_insert:
+            update_query["$setOnInsert"] = {
+                "created_at": datetime.datetime.now(tz=TIMEZONE)
+            }
+
+        self._connection.database[self._collection].update_one(
+            where, update_query, upsert=update_or_insert
         )

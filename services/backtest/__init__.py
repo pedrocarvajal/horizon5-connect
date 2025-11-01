@@ -3,6 +3,8 @@ from multiprocessing import Queue
 from typing import Optional
 
 from configs.timezone import TIMEZONE
+from enums.backtest_status import BacktestStatus
+from enums.db_command import DBCommand
 from interfaces.asset import AssetInterface
 from models.tick import TickModel
 from services.backtest.handlers.session import SessionHandler
@@ -17,6 +19,8 @@ class BacktestService:
     # ───────────────────────────────────────────────────────────
     _tick: TickHandler
     _session: SessionHandler
+    _db_commands_queue: Queue
+    _db_events_queue: Queue
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -34,6 +38,8 @@ class BacktestService:
         self._from_date = from_date
         self._to_date = to_date
         self._restore_data = restore_data
+        self._db_commands_queue = db_commands_queue
+        self._db_events_queue = db_events_queue
 
         self._log = LoggingService()
         self._log.setup("backtest")
@@ -85,6 +91,7 @@ class BacktestService:
         expected_tick = int((end_timestamp - start_timestamp) / 60)
         ticks = self._tick.ticks
         enabled_strategies = len(self._asset.strategies)
+        self._db_update_backtest_starting_data()
 
         self._log.info(f"Total ticks: {ticks.height}")
         self._log.info(f"Expected ticks: {expected_tick}")
@@ -113,14 +120,62 @@ class BacktestService:
         end_timestamp = int(self._to_date.timestamp())
         expected_tick = int((end_timestamp - start_timestamp) / 60)
 
-        self._asset.on_end()
-
         end_at = datetime.datetime.now(TIMEZONE)
         quality = (self._tick.ticks.height / expected_tick) * 100
         duration = get_duration(self._start_at, end_at)
+
+        self._asset.on_end()
+        self._db_update_backtest_ending_data()
 
         self._log.info(
             f"Backtest completed in: {duration} | "
             f"Quality: {quality:.2f}% | "
             f"Session ID: {self._session.id}"
+        )
+
+    def _db_update_backtest_starting_data(self) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.UPDATE,
+                "repository": "BacktestRepository",
+                "method": {
+                    "name": "update",
+                    "arguments": {
+                        "update": {
+                            "session_id": self._session.id,
+                            "folder": str(self._session.folder),
+                            "start_at": self._start_at,
+                            "end_at": None,
+                            "status": BacktestStatus.RUNNING.value,
+                        },
+                        "where": {
+                            "asset": self._asset.symbol,
+                            "session_id": self._session.id,
+                        },
+                        "update_or_insert": True,
+                    },
+                },
+            }
+        )
+
+    def _db_update_backtest_ending_data(self) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.UPDATE,
+                "repository": "BacktestRepository",
+                "method": {
+                    "name": "update",
+                    "arguments": {
+                        "update": {
+                            "end_at": datetime.datetime.now(tz=TIMEZONE),
+                            "status": BacktestStatus.COMPLETED.value,
+                        },
+                        "where": {
+                            "asset": self._asset.symbol,
+                            "session_id": self._session.id,
+                        },
+                        "update_or_insert": True,
+                    },
+                },
+            }
         )

@@ -1,9 +1,16 @@
-from services.db import DBService
+from typing import Any
+
 from services.db.repositories.base import BaseRepository
 
 
-class BacktestRepository(BaseRepository):
-    _collection: str = "backtests"
+class BacktestSessionRepository(BaseRepository):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
+    _collection: str = "backtest"
 
-    def __init__(self, db: DBService) -> None:
-        super().__init__(db)
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
