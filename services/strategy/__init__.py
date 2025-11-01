@@ -1,10 +1,12 @@
 import datetime
 from typing import Any, Dict
 
+from enums.order_status import OrderStatus
 from enums.timeframe import Timeframe
 from interfaces.candle import CandleInterface
 from interfaces.indicator import IndicatorInterface
 from interfaces.strategy import StrategyInterface
+from models.order import OrderModel
 from models.tick import TickModel
 from services.asset import AssetService
 from services.logging import LoggingService
@@ -19,6 +21,7 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     _asset: AssetService
     _allocation: float
+    _balance: float
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
@@ -36,6 +39,7 @@ class StrategyService(StrategyInterface):
         self._last_timestamps = {}
         self._orderbook = None
         self._allocation = kwargs.get("allocation", 0.0)
+        self._balance = 0
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -46,7 +50,11 @@ class StrategyService(StrategyInterface):
         if self._asset is None:
             raise ValueError("Asset is required")
 
+        if self._allocation <= 0:
+            raise ValueError("Allocation must be greater than 0")
+
         self._orderbook = OrderbookHandler(
+            balance=self._allocation,
             on_transaction=self.on_transaction,
         )
 
@@ -76,6 +84,9 @@ class StrategyService(StrategyInterface):
 
     def on_new_month(self, tick: TickModel) -> None:
         pass
+
+    def on_transaction(self, order: OrderModel) -> None:
+        super().on_transaction(order)
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS

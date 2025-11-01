@@ -33,10 +33,12 @@ class OrderModel(BaseModel):
     close_price: float = Field(default=0.0, ge=0)
     take_profit_price: float = Field(default=0.0, ge=0)
     stop_loss_price: float = Field(default=0.0, ge=0)
-    debug: dict[str, Any] = Field(default_factory=dict)
+
+    trades: List[TradeModel] = Field(default_factory=list)
+    logs: List[str] = Field(default_factory=list)
+
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
-    trades: List[TradeModel] = Field(default_factory=list)
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -47,6 +49,12 @@ class OrderModel(BaseModel):
         self._log = LoggingService()
         self._log.setup("order_model")
         self._log.setup_prefix(f"[{self.id}]")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "status" and hasattr(self, "status"):
+            self._track_status_change(value)
+
+        super().__setattr__(name, value)
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -77,6 +85,17 @@ class OrderModel(BaseModel):
 
         if self.demo:
             self.status = OrderStatus.CLOSED
+
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
+    def _track_status_change(self, status: OrderStatus) -> None:
+        self.logs.append(
+            {
+                "event": "status_change",
+                "status": status.value,
+            }
+        )
 
     # ───────────────────────────────────────────────────────────
     # GETTERS

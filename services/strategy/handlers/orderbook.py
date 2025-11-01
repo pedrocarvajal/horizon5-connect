@@ -7,21 +7,33 @@ from services.logging import LoggingService
 
 
 class OrderbookHandler:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
+    _balance: float
     _orders: Dict[str, OrderModel]
     _tick: TickModel
     _on_transaction: Callable[[OrderModel], None]
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
+        balance: float,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
+        self._balance = balance
         self._orders = {}
         self._tick = None
         self._on_transaction = on_transaction
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def refresh(self, tick: TickModel) -> None:
         self._tick = tick
 
@@ -36,7 +48,6 @@ class OrderbookHandler:
     def clean(self) -> None:
         for order_id in list(self._orders.keys()):
             if self._orders[order_id].status in [
-                OrderStatus.CANCELLED,
                 OrderStatus.CLOSED,
             ]:
                 del self._orders[order_id]
@@ -44,6 +55,13 @@ class OrderbookHandler:
     def open(self, order: OrderModel) -> None:
         order.updated_at = self._tick.date
         order.open()
+
+        if order.status is OrderStatus.OPENED:
+            self._balance -= order.volume * order.price
+
+        if order.status is OrderStatus.CANCELLED:
+            self._balance += order.volume * order.price
+            self._log.error(f"Order {order.id} was cancelled trying to open.")
 
         self._orders[order.id] = order
         self._on_transaction(order)
@@ -53,9 +71,23 @@ class OrderbookHandler:
         order.updated_at = self._tick.date
         order.close()
 
+        if order.status is OrderStatus.CLOSED:
+            self._balance += order.volume * order.close_price
+            self._balance += order.profit
+
+        if order.status is OrderStatus.CANCELLED:
+            self._log.error(f"Order {order.id} was cancelled trying to close.")
+
         self._orders[order.id] = order
         self._on_transaction(order)
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def orders(self) -> List[OrderModel]:
         return list(self._orders.values())
+
+    @property
+    def balance(self) -> float:
+        return self._balance
