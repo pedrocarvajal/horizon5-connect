@@ -68,6 +68,9 @@ class AnalyticService(AnalyticInterface):
     def on_end(self) -> None:
         self._refresh()
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _refresh(self) -> None:
         self._nav = self._orderbook.nav
         self._allocation = self._orderbook.allocation

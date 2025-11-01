@@ -62,6 +62,7 @@ class BacktestService:
 
         self._session.setup(
             **instances,
+            **queues,
         )
 
         self._tick.setup(

@@ -6,15 +6,18 @@ from typing import Any, List
 import polars
 
 from helpers.get_progress_between_dates import get_progress_between_dates
+from interfaces.asset import AssetInterface
 from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
 class TickHandler:
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
+    _asset: AssetInterface
     _from_date: datetime.datetime
     _to_date: datetime.datetime
     _restore_data: bool
+    _log: LoggingService
 
     def __init__(self) -> None:
         self._log = LoggingService()
