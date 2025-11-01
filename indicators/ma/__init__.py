@@ -91,3 +91,7 @@ class MAIndicator(IndicatorInterface):
             return True
 
         return self._values[-1].date < candle_close_time
+
+    @property
+    def values(self) -> List[MAValueModel]:
+        return self._values

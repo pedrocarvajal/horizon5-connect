@@ -75,7 +75,7 @@ class Binance(GatewayInterface):
                 candlesticks.append(candlestick)
 
             last_item = candlesticks[-1]
-            from_date = last_item._kline_close_time
+            from_date = int(last_item.kline_close_time.timestamp() * 1000)
             sleep(0.25)
 
             callback(candlesticks)

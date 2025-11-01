@@ -14,14 +14,14 @@ from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class StrategyService(StrategyInterface):
+    _asset: AssetService
+    _allocation: float
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
     _last_timestamps: Dict[Timeframe, datetime.datetime]
 
-    def __init__(self) -> None:
-        super().__init__()
-
+    def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("strategy_service")
 
@@ -29,6 +29,7 @@ class StrategyService(StrategyInterface):
         self._candles = {}
         self._last_timestamps = {}
         self._orderbook = None
+        self._allocation = kwargs.get("allocation", 0.0)
 
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
@@ -116,3 +117,7 @@ class StrategyService(StrategyInterface):
     @property
     def orderbook(self) -> OrderbookHandler:
         return self._orderbook
+
+    @property
+    def allocation(self) -> float:
+        return self._allocation

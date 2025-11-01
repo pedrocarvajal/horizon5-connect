@@ -17,4 +17,8 @@ class BTCUSDT(AssetService):
         self._log = LoggingService()
         self._log.setup("asset_btcusdt")
 
-        self._strategies = [EMA5BreakoutStrategy()]
+        self._strategies = [
+            EMA5BreakoutStrategy(
+                allocation=10_000,
+            ),
+        ]

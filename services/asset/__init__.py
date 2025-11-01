@@ -64,6 +64,14 @@ class AssetService(AssetInterface):
             strategy.on_end()
 
     @property
+    def symbol(self) -> str:
+        return self._symbol
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
     def gateway(self) -> GatewayService:
         return self._gateway
 

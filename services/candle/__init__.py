@@ -103,3 +103,7 @@ class CandleService(CandleInterface):
 
     def _align_month(self, date: datetime) -> datetime:
         return date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    @property
+    def candles(self) -> List[CandlestickModel]:
+        return self._candles

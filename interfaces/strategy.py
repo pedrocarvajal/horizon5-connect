@@ -3,9 +3,6 @@ from models.tick import TickModel
 
 
 class StrategyInterface:
-    _enabled: bool
-    _name: str
-
     def setup(self) -> None:
         pass
 
