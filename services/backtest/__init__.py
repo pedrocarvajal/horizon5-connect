@@ -12,9 +12,15 @@ from services.logging import LoggingService
 
 
 class BacktestService:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _tick: TickHandler
     _session: SessionHandler
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         asset: AssetInterface,
@@ -58,6 +64,9 @@ class BacktestService:
         self._tick.setup(**instances, **tick_setup)
         self._asset.setup(**instances, **queues)
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def run(self) -> None:
         start_timestamp = int(self._from_date.timestamp())
         end_timestamp = int(self._to_date.timestamp())
@@ -84,6 +93,9 @@ class BacktestService:
 
         self._on_end()
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _on_end(self) -> None:
         start_timestamp = int(self._from_date.timestamp())
         end_timestamp = int(self._to_date.timestamp())

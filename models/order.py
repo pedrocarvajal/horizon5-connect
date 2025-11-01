@@ -16,6 +16,9 @@ from services.logging import LoggingService
 
 
 class OrderModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     demo: bool = False
@@ -35,6 +38,9 @@ class OrderModel(BaseModel):
     updated_at: Optional[datetime.datetime] = None
     trades: List[TradeModel] = Field(default_factory=list)
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -42,6 +48,9 @@ class OrderModel(BaseModel):
         self._log.setup("order_model")
         self._log.setup_prefix(f"[{self.id}]")
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def check_if_ready_to_close_take_profit(self, tick: TickModel) -> bool:
         return (
             self.status is OrderStatus.OPENED
@@ -69,6 +78,9 @@ class OrderModel(BaseModel):
         if self.demo:
             self.status = OrderStatus.CLOSED
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @computed_field
     @property
     def client_order_id(self) -> str:

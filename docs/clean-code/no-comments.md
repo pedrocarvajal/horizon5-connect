@@ -14,4 +14,11 @@ Code should be self-explanatory through proper structure, naming, and design. Co
 
 The only acceptable comments are:
 
-- Complex mathematical formulas with references: `# Kelly Criterion: f = (bp - q) / b`
+- **Section separators**: Visual markers for class organization
+  ```python
+  # ───────────────────────────────────────────────────────────
+  # SECTION NAME
+  # ───────────────────────────────────────────────────────────
+  ```
+  
+- **Complex mathematical formulas** with references: `# Kelly Criterion: f = (bp - q) / b`

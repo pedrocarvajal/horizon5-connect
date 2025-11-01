@@ -7,6 +7,9 @@ from configs.timezone import TIMEZONE
 
 
 class CandlestickModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     source: str = ""
     symbol: str = ""
     kline_open_time: datetime.datetime = Field(default_factory=lambda: datetime.datetime.fromtimestamp(0, tz=TIMEZONE))
@@ -21,6 +24,9 @@ class CandlestickModel(BaseModel):
     taker_buy_base_asset_volume: float = Field(default=0.0, ge=0)
     taker_buy_quote_asset_volume: float = Field(default=0.0, ge=0)
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     @field_validator("kline_open_time", "kline_close_time", mode="before")
     @classmethod
     def convert_timestamp(cls, value: Union[int, float, datetime.datetime]) -> datetime.datetime:

@@ -11,12 +11,32 @@ Follow these organization principles.
 
 ## Recommended Section Order
 
-1. Public variables
-2. Private variables (prefixed with `_`)
-3. Constructor
-4. Main public methods
-5. Private helper methods (prefixed with `_`)
-6. Properties (use `@property` decorator instead of getters/setters)
+1. Constants
+2. Public variables
+3. Private variables (prefixed with `_`)
+4. Constructor
+5. Main public methods
+6. Private helper methods (prefixed with `_`)
+7. Properties (use `@property` decorator instead of getters/setters)
+
+## Section Separators
+
+Use visual separators to clearly mark each section in the class:
+
+```python
+# ───────────────────────────────────────────────────────────
+# SECTION NAME
+# ───────────────────────────────────────────────────────────
+```
+
+Standard section names:
+
+- `CONSTANTS` - Class-level constants
+- `PROPERTIES` - Instance variables
+- `CONSTRUCTOR` - `__init__` method
+- `PUBLIC METHODS` - Public methods
+- `PRIVATE METHODS` - Private/helper methods (prefixed with `_`)
+- `GETTERS` - Properties and getters
 
 ## Access Modifiers
 
@@ -27,28 +47,42 @@ Follow these organization principles.
 
 ```python
 class Order:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     ticket: int
-
     _entry_price: float
     _stop_loss: float
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, order_ticket: int):
         self.ticket = order_ticket
         self._entry_price = 0.0
         self._stop_loss = 0.0
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def open(self) -> bool:
         pass
 
     def close(self) -> bool:
         pass
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _validate_price(self, price: float) -> bool:
         pass
 
     def _update_internal_state(self) -> None:
         pass
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def entry_price(self) -> float:
         return self._entry_price

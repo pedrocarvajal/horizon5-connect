@@ -15,9 +15,15 @@ from services.logging import LoggingService
 
 
 class DBService:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _db_commands_queue: Queue
     _db_events_queue: Queue
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("db_service")
@@ -29,6 +35,9 @@ class DBService:
         self._database = None
         self._connection = self._connect()
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _check_db_commands_queue(self) -> None:
         if self._db_commands_queue is None:
             self._log.error("DB commands queue is not set")

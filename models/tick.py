@@ -5,9 +5,15 @@ from pydantic import BaseModel, Field
 
 
 class TickModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     price: float = Field(default=0.0, ge=0)
     date: Optional[datetime.datetime] = None
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
 

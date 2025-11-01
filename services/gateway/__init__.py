@@ -8,10 +8,16 @@ from services.logging import LoggingService
 
 
 class GatewayService(GatewayInterface):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _name: str
     _credentials: Dict[str, str]
     _gateway: GatewayInterface
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, gateway: str) -> None:
         self._gateways = GATEWAYS
         self._name = gateway
@@ -21,13 +27,9 @@ class GatewayService(GatewayInterface):
 
         self._setup()
 
-    def _setup(self) -> None:
-        if self._name not in self._gateways:
-            raise ValueError(f"Gateway {self._name} not found")
-
-        self._log.info(f"Setting up gateway {self._name}")
-        self._gateway = self._gateways[self._name]["class"]()
-
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
         symbol: str,
@@ -46,6 +48,19 @@ class GatewayService(GatewayInterface):
             **kwargs,
         )
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
+    def _setup(self) -> None:
+        if self._name not in self._gateways:
+            raise ValueError(f"Gateway {self._name} not found")
+
+        self._log.info(f"Setting up gateway {self._name}")
+        self._gateway = self._gateways[self._name]["class"]()
+
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def name(self) -> str:
         return self._name

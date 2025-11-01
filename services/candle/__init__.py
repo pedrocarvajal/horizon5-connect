@@ -9,6 +9,9 @@ from models.tick import TickModel
 
 
 class CandleService(CandleInterface):
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         timeframe: Timeframe,
@@ -18,9 +21,15 @@ class CandleService(CandleInterface):
         self._on_close = on_close
         self._candles: List[CandlestickModel] = []
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
         self._compute(tick)
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _compute(self, tick: TickModel) -> None:
         if len(self._candles) == 0 or tick.date >= self._candles[-1].kline_close_time:
             if len(self._candles) > 0 and self._on_close is not None:
@@ -104,6 +113,9 @@ class CandleService(CandleInterface):
     def _align_month(self, date: datetime) -> datetime:
         return date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def candles(self) -> List[CandlestickModel]:
         return self._candles

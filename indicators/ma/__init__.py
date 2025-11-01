@@ -10,8 +10,14 @@ from .models.value import MAValueModel
 
 
 class MAIndicator(IndicatorInterface):
+    # ───────────────────────────────────────────────────────────
+    # CONSTANTS
+    # ───────────────────────────────────────────────────────────
     _MULTIPLIER_COEFFICIENT: int = 2
 
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _name: str = "Moving Average"
     _period: int
     _price_to_use: str
@@ -19,6 +25,9 @@ class MAIndicator(IndicatorInterface):
     _candles: List[CandlestickModel]
     _values: List[MAValueModel]
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         period: int = 5,
@@ -35,6 +44,9 @@ class MAIndicator(IndicatorInterface):
         self._log = LoggingService()
         self._log.setup("ma_indicator")
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
 
@@ -72,6 +84,9 @@ class MAIndicator(IndicatorInterface):
 
         self._values.append(value)
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _compute_exponential(self, prices: List[float]) -> float:
         multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
         exponential_moving_average = prices[0]
@@ -92,6 +107,9 @@ class MAIndicator(IndicatorInterface):
 
         return self._values[-1].date < candle_close_time
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def values(self) -> List[MAValueModel]:
         return self._values

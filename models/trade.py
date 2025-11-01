@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 
 
 class TradeModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     id: int = Field(default=0, ge=0)
     order_id: int = Field(default=0, ge=0)
     symbol: str = ""
@@ -14,6 +17,9 @@ class TradeModel(BaseModel):
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
 

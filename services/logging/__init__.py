@@ -6,10 +6,16 @@ from helpers.get_slug import get_slug
 
 
 class LoggingService:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _name: str
     _prefix: str = ""
     _logs_folder: ClassVar[Path] = Path("logs")
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def debug(self, message: Any) -> None:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
         self.logger.debug(formatted_message)

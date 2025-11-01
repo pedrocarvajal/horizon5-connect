@@ -14,6 +14,9 @@ from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class StrategyService(StrategyInterface):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _asset: AssetService
     _allocation: float
     _indicators: Dict[str, IndicatorInterface]
@@ -21,6 +24,9 @@ class StrategyService(StrategyInterface):
     _orderbook: OrderbookHandler
     _last_timestamps: Dict[Timeframe, datetime.datetime]
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("strategy_service")
@@ -31,6 +37,9 @@ class StrategyService(StrategyInterface):
         self._orderbook = None
         self._allocation = kwargs.get("allocation", 0.0)
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
 
@@ -68,6 +77,9 @@ class StrategyService(StrategyInterface):
     def on_new_month(self, tick: TickModel) -> None:
         pass
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _check_timeframe_transitions(self, tick: TickModel) -> None:
         current_time = tick.date
 
@@ -102,6 +114,9 @@ class StrategyService(StrategyInterface):
         elif timeframe == Timeframe.ONE_MONTH:
             self.on_new_month(tick)
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def enabled(self) -> bool:
         return self._enabled

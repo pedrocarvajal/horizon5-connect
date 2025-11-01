@@ -11,6 +11,9 @@ from services.logging import LoggingService
 
 
 class AssetService(AssetInterface):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _strategies: List[StrategyInterface]
     _db_commands_queue: Queue
     _db_events_queue: Queue
@@ -19,6 +22,9 @@ class AssetService(AssetInterface):
     _analytic: AnalyticService
     _log: LoggingService
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
         self._log = LoggingService()
         self._log.setup("asset_service")
@@ -26,6 +32,9 @@ class AssetService(AssetInterface):
         self._analytic = AnalyticService()
         self._gateway = GatewayService(self._gateway)
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._analytic.setup()
         self._db_commands_queue = kwargs.get("db_commands_queue")
@@ -63,6 +72,9 @@ class AssetService(AssetInterface):
         for strategy in self._strategies:
             strategy.on_end()
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def symbol(self) -> str:
         return self._symbol

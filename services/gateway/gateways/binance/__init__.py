@@ -10,13 +10,22 @@ from services.logging import LoggingService
 
 
 class Binance(GatewayInterface):
+    # ───────────────────────────────────────────────────────────
+    # CONSTANTS
+    # ───────────────────────────────────────────────────────────
     _fapi_url: str = "https://api.binance.com/api/v3"
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
         self._log = LoggingService()
         self._log.setup("dateway_binance")
         self._log.info(f"Initializing Binance gateway with kwargs: {kwargs}")
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
         symbol: str,

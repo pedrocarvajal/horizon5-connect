@@ -7,10 +7,16 @@ from strategies.ema5_breakout import EMA5BreakoutStrategy
 
 
 class BTCUSDT(AssetService):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _symbol = "BTCUSDT"
     _gateway = "binance"
     _strategies: List[type[StrategyInterface]]
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
         super().__init__()
 
