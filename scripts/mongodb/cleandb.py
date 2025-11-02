@@ -35,15 +35,12 @@ class DBCleaner:
         ]
 
         self._log.info(f"Repositories to clean: {len(repositories)}")
-        self._log.info("-" * 50)
 
         for repository in repositories:
             self._db_delete_all(repository)
             self._log.info(f"{repository}: delete command sent")
 
-        self._log.info("-" * 50)
         self._log.info("Database cleaned successfully")
-
         self._db_kill()
 
     def _db_delete_all(self, repository: str) -> None:
