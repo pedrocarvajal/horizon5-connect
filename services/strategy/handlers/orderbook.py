@@ -1,5 +1,6 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
+from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from models.order import OrderModel
 from models.tick import TickModel
@@ -87,6 +88,18 @@ class OrderbookHandler:
 
         self._orders[order.id] = order
         self._on_transaction(order)
+
+    def where(
+        self,
+        side: Optional[OrderSide] = None,
+        status: Optional[OrderStatus] = None,
+    ) -> List[OrderModel]:
+        return [
+            order
+            for order in self._orders.values()
+            if (side is None or order.side == side)
+            and (status is None or order.status == status)
+        ]
 
     # ───────────────────────────────────────────────────────────
     # GETTERS

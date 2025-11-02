@@ -1,7 +1,8 @@
 import datetime
 from multiprocessing import Queue
-from typing import Any, Dict
+from typing import Any, Dict, List
 
+from enums.order_side import OrderSide
 from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
 from interfaces.candle import CandleInterface
@@ -126,6 +127,28 @@ class StrategyService(StrategyInterface):
 
         self._analytic.on_end()
 
+    def open_order(
+        self,
+        side: OrderSide,
+        price: float,
+        take_profit_price: float,
+        stop_loss_price: float,
+        volume: float,
+    ) -> None:
+        order = OrderModel()
+        order.gateway = self.asset.gateway
+        order.demo = True
+        order.symbol = self.asset.symbol
+        order.side = side
+        order.price = price
+        order.take_profit_price = take_profit_price
+        order.stop_loss_price = stop_loss_price
+        order.volume = volume
+        order.created_at = self._tick.date
+        order.updated_at = self._tick.date
+
+        self.orderbook.open(order)
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
@@ -184,4 +207,20 @@ class StrategyService(StrategyInterface):
 
     @property
     def allocation(self) -> float:
-        return self._allocation
+        return self._orderbook.allocation
+
+    @property
+    def nav(self) -> float:
+        return self._orderbook.nav
+
+    @property
+    def exposure(self) -> float:
+        return self._orderbook.exposure
+
+    @property
+    def balance(self) -> float:
+        return self._orderbook.balance
+
+    @property
+    def orders(self) -> List[OrderModel]:
+        return self._orderbook.orders
