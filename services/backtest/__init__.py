@@ -145,7 +145,6 @@ class BacktestService:
                         "update": {
                             "asset": self._asset.symbol,
                             "session_id": self._session.id,
-                            "folder": str(self._session.folder),
                             "start_at": self._start_at,
                             "end_at": None,
                             "status": BacktestStatus.RUNNING.value,
