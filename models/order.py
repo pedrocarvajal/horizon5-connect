@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -85,6 +85,25 @@ class OrderModel(BaseModel):
 
         if self.demo:
             self.status = OrderStatus.CLOSED
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "demo": self.demo,
+            "symbol": self.symbol,
+            "gateway": self.gateway.name,
+            "side": self.side.value,
+            "order_type": self.order_type.value,
+            "status": self.status.value,
+            "volume": self.volume,
+            "executed_volume": self.executed_volume,
+            "price": self.price,
+            "close_price": self.close_price,
+            "take_profit_price": self.take_profit_price,
+            "stop_loss_price": self.stop_loss_price,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS

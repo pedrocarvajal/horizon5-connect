@@ -16,6 +16,7 @@ from services.db.handlers.command_kill import CommandKillHandler
 from services.db.handlers.command_store import CommandStoreHandler
 from services.db.handlers.command_update import CommandUpdateHandler
 from services.db.repositories.backtest import BacktestSessionRepository
+from services.db.repositories.order import OrderRepository
 from services.db.repositories.snapshot import SnapshotRepository
 from services.logging import LoggingService
 
@@ -50,6 +51,9 @@ class DBService:
                 connection=self._database,
             ),
             "SnapshotRepository": SnapshotRepository(
+                connection=self._database,
+            ),
+            "OrderRepository": OrderRepository(
                 connection=self._database,
             ),
         }

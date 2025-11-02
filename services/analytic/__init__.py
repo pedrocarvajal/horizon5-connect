@@ -74,6 +74,7 @@ class AnalyticService(AnalyticInterface):
 
         elif order.status is OrderStatus.CLOSED:
             self._orders_closed += 1
+            self._db_store_order(order)
 
         elif order.status is OrderStatus.CANCELLED:
             self._orders_cancelled += 1
@@ -102,6 +103,20 @@ class AnalyticService(AnalyticInterface):
 
         if self._drawdown < 0:
             self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
+
+    def _db_store_order(self, order: OrderModel) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.STORE,
+                "repository": "OrderRepository",
+                "method": {
+                    "name": "store",
+                    "arguments": {
+                        "data": order.to_dict(),
+                    },
+                },
+            }
+        )
 
     def _db_update_snapshot(self, event: SnapshotEvent) -> None:
         snapshot = {
