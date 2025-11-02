@@ -11,6 +11,7 @@ from configs.db import (
     MONGODB_USERNAME,
 )
 from enums.db_command import DBCommand
+from services.db.handlers.command_delete import CommandDeleteHandler
 from services.db.handlers.command_kill import CommandKillHandler
 from services.db.handlers.command_store import CommandStoreHandler
 from services.db.handlers.command_update import CommandUpdateHandler
@@ -63,6 +64,10 @@ class DBService:
                 log=self._log,
             ),
             DBCommand.UPDATE: CommandUpdateHandler(
+                repositories=self._repositories,
+                log=self._log,
+            ),
+            DBCommand.DELETE: CommandDeleteHandler(
                 repositories=self._repositories,
                 log=self._log,
             ),

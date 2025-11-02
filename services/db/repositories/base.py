@@ -49,3 +49,6 @@ class BaseRepository:
         self._connection[self._collection].update_one(
             where, update_query, upsert=update_or_insert
         )
+
+    def delete(self, where: Dict[str, Any]) -> None:
+        self._connection[self._collection].delete_many(where)

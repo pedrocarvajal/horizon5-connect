@@ -9,4 +9,4 @@ run-production:
 	docker compose -f docker-compose.yml up -d
 
 run-db-cleaner:
-	python scripts/mongodb/cleandb.py
+	python -m scripts.mongodb.cleandb

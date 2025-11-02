@@ -1,44 +1,96 @@
-from pymongo import MongoClient
+from multiprocessing import Process, Queue
+from time import sleep
+from typing import Any
 
-from configs.db import (
-    MONGODB_DATABASE,
-    MONGODB_HOST,
-    MONGODB_PASSWORD,
-    MONGODB_PORT,
-    MONGODB_USERNAME,
-)
+from enums.db_command import DBCommand
+from services.db import DBService
 from services.logging import LoggingService
 
 
-def clean_database() -> None:
-    log = LoggingService()
-    log.setup("cleandb")
+class DBManager(DBService):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
-    log.info("Connecting to MongoDB...")
 
-    uri = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/"
-    connection = MongoClient(uri)
-    database = connection[MONGODB_DATABASE]
+class DBCleaner:
+    def __init__(
+        self,
+        db_commands_queue: Queue,
+        db_events_queue: Queue,
+    ) -> None:
+        self._db_commands_queue = db_commands_queue
+        self._db_events_queue = db_events_queue
 
-    log.info(f"Connected to MongoDB: {connection}")
-    log.info(f"Database: {database}")
+        self._log = LoggingService()
+        self._log.setup("cleandb")
+        self._log.info("Database cleaner started")
 
-    collections = database.list_collection_names()
+        sleep(5)
+        self._clean()
 
-    log.info(f"Collections found: {len(collections)}")
-    log.info("-" * 50)
+    def _clean(self) -> None:
+        repositories = [
+            "BacktestRepository",
+            "SnapshotRepository",
+        ]
 
-    for collection_name in collections:
-        collection = database[collection_name]
-        result = collection.delete_many({})
+        self._log.info(f"Repositories to clean: {len(repositories)}")
+        self._log.info("-" * 50)
 
-        log.info(f"{collection_name}: {result.deleted_count} documents deleted")
+        for repository in repositories:
+            self._db_delete_all(repository)
+            self._log.info(f"{repository}: delete command sent")
 
-    log.info("-" * 50)
-    log.info("Database cleaned successfully")
+        self._log.info("-" * 50)
+        self._log.info("Database cleaned successfully")
 
-    connection.close()
+        self._db_kill()
+
+    def _db_delete_all(self, repository: str) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.DELETE,
+                "repository": repository,
+                "method": {
+                    "name": "delete",
+                    "arguments": {
+                        "where": {},
+                    },
+                },
+            }
+        )
+
+    def _db_kill(self) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.KILL,
+            }
+        )
 
 
 if __name__ == "__main__":
-    clean_database()
+    db_commands_queue = Queue()
+    db_events_queue = Queue()
+
+    processes = [
+        Process(
+            target=DBManager,
+            kwargs={
+                "db_commands_queue": db_commands_queue,
+                "db_events_queue": db_events_queue,
+            },
+        ),
+        Process(
+            target=DBCleaner,
+            kwargs={
+                "db_commands_queue": db_commands_queue,
+                "db_events_queue": db_events_queue,
+            },
+        ),
+    ]
+
+    for process in processes:
+        process.start()
+
+    for process in processes:
+        process.join()
