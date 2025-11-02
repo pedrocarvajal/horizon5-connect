@@ -165,6 +165,7 @@ Increment when you make backward-compatible bug fixes:
 According to [GitHub documentation](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository):
 
 - **Version 0.x.x releases should be marked as pre-release**
+
   - These indicate the software is not yet production-ready
   - Use `--prerelease` flag with `gh release create`
   - Example: `v0.1.0`, `v0.2.0-alpha`, `v0.5.9-beta.3`
@@ -382,10 +383,12 @@ Execute git commands using GitHub CLI for full integration:
 4. Create GitHub release with tag (using GitHub CLI):
 
    Determine if this is a pre-release:
+
    - If version is `0.x.x` → Add `--prerelease` flag (pre-production software)
    - If version is `1.0.0+` → Release as stable (no flag needed)
 
    For pre-release (v0.x.x):
+
    ```bash
    gh release create v{NEW_VERSION} \
      --title "v{NEW_VERSION} - {Short descriptive title}" \
@@ -395,6 +398,7 @@ Execute git commands using GitHub CLI for full integration:
    ```
 
    For stable release (v1.0.0+):
+
    ```bash
    gh release create v{NEW_VERSION} \
      --title "v{NEW_VERSION} - {Short descriptive title}" \
@@ -403,6 +407,7 @@ Execute git commands using GitHub CLI for full integration:
    ```
 
    **Note:** The `gh release create` command automatically:
+
    - Creates the git tag (no need for separate `git tag` command)
    - Pushes the tag to remote
    - Creates the GitHub release with full description
@@ -411,6 +416,7 @@ Execute git commands using GitHub CLI for full integration:
    If `gh` CLI is not installed or not authenticated:
 
    First, try to authenticate:
+
    ```bash
    gh auth login
    ```
