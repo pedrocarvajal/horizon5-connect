@@ -1,4 +1,5 @@
 import datetime
+from multiprocessing import Queue
 from typing import Any, Dict
 
 from enums.timeframe import Timeframe
@@ -27,6 +28,9 @@ class StrategyService(StrategyInterface):
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
     _analytic: AnalyticInterface
+    _db_commands_queue: Queue
+    _db_events_queue: Queue
+
     _last_timestamps: Dict[Timeframe, datetime.datetime]
     _tick: TickModel
 
@@ -51,12 +55,24 @@ class StrategyService(StrategyInterface):
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
         self._backtest = kwargs.get("backtest", False)
+        self._session = kwargs.get("session")
+        self._db_commands_queue = kwargs.get("db_commands_queue")
+        self._db_events_queue = kwargs.get("db_events_queue")
 
         if self._asset is None:
             raise ValueError("Asset is required")
 
+        if self._session is None:
+            raise ValueError("Session is required")
+
         if self._allocation <= 0:
             raise ValueError("Allocation must be greater than 0")
+
+        if self._db_commands_queue is None:
+            raise ValueError("DB commands queue is required")
+
+        if self._db_events_queue is None:
+            raise ValueError("DB events queue is required")
 
         self._orderbook = OrderbookHandler(
             balance=self._allocation,
@@ -66,6 +82,9 @@ class StrategyService(StrategyInterface):
 
         self._analytic = AnalyticService(
             orderbook=self._orderbook,
+            session=self._session,
+            db_commands_queue=self._db_commands_queue,
+            db_events_queue=self._db_events_queue,
         )
 
         self._log.info(f"Setting up {self.name}")

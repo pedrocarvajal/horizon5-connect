@@ -11,7 +11,11 @@ from configs.db import (
     MONGODB_USERNAME,
 )
 from enums.db_command import DBCommand
+from services.db.handlers.command_kill import CommandKillHandler
+from services.db.handlers.command_store import CommandStoreHandler
+from services.db.handlers.command_update import CommandUpdateHandler
 from services.db.repositories.backtest import BacktestSessionRepository
+from services.db.repositories.snapshot import SnapshotRepository
 from services.logging import LoggingService
 
 
@@ -24,6 +28,7 @@ class DBService:
     _database: Optional[Any]
     _connection: MongoClient
     _repositories: Dict[str, Any]
+    _handlers: Dict[str, Any]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -43,6 +48,24 @@ class DBService:
             "BacktestRepository": BacktestSessionRepository(
                 connection=self._database,
             ),
+            "SnapshotRepository": SnapshotRepository(
+                connection=self._database,
+            ),
+        }
+
+        self._handlers = {
+            DBCommand.KILL: CommandKillHandler(
+                connection=self._connection,
+                log=self._log,
+            ),
+            DBCommand.STORE: CommandStoreHandler(
+                repositories=self._repositories,
+                log=self._log,
+            ),
+            DBCommand.UPDATE: CommandUpdateHandler(
+                repositories=self._repositories,
+                log=self._log,
+            ),
         }
 
         self._check_db_commands_queue()
@@ -61,47 +84,24 @@ class DBService:
 
         while True:
             command = self._db_commands_queue.get()
-            command_name = command.get("command")
-            command_repository = command.get("repository")
 
-            self._log.debug(command)
+            if self._process_command(command):
+                break
 
-            if not command_repository:
-                self._log.error("Repository is not set")
-                continue
+    def _process_command(self, command: Dict[str, Any]) -> bool:
+        command_type = command.get("command")
 
-            if not command_name:
-                self._log.error("Command name is not set")
-                continue
+        if not command_type:
+            self._log.error("Command type is not set")
+            return False
 
-            command_method = command.get("method")
-            command_method_name = command_method.get("name")
-            command_method_arguments = command_method.get("arguments")
+        handler = self._handlers.get(command_type)
 
-            if not command_method:
-                self._log.error("Method is not set")
-                continue
+        if not handler:
+            self._log.error(f"Handler for command {command_type} not found")
+            return False
 
-            if not command_method_name:
-                self._log.error("Method name is not set")
-                continue
-
-            if not command_method_arguments:
-                self._log.error("Method arguments are not set")
-                continue
-
-            repository = self._repositories.get(command_repository)
-
-            if not repository:
-                self._log.error(f"Repository {command_repository} not found")
-                continue
-
-            try:
-                method = getattr(repository, command_method_name)
-                method(**command_method_arguments)
-            except Exception as e:
-                self._log.error(f"Error executing {command_method_name}: {e}")
-                continue
+        return handler.execute(command)
 
     def _connect(self) -> MongoClient:
         uri = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/"

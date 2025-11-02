@@ -1,6 +1,9 @@
+from multiprocessing import Queue
 from typing import Any
 
+from enums.db_command import DBCommand
 from enums.order_status import OrderStatus
+from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
 from models.order import OrderModel
 from models.tick import TickModel
@@ -13,6 +16,9 @@ class AnalyticService(AnalyticInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _orderbook: OrderbookHandler
+    _db_commands_queue: Queue
+    _db_events_queue: Queue
+
     _tick: TickModel
     _allocation: float
     _nav: float
@@ -36,6 +42,19 @@ class AnalyticService(AnalyticInterface):
         self._log.setup("analytic_service")
 
         self._orderbook = kwargs.get("orderbook")
+        self._session = kwargs.get("session")
+        self._db_commands_queue = kwargs.get("db_commands_queue")
+        self._db_events_queue = kwargs.get("db_events_queue")
+
+        if self._session is None:
+            raise ValueError("Session is required")
+
+        if self._db_commands_queue is None:
+            raise ValueError("DB commands queue is required")
+
+        if self._db_events_queue is None:
+            raise ValueError("DB events queue is required")
+
         self._tick = None
         self._allocation = self._orderbook.allocation
         self._nav = self._orderbook.nav
@@ -64,9 +83,11 @@ class AnalyticService(AnalyticInterface):
 
     def on_new_day(self) -> None:
         self._refresh()
+        self._db_update_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
         self._refresh()
+        self._db_update_snapshot(SnapshotEvent.BACKTEST_END)
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -81,3 +102,33 @@ class AnalyticService(AnalyticInterface):
 
         if self._drawdown < 0:
             self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
+
+    def _db_update_snapshot(self, event: SnapshotEvent) -> None:
+        snapshot = {
+            "session_id": self._session.id,
+            "event": event.value,
+            "date": self._tick.date,
+            "nav": self._nav,
+            "allocation": self._allocation,
+            "nav_peak": self._nav_peak,
+            "drawdown": self._drawdown,
+            "drawdown_peak": self._drawdown_peak,
+            "performance": self._performance,
+            "performance_in_percentage": self._performance_in_percentage,
+            "orders_opened": self._orders_opened,
+            "orders_closed": self._orders_closed,
+            "orders_cancelled": self._orders_cancelled,
+        }
+
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.STORE,
+                "repository": "SnapshotRepository",
+                "method": {
+                    "name": "store",
+                    "arguments": {
+                        "data": snapshot,
+                    },
+                },
+            }
+        )

@@ -3,11 +3,11 @@ from typing import Any
 from services.db.repositories.base import BaseRepository
 
 
-class BacktestSessionRepository(BaseRepository):
+class SnapshotRepository(BaseRepository):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _collection: str = "backtests"
+    _collection: str = "snapshots"
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR

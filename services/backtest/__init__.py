@@ -142,6 +142,7 @@ class BacktestService:
                     "name": "update",
                     "arguments": {
                         "update": {
+                            "asset": self._asset.symbol,
                             "session_id": self._session.id,
                             "folder": str(self._session.folder),
                             "start_at": self._start_at,
@@ -177,5 +178,12 @@ class BacktestService:
                         "update_or_insert": True,
                     },
                 },
+            }
+        )
+
+    def _db_kill(self) -> None:
+        self._db_commands_queue.put(
+            {
+                "command": DBCommand.KILL,
             }
         )

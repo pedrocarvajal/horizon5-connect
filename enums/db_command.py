@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class DBCommand(Enum):
-    CREATE = "create"
+    STORE = "store"
     UPDATE = "update"
     DELETE = "delete"
+    KILL = "kill"

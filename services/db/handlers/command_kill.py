@@ -1,51 +1,32 @@
-import datetime
 from typing import Any, Dict
 
-from configs.timezone import TIMEZONE
+from pymongo import MongoClient
+
+from services.logging import LoggingService
 
 
-class BaseRepository:
+class CommandKillHandler:
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _collection: str
+    _connection: MongoClient
+    _log: LoggingService
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self, connection: Any) -> None:
+    def __init__(self, connection: MongoClient, log: LoggingService) -> None:
         self._connection = connection
+        self._log = log
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
-    def store(self, data: Dict[str, Any]) -> None:
-        self._connection[self._collection].insert_one(
-            {
-                **data,
-                "created_at": datetime.datetime.now(tz=TIMEZONE),
-                "updated_at": datetime.datetime.now(tz=TIMEZONE),
-            }
-        )
+    def execute(self, _: Dict[str, Any]) -> bool:
+        self._log.info("Shutting down DB service")
 
-    def update(
-        self,
-        update: Dict[str, Any],
-        where: Dict[str, Any],
-        update_or_insert: bool = False,
-    ) -> None:
-        update_query = {
-            "$set": {
-                **update,
-                "updated_at": datetime.datetime.now(tz=TIMEZONE),
-            }
-        }
+        if self._connection:
+            self._connection.close()
+            self._log.info("MongoDB connection closed")
 
-        if update_or_insert:
-            update_query["$setOnInsert"] = {
-                "created_at": datetime.datetime.now(tz=TIMEZONE)
-            }
-
-        self._connection[self._collection].update_one(
-            where, update_query, upsert=update_or_insert
-        )
+        return True
