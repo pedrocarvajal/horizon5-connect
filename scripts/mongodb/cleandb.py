@@ -32,6 +32,7 @@ class DBCleaner:
         repositories = [
             "BacktestRepository",
             "SnapshotRepository",
+            "OrderRepository",
         ]
 
         self._log.info(f"Repositories to clean: {len(repositories)}")
