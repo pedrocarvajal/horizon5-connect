@@ -25,7 +25,7 @@ class DBCleaner:
         self._log.setup("cleandb")
         self._log.info("Database cleaner started")
 
-        sleep(5)
+        sleep(1)
         self._clean()
 
     def _clean(self) -> None:

@@ -21,7 +21,8 @@ class OrderModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    demo: bool = False
+    backtest: bool = False
+    backtest_id: Optional[str] = None
     symbol: str = ""
     gateway: Optional[GatewayService] = None
     side: Optional[OrderSide] = None
@@ -76,20 +77,21 @@ class OrderModel(BaseModel):
     def open(self) -> None:
         self._log.info("Executing order")
 
-        if self.demo:
+        if self.backtest:
             self.status = OrderStatus.OPENED
             self.executed_volume = self.volume
 
     def close(self) -> None:
         self._log.info("Closing order")
 
-        if self.demo:
+        if self.backtest:
             self.status = OrderStatus.CLOSED
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
-            "demo": self.demo,
+            "backtest": self.backtest,
+            "backtest_id": self.backtest_id,
             "symbol": self.symbol,
             "gateway": self.gateway.name,
             "side": self.side.value,

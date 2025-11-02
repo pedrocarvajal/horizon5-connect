@@ -12,6 +12,7 @@ from models.order import OrderModel
 from models.tick import TickModel
 from services.analytic import AnalyticService
 from services.asset import AssetService
+from services.backtest.handlers.session import SessionHandler
 from services.logging import LoggingService
 
 from .handlers.orderbook import OrderbookHandler
@@ -23,6 +24,7 @@ class StrategyService(StrategyInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
+    _session: SessionHandler
     _asset: AssetService
     _allocation: float
     _indicators: Dict[str, IndicatorInterface]
@@ -43,6 +45,7 @@ class StrategyService(StrategyInterface):
         self._log.setup("strategy_service")
 
         self._backtest = False
+        self._session = None
         self._indicators = {}
         self._candles = {}
         self._orderbook = None
@@ -137,7 +140,8 @@ class StrategyService(StrategyInterface):
     ) -> None:
         order = OrderModel()
         order.gateway = self.asset.gateway
-        order.demo = True
+        order.backtest = self._backtest
+        order.backtest_id = self._session.id
         order.symbol = self.asset.symbol
         order.side = side
         order.price = price
