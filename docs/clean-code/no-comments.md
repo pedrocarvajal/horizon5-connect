@@ -12,7 +12,7 @@ Code should be self-explanatory through proper structure, naming, and design. Co
 
 ## Exceptions
 
-The only acceptable comments are:
+Comments are acceptable in the following cases:
 
 - **Section separators**: Visual markers for class organization
   ```python
@@ -20,5 +20,6 @@ The only acceptable comments are:
   # SECTION NAME
   # ───────────────────────────────────────────────────────────
   ```
-  
 - **Complex mathematical formulas** with references: `# Kelly Criterion: f = (bp - q) / b`
+- **User-requested comments**: When explicitly asked to add comments
+- **Pre-existing comments**: Do not remove comments that already exist in the codebase
