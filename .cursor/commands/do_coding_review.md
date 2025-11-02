@@ -43,15 +43,21 @@ Execute each task step-by-step (in that specific order). For each task, follow t
 - Apply all guidelines to the code
 - Re-read `docs/clean-code/typings.md`
 - Perform self-critical analysis: verify instance vs class types, optional/union syntax, collection types, property return types
-- Confirm all type hints follow modern Python standards (no Optional, Union, List, Dict imports)
+- Confirm all type hints follow the project standard (using Optional, Union, List, Dict from typing module)
 
 ### Task 4: Class Organization
 
 - Read `docs/clean-code/class-organization.md`
-- Apply all guidelines to the code
+- Apply all guidelines to the code, including:
+  - **MUST ADD visual section separators** for each section (PROPERTIES, CONSTRUCTOR, PUBLIC METHODS, PRIVATE METHODS, GETTERS)
+  - Reorganize methods according to the recommended section order
+  - Verify access modifiers (underscore prefix for private members)
 - Re-read `docs/clean-code/class-organization.md`
-- Perform self-critical analysis: verify section order is correct (public vars, private vars, constructor, methods, getters, helpers)
-- Confirm access modifiers are properly assigned
+- Perform self-critical analysis:
+  - ✓ Confirm section separators were ADDED to the code (lines with dashes and section names)
+  - ✓ Verify section order is correct (constants → properties → constructor → public methods → private methods → getters)
+  - ✓ Confirm access modifiers are properly assigned
+  - ✓ Confirm each method is in the correct section
 
 ### Task 5: Code Smells Analysis
 
