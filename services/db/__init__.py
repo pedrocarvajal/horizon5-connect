@@ -84,22 +84,28 @@ class DBService:
 
         while True:
             command = self._db_commands_queue.get()
+            success, kill = self._process_command(command)
 
-            if self._process_command(command):
+            if not success:
+                self._log.error(f"Failed to process command {command}")
                 break
 
-    def _process_command(self, command: Dict[str, Any]) -> bool:
+            if kill:
+                self._log.info("Shutdown DB service")
+                break
+
+    def _process_command(self, command: Dict[str, Any]) -> tuple[bool, bool]:
         command_type = command.get("command")
 
         if not command_type:
             self._log.error("Command type is not set")
-            return False
+            return False, False
 
         handler = self._handlers.get(command_type)
 
         if not handler:
             self._log.error(f"Handler for command {command_type} not found")
-            return False
+            return False, False
 
         return handler.execute(command)
 

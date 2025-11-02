@@ -126,6 +126,7 @@ class BacktestService:
 
         self._asset.on_end()
         self._db_update_backtest_ending_data()
+        self._db_kill()
 
         self._log.info(
             f"Backtest completed in: {duration} | "

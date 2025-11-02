@@ -20,18 +20,19 @@ class CommandStoreHandler:
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
-    def execute(self, command: Dict[str, Any]) -> bool:
+    def execute(self, command: Dict[str, Any]) -> tuple[bool, bool]:
         if not self._validate_command(command):
-            return False
+            return False, False
 
         repository_name = command["repository"]
         method_data = command["method"]
-
         repository = self._get_repository(repository_name)
-        if not repository:
-            return False
 
-        return self._execute_method(repository, method_data)
+        if not repository:
+            return False, False
+
+        success = self._execute_method(repository, method_data)
+        return success, False
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -73,7 +74,7 @@ class CommandStoreHandler:
         try:
             method = getattr(repository, method_name)
             method(**method_arguments)
-            return False
+            return True
         except Exception as e:
             self._log.error(f"Error executing {method_name}: {e}")
             return False

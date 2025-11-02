@@ -22,11 +22,11 @@ class CommandKillHandler:
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
-    def execute(self, _: Dict[str, Any]) -> bool:
+    def execute(self, _: Dict[str, Any]) -> tuple[bool, bool]:
         self._log.info("Shutting down DB service")
 
         if self._connection:
             self._connection.close()
             self._log.info("MongoDB connection closed")
 
-        return True
+        return True, True
