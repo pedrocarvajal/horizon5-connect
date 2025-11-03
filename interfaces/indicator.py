@@ -8,6 +8,5 @@ class IndicatorInterface(ABC):
     def on_tick(self, tick: TickModel) -> None:
         pass
 
-    @abstractmethod
     def on_end(self) -> None:
         pass
