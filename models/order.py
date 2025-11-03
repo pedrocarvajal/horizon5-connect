@@ -103,6 +103,10 @@ class OrderModel(BaseModel):
             "close_price": self.close_price,
             "take_profit_price": self.take_profit_price,
             "stop_loss_price": self.stop_loss_price,
+            "client_order_id": self.client_order_id,
+            "filled": self.filled,
+            "profit": self.profit,
+            "profit_percentage": self.profit_percentage,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
