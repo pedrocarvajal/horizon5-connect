@@ -1,10 +1,12 @@
 from multiprocessing import Queue
 from typing import Any
 
+from enums.command import Command
 from enums.order_status import OrderStatus
 from interfaces.analytic import AnalyticInterface
 from models.order import OrderModel
 from models.tick import TickModel
+from providers.horizon_router import HorizonRouterProvider
 from services.logging import LoggingService
 from services.strategy.handlers.orderbook import OrderbookHandler
 
@@ -18,6 +20,7 @@ class AnalyticService(AnalyticInterface):
     _orderbook: OrderbookHandler
     _commands_queue: Queue
     _events_queue: Queue
+    _horizon_router: HorizonRouterProvider
 
     _tick: TickModel
     _allocation: float
@@ -37,6 +40,8 @@ class AnalyticService(AnalyticInterface):
     ) -> None:
         self._log = LoggingService()
         self._log.setup("analytic_service")
+
+        self._horizon_router = HorizonRouterProvider()
 
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
@@ -100,4 +105,16 @@ class AnalyticService(AnalyticInterface):
             self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
 
     def _store_order(self, order: OrderModel) -> None:
-        self._log.debug(order.to_dict())
+        order = order.to_dict()
+        order["created_at"] = int(float(order["created_at"].timestamp()))
+        order["updated_at"] = int(float(order["updated_at"].timestamp()))
+
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": self._horizon_router.order_create,
+                "args": {
+                    "body": order,
+                },
+            }
+        )

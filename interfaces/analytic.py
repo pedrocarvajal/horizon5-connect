@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from models.order import OrderModel
 from models.tick import TickModel

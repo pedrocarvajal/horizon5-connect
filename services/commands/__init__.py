@@ -26,6 +26,7 @@ class CommandsService:
 
         self._commands = {
             Command.KILL: None,
+            Command.EXECUTE: None,
         }
 
         self._check_commands_queue()
@@ -64,5 +65,20 @@ class CommandsService:
         if command_type is Command.KILL:
             self._log.info("Shutting down commands handler")
             return True, True
+
+        if command_type is Command.EXECUTE:
+            function = command.get("function")
+            args = command.get("args")
+
+            try:
+                response = function(**args)
+                self._log.info(f"Command {command_type} executed successfully")
+                self._log.debug(response)
+                return True, False
+
+            except Exception as e:
+                self._log.error("Failed to execute command")
+                self._log.error(e)
+                return False, False
 
         return True, False

@@ -62,6 +62,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/BacktestUpdateResponse'
           description: ''
+    delete:
+      operationId: backtest_destroy
+      description: Deletes an existing backtest record from the database. This operation
+        cannot be undone.
+      summary: Delete a backtest
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Backtest ID
+        required: true
+      tags:
+      - Backtest
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestDeleteResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestNotFoundResponse'
+          description: ''
   /api/backtests/:
     get:
       operationId: backtests_retrieve
@@ -112,6 +142,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BacktestControllerResponse'
+          description: ''
+  /api/order/:
+    post:
+      operationId: order_create
+      description: Creates a new order record in the database.
+      summary: Create an order
+      tags:
+      - Order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+          description: ''
+  /api/order/{id}/:
+    put:
+      operationId: order_update
+      description: Updates an existing order record in the database. All fields are
+        optional - only include the fields you want to update.
+      summary: Update an order
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Order ID
+        required: true
+      tags:
+      - Order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderUpdateResponse'
+          description: ''
+    delete:
+      operationId: order_destroy
+      description: Deletes an existing order record from the database. This operation
+        cannot be undone.
+      summary: Delete an order
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Order ID
+        required: true
+      tags:
+      - Order
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDeleteResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderNotFoundResponse'
           description: ''
   /api/orders/:
     get:
@@ -327,6 +440,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportReturnsControllerResponse'
           description: ''
+  /api/snapshot/:
+    post:
+      operationId: snapshot_create
+      description: Creates a new snapshot record in the database.
+      summary: Create a snapshot
+      tags:
+      - Snapshot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotResponse'
+          description: ''
   /api/snapshots/:
     get:
       operationId: snapshots_retrieve
@@ -399,13 +535,39 @@ components:
           type: boolean
       required:
       - success
+    BacktestDeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
+    BacktestNotFoundResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
     BacktestRequest:
       type: object
       properties:
         asset:
           type: string
+        from_date:
+          type: integer
+        to_date:
+          type: integer
       required:
       - asset
+      - from_date
+      - to_date
     BacktestResponse:
       type: object
       properties:
@@ -422,15 +584,6 @@ components:
     BacktestUpdateRequest:
       type: object
       properties:
-        asset:
-          type: string
-          default: '{btcusdt}'
-        start_at:
-          type: integer
-          default: '{timestamp}'
-        end_at:
-          type: integer
-          default: '{timestamp}'
         status:
           allOf:
           - $ref: '#/components/schemas/StatusEnum'
@@ -460,6 +613,183 @@ components:
           type: string
       required:
       - data
+      - success
+    OrderData:
+      type: object
+      properties:
+        _id:
+          type: string
+          title: ' id'
+      required:
+      - _id
+    OrderDeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
+    OrderNotFoundResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
+    OrderRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        backtest:
+          type: boolean
+        backtest_id:
+          type: string
+          nullable: true
+        source:
+          type: string
+        symbol:
+          type: string
+        gateway:
+          type: string
+        side:
+          type: string
+        order_type:
+          type: string
+        status:
+          type: string
+        volume:
+          type: number
+          format: double
+        executed_volume:
+          type: number
+          format: double
+        price:
+          type: number
+          format: double
+        close_price:
+          type: number
+          format: double
+          nullable: true
+        take_profit_price:
+          type: number
+          format: double
+          nullable: true
+        stop_loss_price:
+          type: number
+          format: double
+          nullable: true
+        client_order_id:
+          type: string
+          nullable: true
+        filled:
+          type: boolean
+        profit:
+          type: number
+          format: double
+          nullable: true
+        profit_percentage:
+          type: number
+          format: double
+          nullable: true
+        created_at:
+          type: integer
+        updated_at:
+          type: integer
+      required:
+      - backtest
+      - created_at
+      - executed_volume
+      - filled
+      - gateway
+      - id
+      - order_type
+      - price
+      - side
+      - source
+      - status
+      - symbol
+      - updated_at
+      - volume
+    OrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/OrderData'
+      required:
+      - data
+      - message
+      - success
+    OrderUpdateRequest:
+      type: object
+      properties:
+        backtest:
+          type: boolean
+        source:
+          type: string
+        symbol:
+          type: string
+        gateway:
+          type: string
+        side:
+          type: string
+        order_type:
+          type: string
+        status:
+          type: string
+        volume:
+          type: number
+          format: double
+        executed_volume:
+          type: number
+          format: double
+        price:
+          type: number
+          format: double
+        filled:
+          type: boolean
+        created_at:
+          type: integer
+        updated_at:
+          type: integer
+        backtest_id:
+          type: string
+        close_price:
+          type: number
+          format: double
+        take_profit_price:
+          type: number
+          format: double
+        stop_loss_price:
+          type: number
+          format: double
+        client_order_id:
+          type: string
+        profit:
+          type: number
+          format: double
+        profit_percentage:
+          type: number
+          format: double
+    OrderUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
       - success
     Orders:
       type: object
@@ -590,6 +920,52 @@ components:
           type: string
       required:
       - data
+      - success
+    SnapshotData:
+      type: object
+      properties:
+        _id:
+          type: string
+          title: ' id'
+      required:
+      - _id
+    SnapshotRequest:
+      type: object
+      properties:
+        session_id:
+          type: integer
+        event:
+          type: string
+        date:
+          type: integer
+        nav:
+          type: number
+          format: double
+        allocation:
+          type: number
+          format: double
+        nav_peak:
+          type: number
+          format: double
+      required:
+      - allocation
+      - date
+      - event
+      - nav
+      - nav_peak
+      - session_id
+    SnapshotResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/SnapshotData'
+      required:
+      - data
+      - message
       - success
     Snapshots:
       type: object

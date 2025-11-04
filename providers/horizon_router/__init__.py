@@ -59,6 +59,15 @@ class HorizonRouterProvider:
             headers=None,
         )
 
+    def order_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return self._execute(
+            method="POST",
+            url=f"{self._base_url}/api/order/",
+            query=None,
+            body=body,
+            headers=None,
+        )
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
