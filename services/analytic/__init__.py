@@ -98,3 +98,6 @@ class AnalyticService(AnalyticInterface):
 
         if self._drawdown < 0:
             self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
+
+    def _store_order(self, order: OrderModel) -> None:
+        self._log.debug(order.to_dict())
