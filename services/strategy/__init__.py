@@ -22,6 +22,8 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _id: str
+
     _backtest: bool
     _backtest_id: str
     _asset: AssetService
@@ -43,6 +45,7 @@ class StrategyService(StrategyInterface):
         self._log = LoggingService()
         self._log.setup("strategy_service")
 
+        self._id = kwargs.get("id")
         self._backtest = False
         self._backtest_id = ""
         self._indicators = {}
@@ -76,6 +79,9 @@ class StrategyService(StrategyInterface):
 
         if self._events_queue is None:
             raise ValueError("Events queue is required")
+
+        if not self._id:
+            raise ValueError("Strategy ID is required")
 
         self._orderbook = OrderbookHandler(
             balance=self._allocation,
@@ -139,6 +145,7 @@ class StrategyService(StrategyInterface):
         volume: float,
     ) -> None:
         order = OrderModel()
+        order.source = self._id
         order.gateway = self.asset.gateway
         order.backtest = self._backtest
         order.backtest_id = self._backtest_id

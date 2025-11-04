@@ -23,6 +23,7 @@ class OrderModel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     backtest: bool = False
     backtest_id: Optional[str] = None
+    source: Optional[str] = None
     symbol: str = ""
     gateway: Optional[GatewayService] = None
     side: Optional[OrderSide] = None
@@ -92,6 +93,7 @@ class OrderModel(BaseModel):
             "id": self.id,
             "backtest": self.backtest,
             "backtest_id": self.backtest_id,
+            "source": self.source,
             "symbol": self.symbol,
             "gateway": self.gateway.name,
             "side": self.side.value,

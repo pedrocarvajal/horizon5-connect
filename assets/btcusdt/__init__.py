@@ -25,6 +25,7 @@ class BTCUSDT(AssetService):
 
         self._strategies = [
             EMA5BreakoutStrategy(
+                id="ema5_breakout",
                 allocation=10_000,
             ),
         ]

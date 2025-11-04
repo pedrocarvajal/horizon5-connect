@@ -2,7 +2,6 @@ from multiprocessing import Queue
 from typing import Any
 
 from enums.order_status import OrderStatus
-from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
 from models.order import OrderModel
 from models.tick import TickModel
@@ -28,9 +27,6 @@ class AnalyticService(AnalyticInterface):
     _drawdown_peak: float
     _performance: float
     _performance_in_percentage: float
-    _orders_opened: int
-    _orders_closed: int
-    _orders_cancelled: int
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -66,34 +62,28 @@ class AnalyticService(AnalyticInterface):
         self._nav_peak = self._nav
         self._drawdown = 0.0
         self._drawdown_peak = 0.0
-        self._orders_opened = 0
-        self._orders_closed = 0
-        self._orders_cancelled = 0
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def on_transaction(self, order: OrderModel) -> None:
         if order.status is OrderStatus.OPENED:
-            self._orders_opened += 1
+            pass
 
         elif order.status is OrderStatus.CLOSED:
-            self._orders_closed += 1
             self._store_order(order)
 
         elif order.status is OrderStatus.CANCELLED:
-            self._orders_cancelled += 1
+            pass
 
     def on_tick(self, tick: TickModel) -> None:
         self._tick = tick
 
     def on_new_day(self) -> None:
         self._refresh()
-        self._update_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
         self._refresh()
-        self._update_snapshot(SnapshotEvent.BACKTEST_END)
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -108,25 +98,3 @@ class AnalyticService(AnalyticInterface):
 
         if self._drawdown < 0:
             self._drawdown_peak = min(self._drawdown_peak, self._drawdown)
-
-    def _store_order(self, order: OrderModel) -> None:
-        pass
-
-    def _update_snapshot(self, event: SnapshotEvent) -> None:
-        # snapshot = {
-        #     "backtest": self._backtest,
-        #     "backtest_id": self._backtest_id,
-        #     "event": event.value,
-        #     "date": self._tick.date,
-        #     "nav": self._nav,
-        #     "allocation": self._allocation,
-        #     "nav_peak": self._nav_peak,
-        #     "drawdown": self._drawdown,
-        #     "drawdown_peak": self._drawdown_peak,
-        #     "performance": self._performance,
-        #     "performance_in_percentage": self._performance_in_percentage,
-        #     "orders_opened": self._orders_opened,
-        #     "orders_closed": self._orders_closed,
-        #     "orders_cancelled": self._orders_cancelled,
-        # }
-        pass
