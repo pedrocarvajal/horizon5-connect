@@ -35,6 +35,7 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._backtest = kwargs.get("backtest", False)
+        self._backtest_id = kwargs.get("backtest_id")
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
 
@@ -43,6 +44,9 @@ class AssetService(AssetInterface):
 
         if self._events_queue is None:
             raise ValueError("Events queue is required")
+
+        if self._backtest_id is None:
+            raise ValueError("Backtest ID is required")
 
         for strategy in self._strategies:
             if not strategy.enabled:

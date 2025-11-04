@@ -23,6 +23,7 @@ class StrategyService(StrategyInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
+    _backtest_id: str
     _asset: AssetService
     _allocation: float
     _indicators: Dict[str, IndicatorInterface]
@@ -43,6 +44,7 @@ class StrategyService(StrategyInterface):
         self._log.setup("strategy_service")
 
         self._backtest = False
+        self._backtest_id = ""
         self._indicators = {}
         self._candles = {}
         self._orderbook = None
@@ -56,6 +58,7 @@ class StrategyService(StrategyInterface):
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
         self._backtest = kwargs.get("backtest", False)
+        self._backtest_id = kwargs.get("backtest_id")
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
 
@@ -64,6 +67,9 @@ class StrategyService(StrategyInterface):
 
         if self._allocation <= 0:
             raise ValueError("Allocation must be greater than 0")
+
+        if self._backtest_id is None:
+            raise ValueError("Backtest ID is required")
 
         if self._commands_queue is None:
             raise ValueError("Commands queue is required")
@@ -78,6 +84,8 @@ class StrategyService(StrategyInterface):
         )
 
         self._analytic = AnalyticService(
+            backtest=self._backtest,
+            backtest_id=self._backtest_id,
             orderbook=self._orderbook,
             commands_queue=self._commands_queue,
             events_queue=self._events_queue,
@@ -133,6 +141,7 @@ class StrategyService(StrategyInterface):
         order = OrderModel()
         order.gateway = self.asset.gateway
         order.backtest = self._backtest
+        order.backtest_id = self._backtest_id
         order.symbol = self.asset.symbol
         order.side = side
         order.price = price

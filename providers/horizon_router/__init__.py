@@ -11,7 +11,7 @@ class HorizonRouterProvider:
     # ───────────────────────────────────────────────────────────
     _base_url: str
     _api_key: str
-    _headers: dict[str, str]
+    _headers: Dict[str, str]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -22,6 +22,46 @@ class HorizonRouterProvider:
 
         self._prepare_headers()
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
+    def backtest_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        return self._execute(
+            method="POST",
+            url=f"{self._base_url}/api/backtest/",
+            query=None,
+            body=body,
+            headers=None,
+        )
+
+    def backtest_update(
+        self,
+        id: str,
+        body: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        return self._execute(
+            method="PUT",
+            url=f"{self._base_url}/api/backtest/{id}/",
+            query=None,
+            body=body,
+            headers=None,
+        )
+
+    def backtests(
+        self,
+        query: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        return self._execute(
+            method="GET",
+            url=f"{self._base_url}/api/backtests/",
+            query=query,
+            body=None,
+            headers=None,
+        )
+
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _execute(
         self,
         method: str,
@@ -62,37 +102,3 @@ class HorizonRouterProvider:
             "X-API-Key": self._api_key,
             "Content-Type": "application/json",
         }
-
-    def backtest_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return self._execute(
-            method="POST",
-            url=f"{self._base_url}/api/backtest/",
-            query=None,
-            body=body,
-            headers=None,
-        )
-
-    def backtest_update(
-        self,
-        id: str,
-        body: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        return self._execute(
-            method="PUT",
-            url=f"{self._base_url}/api/backtest/{id}/",
-            query=None,
-            body=body,
-            headers=None,
-        )
-
-    def backtests(
-        self,
-        query: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        return self._execute(
-            method="GET",
-            url=f"{self._base_url}/api/backtests/",
-            query=query,
-            body=None,
-            headers=None,
-        )

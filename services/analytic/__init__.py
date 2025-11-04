@@ -14,6 +14,8 @@ class AnalyticService(AnalyticInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _backtest: bool
+    _backtest_id: str
     _orderbook: OrderbookHandler
     _commands_queue: Queue
     _events_queue: Queue
@@ -40,9 +42,17 @@ class AnalyticService(AnalyticInterface):
         self._log = LoggingService()
         self._log.setup("analytic_service")
 
+        self._backtest = kwargs.get("backtest", False)
+        self._backtest_id = kwargs.get("backtest_id")
         self._orderbook = kwargs.get("orderbook")
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
+
+        if self._backtest_id is None:
+            raise ValueError("Backtest ID is required")
+
+        if self._backtest is None:
+            raise ValueError("Backtest is required")
 
         if self._commands_queue is None:
             raise ValueError("Commands queue is required")
@@ -104,6 +114,8 @@ class AnalyticService(AnalyticInterface):
 
     def _update_snapshot(self, event: SnapshotEvent) -> None:
         # snapshot = {
+        #     "backtest": self._backtest,
+        #     "backtest_id": self._backtest_id,
         #     "event": event.value,
         #     "date": self._tick.date,
         #     "nav": self._nav,

@@ -40,6 +40,7 @@ class BacktestService:
         args = parser.parse_args()
         restore_ticks = args.restore_ticks == "true"
 
+        self._id = None
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
         self._to_date = to_date
@@ -54,6 +55,8 @@ class BacktestService:
         self._asset = asset()
         self._tick = TickHandler()
         self._horizon_router = HorizonRouterProvider()
+
+        self._create_backtest()
 
         tick_setup = {
             "from_date": from_date,
@@ -78,6 +81,7 @@ class BacktestService:
 
         self._asset.setup(
             backtest=True,
+            backtest_id=self._id,
             **instances,
             **queues,
         )
@@ -88,8 +92,6 @@ class BacktestService:
     def run(self) -> None:
         ticks = self._tick.ticks
         enabled_strategies = len(self._asset.strategies)
-
-        self._create_backtest()
 
         if not self._id:
             self._log.error("Failed to create backtest...")
