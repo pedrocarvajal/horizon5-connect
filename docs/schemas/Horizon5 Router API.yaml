@@ -1,0 +1,628 @@
+openapi: 3.0.3
+info:
+  title: Horizon5 Router API
+  version: 0.1.*
+  description: API for Horizon5 Router
+  contact:
+    name: Pedro Carvajal
+    email: hello@horizon5.tech
+  license:
+    name: PolyForm Noncommercial 1.0.0
+paths:
+  /api/backtest/:
+    post:
+      operationId: backtest_create
+      description: Creates a new backtest record in the database.
+      summary: Create a backtest
+      tags:
+      - Backtest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResponse'
+          description: ''
+  /api/backtest/{id}/:
+    put:
+      operationId: backtest_update
+      description: Updates an existing backtest record in the database. All fields
+        are optional - only include the fields you want to update.
+      summary: Update a backtest
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Backtest ID
+        required: true
+      tags:
+      - Backtest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestUpdateRequest'
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestUpdateResponse'
+          description: ''
+  /api/backtests/:
+    get:
+      operationId: backtests_retrieve
+      description: Provides a list of backtests saved on the database, and also allows
+        to filter the results by various parameters.
+      summary: Get backtests
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Backtest
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestControllerResponse'
+          description: ''
+  /api/orders/:
+    get:
+      operationId: orders_retrieve
+      description: Provides a list of orders saved on the database, and also allows
+        to filter the results by various parameters.
+      summary: Get orders
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Order
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderControllerResponse'
+          description: ''
+  /api/reports/:
+    get:
+      operationId: reports_retrieve
+      description: Provides a list of reports saved on the database, and also allows
+        to filter the results by various parameters.
+      summary: Get reports
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Report
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportControllerResponse'
+          description: ''
+  /api/reports/{id}/performances/:
+    get:
+      operationId: reports_performances_retrieve
+      description: Provides a list of report performances records saved on the database,
+        and also allows to filter the results by various parameters.
+      summary: Get report performances data
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Report Performances
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportPerformancesControllerResponse'
+          description: ''
+  /api/reports/{id}/returns/:
+    get:
+      operationId: reports_returns_retrieve
+      description: Provides a list of report returns records saved on the database,
+        and also allows to filter the results by various parameters.
+      summary: Get report returns data
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Report Returns
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportReturnsControllerResponse'
+          description: ''
+  /api/snapshots/:
+    get:
+      operationId: snapshots_retrieve
+      description: Provides a list of snapshots saved on the database, and also allows
+        to filter the results by various parameters.
+      summary: Get snapshots
+      parameters:
+      - in: query
+        name: filter_by
+        schema:
+          type: string
+        description: 'Filter by field (format: column:value)'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: sort
+        schema:
+          type: string
+          default: created_at
+        description: Field to sort by
+      - in: query
+        name: sort_order
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+        description: Sort order (asc or desc)
+      tags:
+      - Snapshot
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotControllerResponse'
+          description: ''
+components:
+  schemas:
+    BacktestControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Backtests'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    BacktestData:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+      - success
+    BacktestRequest:
+      type: object
+      properties:
+        asset:
+          type: string
+      required:
+      - asset
+    BacktestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/BacktestData'
+      required:
+      - data
+      - message
+      - success
+    BacktestUpdateRequest:
+      type: object
+      properties:
+        asset:
+          type: string
+          default: '{btcusdt}'
+        start_at:
+          type: integer
+          default: '{timestamp}'
+        end_at:
+          type: integer
+          default: '{timestamp}'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          default: '{running}'
+    BacktestUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+      - success
+    Backtests:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+      - success
+    OrderControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Orders'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    Orders:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - id
+      - updated_at
+    ReportControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Reports'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    ReportPerformances:
+      type: object
+      properties:
+        id:
+          type: string
+        report_id:
+          type: string
+        value:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - date
+      - id
+      - report_id
+      - updated_at
+      - value
+    ReportPerformancesControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ReportPerformances'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    ReportReturns:
+      type: object
+      properties:
+        id:
+          type: string
+        report_id:
+          type: string
+        value:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - date
+      - id
+      - report_id
+      - updated_at
+      - value
+    ReportReturnsControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ReportReturns'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    Reports:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - id
+      - updated_at
+    SnapshotControllerResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Snapshots'
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - data
+      - success
+    Snapshots:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - id
+      - updated_at
+    StatusEnum:
+      enum:
+      - pending
+      - running
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `pending` - pending
+        * `running` - running
+        * `completed` - completed
+        * `failed` - failed
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+externalDocs:
+  description: GitHub Repository
+  url: https://github.com/horizon5-tech
