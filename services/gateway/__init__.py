@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional
 
 from configs.gateways import GATEWAYS
 from interfaces.gateway import GatewayInterface
-from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
@@ -36,7 +35,7 @@ class GatewayService(GatewayInterface):
         timeframe: str,
         from_date: Optional[int],
         to_date: Optional[int],
-        callback: Callable[[List[CandlestickModel]], None],
+        callback: Callable[[List[Dict[str, Any]]], None],
         **kwargs: Any,
     ) -> None:
         self._gateway.get_klines(

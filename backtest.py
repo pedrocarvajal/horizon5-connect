@@ -5,7 +5,7 @@ from typing import Any
 from configs.assets import ASSETS
 from configs.timezone import TIMEZONE
 from services.backtest import BacktestService
-from services.db import DBService
+from services.commands import CommandsService
 
 
 class Backtest(BacktestService):
@@ -17,23 +17,24 @@ class Backtest(BacktestService):
         super().run()
 
 
-class DBManager(DBService):
+class Commands(CommandsService):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
 
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
-    from_date = to_date - datetime.timedelta(days=365 * 1)
-    db_commands_queue = Queue()
-    db_events_queue = Queue()
+    # from_date = to_date - datetime.timedelta(days=365 * 1)
+    from_date = to_date - datetime.timedelta(days=30)
+    commands_queue = Queue()
+    events_queue = Queue()
 
     processes = [
         Process(
-            target=DBManager,
+            target=Commands,
             kwargs={
-                "db_commands_queue": db_commands_queue,
-                "db_events_queue": db_events_queue,
+                "commands_queue": commands_queue,
+                "events_queue": events_queue,
             },
         ),
         Process(
@@ -42,8 +43,8 @@ if __name__ == "__main__":
                 "asset": ASSETS["btcusdt"],
                 "from_date": from_date,
                 "to_date": to_date,
-                "db_commands_queue": db_commands_queue,
-                "db_events_queue": db_events_queue,
+                "commands_queue": commands_queue,
+                "events_queue": events_queue,
             },
         ),
     ]

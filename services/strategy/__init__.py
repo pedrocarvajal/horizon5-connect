@@ -12,7 +12,6 @@ from models.order import OrderModel
 from models.tick import TickModel
 from services.analytic import AnalyticService
 from services.asset import AssetService
-from services.backtest.handlers.session import SessionHandler
 from services.logging import LoggingService
 
 from .handlers.orderbook import OrderbookHandler
@@ -24,15 +23,14 @@ class StrategyService(StrategyInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
-    _session: SessionHandler
     _asset: AssetService
     _allocation: float
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
     _analytic: AnalyticInterface
-    _db_commands_queue: Queue
-    _db_events_queue: Queue
+    _commands_queue: Queue
+    _events_queue: Queue
 
     _last_timestamps: Dict[Timeframe, datetime.datetime]
     _tick: TickModel
@@ -45,7 +43,6 @@ class StrategyService(StrategyInterface):
         self._log.setup("strategy_service")
 
         self._backtest = False
-        self._session = None
         self._indicators = {}
         self._candles = {}
         self._orderbook = None
@@ -59,24 +56,20 @@ class StrategyService(StrategyInterface):
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
         self._backtest = kwargs.get("backtest", False)
-        self._session = kwargs.get("session")
-        self._db_commands_queue = kwargs.get("db_commands_queue")
-        self._db_events_queue = kwargs.get("db_events_queue")
+        self._commands_queue = kwargs.get("commands_queue")
+        self._events_queue = kwargs.get("events_queue")
 
         if self._asset is None:
             raise ValueError("Asset is required")
 
-        if self._session is None:
-            raise ValueError("Session is required")
-
         if self._allocation <= 0:
             raise ValueError("Allocation must be greater than 0")
 
-        if self._db_commands_queue is None:
-            raise ValueError("DB commands queue is required")
+        if self._commands_queue is None:
+            raise ValueError("Commands queue is required")
 
-        if self._db_events_queue is None:
-            raise ValueError("DB events queue is required")
+        if self._events_queue is None:
+            raise ValueError("Events queue is required")
 
         self._orderbook = OrderbookHandler(
             balance=self._allocation,
@@ -86,9 +79,8 @@ class StrategyService(StrategyInterface):
 
         self._analytic = AnalyticService(
             orderbook=self._orderbook,
-            session=self._session,
-            db_commands_queue=self._db_commands_queue,
-            db_events_queue=self._db_events_queue,
+            commands_queue=self._commands_queue,
+            events_queue=self._events_queue,
         )
 
         self._log.info(f"Setting up {self.name}")
@@ -141,7 +133,6 @@ class StrategyService(StrategyInterface):
         order = OrderModel()
         order.gateway = self.asset.gateway
         order.backtest = self._backtest
-        order.backtest_id = self._session.id
         order.symbol = self.asset.symbol
         order.side = side
         order.price = price

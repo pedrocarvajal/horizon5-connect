@@ -1,8 +1,7 @@
 import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from interfaces.indicator import IndicatorInterface
-from models.candlestick import CandlestickModel
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -22,7 +21,7 @@ class MAIndicator(IndicatorInterface):
     _period: int
     _price_to_use: str
     _exponential: bool
-    _candles: List[CandlestickModel]
+    _candles: List[Dict[str, Any]]
     _values: List[MAValueModel]
 
     # ───────────────────────────────────────────────────────────
@@ -33,7 +32,7 @@ class MAIndicator(IndicatorInterface):
         period: int = 5,
         price_to_use: str = "close_price",
         exponential: bool = False,
-        candles: Optional[List[CandlestickModel]] = None,
+        candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self._period = period
         self._price_to_use = price_to_use
@@ -53,14 +52,12 @@ class MAIndicator(IndicatorInterface):
         if len(self._candles) < self._period:
             return
 
-        last_closed_candle = self._candles[-2]
-
-        if self._should_refresh(last_closed_candle.kline_close_time):
+        if self._should_refresh(self._candles[-2]["close_time"]):
             self.refresh()
 
     def refresh(self) -> None:
         prices = [
-            getattr(candle, self._price_to_use)
+            candle[self._price_to_use]
             for candle in self._candles[-self._period - 1 : -1]
         ]
 
@@ -68,14 +65,14 @@ class MAIndicator(IndicatorInterface):
             return
 
         value = MAValueModel()
-        value.date = self._candles[-2].kline_close_time
+        value.date = self._candles[-2]["close_time"]
 
         if self._exponential:
             if len(self._values) == 0:
                 value.value = self._compute_exponential(prices)
             else:
                 multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
-                current_price = getattr(self._candles[-2], self._price_to_use)
+                current_price = self._candles[-2][self._price_to_use]
                 value.value = (current_price * multiplier) + (
                     self._values[-1].value * (1 - multiplier)
                 )

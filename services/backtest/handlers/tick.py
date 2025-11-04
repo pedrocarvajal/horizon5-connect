@@ -1,13 +1,13 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
 import polars
 
+from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
 from interfaces.asset import AssetInterface
-from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
@@ -16,7 +16,7 @@ class TickHandler:
     _asset: AssetInterface
     _from_date: datetime.datetime
     _to_date: datetime.datetime
-    _restore_data: bool
+    _restore_ticks: bool
     _log: LoggingService
 
     def __init__(self) -> None:
@@ -27,7 +27,7 @@ class TickHandler:
         self._asset = kwargs.get("asset")
         self._from_date = kwargs.get("from_date")
         self._to_date = kwargs.get("to_date")
-        self._restore_data = kwargs.get("restore_data")
+        self._restore_ticks = kwargs.get("restore_ticks")
 
         if self._asset is None:
             raise ValueError("Asset is required")
@@ -38,13 +38,13 @@ class TickHandler:
         if self._to_date is None:
             raise ValueError("To date is required")
 
-        if self._restore_data is None:
+        if self._restore_ticks is None:
             raise ValueError("Restore data is required")
 
         self._download()
 
     def _download(self) -> None:
-        if not self._restore_data:
+        if not self._restore_ticks:
             return
 
         self._log.info(f"Downloading data for {self._asset.symbol}")
@@ -56,24 +56,35 @@ class TickHandler:
         end_timestamp = int(self._to_date.timestamp())
         candlesticks = []
 
-        def _process_klines(klines: List[CandlestickModel]) -> None:
+        def _process_klines(klines: List[Dict[str, Any]]) -> None:
             nonlocal current_date
             nonlocal candlesticks
-            candlesticks.extend([kline.to_dict() for kline in klines])
-            current_date = candlesticks[-1]["kline_close_time"]
+            candlesticks.extend(klines)
+            current_date = candlesticks[-1]["close_time"]
 
             progress = (
                 get_progress_between_dates(
                     start_date_in_timestamp=start_timestamp,
                     end_date_in_timestamp=end_timestamp,
-                    current_date_in_timestamp=int(current_date.timestamp()),
+                    current_date_in_timestamp=current_date,
                 )
                 * 100
             )
 
-            current_date_formatted = current_date.strftime("%Y-%m-%d %H:%M:%S")
-            end_date_formatted = self._to_date.strftime("%Y-%m-%d %H:%M:%S")
-            start_date_formatted = self._from_date.strftime("%Y-%m-%d %H:%M:%S")
+            current_date_formatted = datetime.datetime.fromtimestamp(
+                current_date,
+                tz=TIMEZONE,
+            ).strftime("%Y-%m-%d %H:%M:%S")
+
+            end_date_formatted = datetime.datetime.fromtimestamp(
+                end_timestamp,
+                tz=TIMEZONE,
+            ).strftime("%Y-%m-%d %H:%M:%S")
+
+            start_date_formatted = datetime.datetime.fromtimestamp(
+                start_timestamp,
+                tz=TIMEZONE,
+            ).strftime("%Y-%m-%d %H:%M:%S")
 
             self._log.info(
                 f"Downloading symbol: {self._asset.symbol}"
@@ -96,10 +107,7 @@ class TickHandler:
         candlesticks = polars.DataFrame(candlesticks)
         ticks = candlesticks.select(
             [
-                polars.col("kline_open_time")
-                .dt.epoch("s")
-                .cast(polars.Int64)
-                .alias("id"),
+                (polars.col("open_time")).cast(polars.Int64).alias("id"),
                 polars.col("close_price").alias("price"),
             ]
         )
@@ -119,8 +127,8 @@ class TickHandler:
 
         return (
             ticks.filter(
-                (polars.col("id") >= self._from_date.timestamp())
-                & (polars.col("id") <= self._to_date.timestamp())
+                (polars.col("id") >= int(self._from_date.timestamp()))
+                & (polars.col("id") <= int(self._to_date.timestamp()))
             )
             .sort("id")
             .collect(engine="streaming")

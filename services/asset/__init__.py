@@ -5,7 +5,6 @@ from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
-from services.backtest.handlers.session import SessionHandler
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
@@ -15,10 +14,9 @@ class AssetService(AssetInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
-    _session: SessionHandler
     _strategies: List[StrategyInterface]
-    _db_commands_queue: Queue
-    _db_events_queue: Queue
+    _commands_queue: Queue
+    _events_queue: Queue
 
     _gateway: GatewayService
     _log: LoggingService
@@ -37,18 +35,14 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._backtest = kwargs.get("backtest", False)
-        self._session = kwargs.get("session")
-        self._db_commands_queue = kwargs.get("db_commands_queue")
-        self._db_events_queue = kwargs.get("db_events_queue")
+        self._commands_queue = kwargs.get("commands_queue")
+        self._events_queue = kwargs.get("events_queue")
 
-        if self._db_commands_queue is None:
-            raise ValueError("DB commands queue is required")
+        if self._commands_queue is None:
+            raise ValueError("Commands queue is required")
 
-        if self._db_events_queue is None:
-            raise ValueError("DB events queue is required")
-
-        if self._session is None:
-            raise ValueError("Session is required")
+        if self._events_queue is None:
+            raise ValueError("Events queue is required")
 
         for strategy in self._strategies:
             if not strategy.enabled:

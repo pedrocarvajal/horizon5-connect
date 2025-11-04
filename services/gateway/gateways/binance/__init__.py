@@ -1,11 +1,10 @@
 from collections.abc import Callable
 from time import sleep
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from interfaces.gateway import GatewayInterface
-from models.candlestick import CandlestickModel
 from services.logging import LoggingService
 
 
@@ -32,7 +31,7 @@ class Binance(GatewayInterface):
         timeframe: str,
         from_date: Optional[int],
         to_date: Optional[int],
-        callback: Callable[[List[CandlestickModel]], None],
+        callback: Callable[[List[Dict[str, Any]]], None],
         **kwargs: Any,
     ) -> None:
         limit = kwargs.get("limit", 1000)
@@ -63,28 +62,32 @@ class Binance(GatewayInterface):
                 callback([])
                 break
 
-            # Parse and response
             candlesticks = []
 
             for item in data:
-                candlestick = CandlestickModel()
-                candlestick.source = "binance"
-                candlestick.symbol = symbol
-                candlestick.kline_open_time = item[0]
-                candlestick.open_price = float(item[1])
-                candlestick.high_price = float(item[2])
-                candlestick.low_price = float(item[3])
-                candlestick.close_price = float(item[4])
-                candlestick.volume = float(item[5])
-                candlestick.kline_close_time = item[6]
-                candlestick.quote_asset_volume = float(item[7])
-                candlestick.number_of_trades = int(item[8])
-                candlestick.taker_buy_base_asset_volume = float(item[9])
-                candlestick.taker_buy_quote_asset_volume = float(item[10])
-                candlesticks.append(candlestick)
+                open_time = int(float(item[0]) / 1000)
+                close_time = int(float(item[6]) / 1000)
+
+                candlesticks.append(
+                    {
+                        "source": "binance",
+                        "symbol": symbol,
+                        "open_time": open_time,
+                        "open_price": float(item[1]),
+                        "high_price": float(item[2]),
+                        "low_price": float(item[3]),
+                        "close_price": float(item[4]),
+                        "volume": float(item[5]),
+                        "close_time": close_time,
+                        "quote_asset_volume": float(item[7]),
+                        "number_of_trades": int(item[8]),
+                        "taker_buy_base_asset_volume": float(item[9]),
+                        "taker_buy_quote_asset_volume": float(item[10]),
+                    }
+                )
 
             last_item = candlesticks[-1]
-            from_date = int(last_item.kline_close_time.timestamp() * 1000)
+            from_date = last_item["close_time"] * 1000
             sleep(0.25)
 
             callback(candlesticks)
