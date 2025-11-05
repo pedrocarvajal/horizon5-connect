@@ -210,3 +210,4 @@ __marimo__/
 storage/binance/
 *.lock
 .notes
+strategies/ema5_breakout/
