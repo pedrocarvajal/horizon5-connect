@@ -41,19 +41,19 @@
 
 |                                                                                                                    | Status | Version |
 | ------------------------------------------------------------------------------------------------------------------ | ------ | ------- |
-| Monte Carlo simulation: Statistical robustness testing with multiple simulated scenarios                           |        | 0.5.0   |
-| Regime detection: Market condition identification (trending, ranging, high/low volatility regimes)                 |        | 0.5.1   |
-| Stress testing framework: Strategy resilience under volatility shocks, regime changes, and market stress scenarios |        | 0.5.2   |
-| Portfolio-level risk metrics: Correlation analysis, portfolio VaR, and diversification metrics                     |        | 0.5.3   |
+| Monte Carlo simulation: Statistical robustness testing with multiple simulated scenarios                           |        |         |
+| Regime detection: Market condition identification (trending, ranging, high/low volatility regimes)                 |        |         |
+| Stress testing framework: Strategy resilience under volatility shocks, regime changes, and market stress scenarios |        |         |
+| Portfolio-level risk metrics: Correlation analysis, portfolio VaR, and diversification metrics                     |        |         |
 
 ### Multi-Asset & Multi-Strategy Portfolio
 
 |                                                                                                     | Status | Version |
 | --------------------------------------------------------------------------------------------------- | ------ | ------- |
-| Multi-asset support: Extend gateway integration to MetaTrader 5 (MetaAPI) for forex and CFD trading |        | 0.6.0   |
-| Portfolio construction: Multi-strategy portfolio allocation with risk parity and optimization       |        | 0.6.1   |
-| Cross-asset correlation analysis: Portfolio-level risk management across crypto and forex markets   |        | 0.6.2   |
-| Dynamic position sizing: Kelly criterion, fixed fractional, and volatility-based position sizing    |        | 0.6.3   |
+| Multi-asset support: Extend gateway integration to MetaTrader 5 (MetaAPI) for forex and CFD trading |        |         |
+| Portfolio construction: Multi-strategy portfolio allocation with risk parity and optimization       |        |         |
+| Cross-asset correlation analysis: Portfolio-level risk management across crypto and forex markets   |        |         |
+| Dynamic position sizing: Kelly criterion, fixed fractional, and volatility-based position sizing    |        |         |
 
 ---
 
