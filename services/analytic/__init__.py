@@ -97,14 +97,16 @@ class AnalyticService(AnalyticInterface):
 
         if not self._started:
             self._refresh()
-            self._start_snapshot()
+            self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
             self._started = True
 
     def on_new_day(self) -> None:
         self._refresh()
+        self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
         self._refresh()
+        self._store_snapshot(SnapshotEvent.BACKTEST_END)
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -136,7 +138,7 @@ class AnalyticService(AnalyticInterface):
             }
         )
 
-    def _start_snapshot(self) -> None:
+    def _store_snapshot(self, event: SnapshotEvent) -> None:
         self._commands_queue.put(
             {
                 "command": Command.EXECUTE,
@@ -146,7 +148,7 @@ class AnalyticService(AnalyticInterface):
                         "backtest": self._backtest,
                         "backtest_id": self._backtest_id,
                         "source": self._strategy,
-                        "event": SnapshotEvent.START_SNAPSHOT.value,
+                        "event": event.value,
                         "date": int(self._tick.date.timestamp()),
                         "nav": self._nav,
                         "allocation": self._allocation,
