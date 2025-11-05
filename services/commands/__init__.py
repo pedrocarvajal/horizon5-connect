@@ -72,7 +72,6 @@ class CommandsService:
 
             try:
                 response = function(**args)
-                self._log.info(f"Command {command_type} executed successfully")
 
                 if response.get("success") is False:
                     self._log.error(response)

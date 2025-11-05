@@ -52,27 +52,33 @@ class MAIndicator(IndicatorInterface):
         if len(self._candles) < self._period:
             return
 
-        if self._should_refresh(self._candles[-2]["close_time"]):
+        if (
+            len(self._candles) > 0
+            and tick.date >= self._candles[-1]["close_time"]
+            and self._should_refresh(self._candles[-1]["close_time"])
+        ):
             self.refresh()
 
     def refresh(self) -> None:
+        if len(self._candles) < self._period:
+            return
+
         prices = [
-            candle[self._price_to_use]
-            for candle in self._candles[-self._period - 1 : -1]
+            candle[self._price_to_use] for candle in self._candles[-self._period :]
         ]
 
         if len(prices) < self._period:
             return
 
         value = MAValueModel()
-        value.date = self._candles[-2]["close_time"]
+        value.date = self._candles[-1]["close_time"]
 
         if self._exponential:
             if len(self._values) == 0:
                 value.value = self._compute_exponential(prices)
             else:
                 multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
-                current_price = self._candles[-2][self._price_to_use]
+                current_price = self._candles[-1][self._price_to_use]
                 value.value = (current_price * multiplier) + (
                     self._values[-1].value * (1 - multiplier)
                 )

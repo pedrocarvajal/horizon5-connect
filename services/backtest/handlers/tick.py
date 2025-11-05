@@ -107,7 +107,7 @@ class TickHandler:
         candlesticks = polars.DataFrame(candlesticks)
         ticks = candlesticks.select(
             [
-                (polars.col("open_time")).cast(polars.Int64).alias("id"),
+                (polars.col("close_time")).cast(polars.Int64).alias("id"),
                 polars.col("close_price").alias("price"),
             ]
         )

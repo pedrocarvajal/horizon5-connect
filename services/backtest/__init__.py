@@ -130,9 +130,7 @@ class BacktestService:
         self._update_backtest()
         self._kill()
 
-        self._log.info(
-            f"Backtest completed in: {duration} | Quality: {quality:.2f}% | "
-        )
+        self._log.info(f"Backtest completed in: {duration} | Quality: {quality:.2f}% ")
 
     def _create_backtest(self) -> None:
         response = self._horizon_router.backtest_create(

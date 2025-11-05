@@ -14,6 +14,7 @@ from services.analytic import AnalyticService
 from services.asset import AssetService
 from services.logging import LoggingService
 
+from .handlers.chart import ChartHandler
 from .handlers.orderbook import OrderbookHandler
 from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
@@ -31,6 +32,7 @@ class StrategyService(StrategyInterface):
     _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
+    _chart: ChartHandler
     _analytic: AnalyticInterface
     _commands_queue: Queue
     _events_queue: Queue
@@ -97,6 +99,8 @@ class StrategyService(StrategyInterface):
             commands_queue=self._commands_queue,
             events_queue=self._events_queue,
         )
+
+        self._chart = ChartHandler()
 
         self._log.info(f"Setting up {self.name}")
 
