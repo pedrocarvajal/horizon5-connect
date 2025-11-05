@@ -9,13 +9,13 @@
 
 ### Core Infrastructure
 
-| Objective                                                                                                 | Status        | Version |
+|                                                                                                           | Status        | Version |
 | --------------------------------------------------------------------------------------------------------- | ------------- | ------- |
 | Alpha release: Basic framework architecture for strategy composition and backtesting with Binance gateway | _in-progress_ | 0.1.0   |
 
 ### Performance Analysis & Reporting
 
-| Objective                                                                                                                    | Status | Version |
+|                                                                                                                              | Status | Version |
 | ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------- |
 | Backtest report generation: PDF reports with performance metrics, equity curves, drawdown analysis, and trade statistics     |        | 0.2.0   |
 | Risk metrics calculation: Sharpe ratio, Sortino ratio, Calmar ratio, maximum drawdown, volatility, and risk-adjusted returns |        | 0.2.1   |
@@ -23,7 +23,7 @@
 
 ### Strategy Optimization
 
-| Objective                                                                                                 | Status | Version |
+|                                                                                                           | Status | Version |
 | --------------------------------------------------------------------------------------------------------- | ------ | ------- |
 | Parameter optimization engine: Grid search and brute force optimization for strategy parameters           |        | 0.3.0   |
 | Walk-forward analysis: Out-of-sample testing with rolling window optimization                             |        | 0.3.1   |
@@ -31,7 +31,7 @@
 
 ### Production Trading
 
-| Objective                                                                              | Status | Version |
+|                                                                                        | Status | Version |
 | -------------------------------------------------------------------------------------- | ------ | ------- |
 | Live trading mode: Deploy backtested strategies to production with Binance gateway     |        | 0.4.0   |
 | Order management system: Position sizing, risk limits, and order execution monitoring  |        | 0.4.1   |
@@ -39,7 +39,7 @@
 
 ### Risk Management & Stress Testing
 
-| Objective                                                                                                          | Status | Version |
+|                                                                                                                    | Status | Version |
 | ------------------------------------------------------------------------------------------------------------------ | ------ | ------- |
 | Monte Carlo simulation: Statistical robustness testing with multiple simulated scenarios                           |        | 0.5.0   |
 | Regime detection: Market condition identification (trending, ranging, high/low volatility regimes)                 |        | 0.5.1   |
@@ -48,7 +48,7 @@
 
 ### Multi-Asset & Multi-Strategy Portfolio
 
-| Objective                                                                                           | Status | Version |
+|                                                                                                     | Status | Version |
 | --------------------------------------------------------------------------------------------------- | ------ | ------- |
 | Multi-asset support: Extend gateway integration to MetaTrader 5 (MetaAPI) for forex and CFD trading |        | 0.6.0   |
 | Portfolio construction: Multi-strategy portfolio allocation with risk parity and optimization       |        | 0.6.1   |
