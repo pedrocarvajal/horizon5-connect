@@ -90,6 +90,7 @@ class StrategyService(StrategyInterface):
         )
 
         self._analytic = AnalyticService(
+            strategy=self._id,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             orderbook=self._orderbook,

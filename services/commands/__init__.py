@@ -49,7 +49,7 @@ class CommandsService:
 
             if not success:
                 self._log.error(f"Failed to process command {command}")
-                break
+                continue
 
             if kill:
                 self._log.info("Shutdown commands handler")
@@ -73,7 +73,10 @@ class CommandsService:
             try:
                 response = function(**args)
                 self._log.info(f"Command {command_type} executed successfully")
-                self._log.debug(response)
+
+                if response.get("success") is False:
+                    self._log.error(response)
+
                 return True, False
 
             except Exception as e:

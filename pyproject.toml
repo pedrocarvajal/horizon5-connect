@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "colorama>=0.4.6",
     "dotenv>=0.9.9",
     "polars[pyarrow]>=1.34.0",
     "pydantic>=2.12.3",

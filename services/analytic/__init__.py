@@ -1,8 +1,11 @@
+import datetime
 from multiprocessing import Queue
 from typing import Any
 
+from configs.timezone import TIMEZONE
 from enums.command import Command
 from enums.order_status import OrderStatus
+from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
 from models.order import OrderModel
 from models.tick import TickModel
@@ -17,10 +20,13 @@ class AnalyticService(AnalyticInterface):
     # ───────────────────────────────────────────────────────────
     _backtest: bool
     _backtest_id: str
+    _strategy: str
     _orderbook: OrderbookHandler
     _commands_queue: Queue
     _events_queue: Queue
     _horizon_router: HorizonRouterProvider
+
+    _started: bool
 
     _tick: TickModel
     _allocation: float
@@ -45,6 +51,7 @@ class AnalyticService(AnalyticInterface):
 
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
+        self._strategy = kwargs.get("strategy")
         self._orderbook = kwargs.get("orderbook")
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
@@ -61,6 +68,10 @@ class AnalyticService(AnalyticInterface):
         if self._events_queue is None:
             raise ValueError("Events queue is required")
 
+        if self._strategy is None:
+            raise ValueError("Strategy is required")
+
+        self._started = False
         self._tick = None
         self._allocation = self._orderbook.allocation
         self._nav = self._orderbook.nav
@@ -84,6 +95,11 @@ class AnalyticService(AnalyticInterface):
     def on_tick(self, tick: TickModel) -> None:
         self._tick = tick
 
+        if not self._started:
+            self._refresh()
+            self._start_snapshot()
+            self._started = True
+
     def on_new_day(self) -> None:
         self._refresh()
 
@@ -106,6 +122,7 @@ class AnalyticService(AnalyticInterface):
 
     def _store_order(self, order: OrderModel) -> None:
         order = order.to_dict()
+        del order["id"]
         order["created_at"] = int(float(order["created_at"].timestamp()))
         order["updated_at"] = int(float(order["updated_at"].timestamp()))
 
@@ -115,6 +132,26 @@ class AnalyticService(AnalyticInterface):
                 "function": self._horizon_router.order_create,
                 "args": {
                     "body": order,
+                },
+            }
+        )
+
+    def _start_snapshot(self) -> None:
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": self._horizon_router.snapshot_create,
+                "args": {
+                    "body": {
+                        "backtest": self._backtest,
+                        "backtest_id": self._backtest_id,
+                        "source": self._strategy,
+                        "event": SnapshotEvent.START_SNAPSHOT.value,
+                        "date": int(self._tick.date.timestamp()),
+                        "nav": self._nav,
+                        "allocation": self._allocation,
+                        "nav_peak": self._nav_peak,
+                    },
                 },
             }
         )
