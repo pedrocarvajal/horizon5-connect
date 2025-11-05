@@ -61,6 +61,19 @@ class OrderbookHandler:
                 del self._orders[order_id]
 
     def open(self, order: OrderModel) -> None:
+        order.status = OrderStatus.OPENED
+        order.executed_volume = order.volume
+
+        if self._balance <= 0:
+            self._log.error("Balance is less than 0, cannot open order.")
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+
+        if order.volume > self._balance:
+            self._log.error("Balance is less than order volume, cannot open order.")
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+
         order.updated_at = self._tick.date
         order.open()
 
@@ -75,6 +88,7 @@ class OrderbookHandler:
         self._on_transaction(order)
 
     def close(self, order: OrderModel) -> None:
+        order.status = OrderStatus.CLOSED
         order.close_price = self._tick.price
         order.updated_at = self._tick.date
         order.close()

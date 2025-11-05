@@ -3,6 +3,7 @@ from multiprocessing import Queue
 from typing import Any
 
 from configs.timezone import TIMEZONE
+from enums.backtest_status import BacktestStatus
 from enums.command import Command
 from enums.order_status import OrderStatus
 from enums.snapshot_event import SnapshotEvent
@@ -27,6 +28,8 @@ class AnalyticService(AnalyticInterface):
     _horizon_router: HorizonRouterProvider
 
     _started: bool
+    _started_at: datetime.datetime
+    _ended_at: datetime.datetime
 
     _tick: TickModel
     _allocation: float
@@ -36,6 +39,7 @@ class AnalyticService(AnalyticInterface):
     _drawdown_peak: float
     _performance: float
     _performance_in_percentage: float
+    _executed_orders: int
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -78,6 +82,7 @@ class AnalyticService(AnalyticInterface):
         self._nav_peak = self._nav
         self._drawdown = 0.0
         self._drawdown_peak = 0.0
+        self._executed_orders = 0
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -87,6 +92,7 @@ class AnalyticService(AnalyticInterface):
             pass
 
         elif order.status is OrderStatus.CLOSED:
+            self._executed_orders += 1
             self._store_order(order)
 
         elif order.status is OrderStatus.CANCELLED:
@@ -99,18 +105,40 @@ class AnalyticService(AnalyticInterface):
             self._refresh()
             self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
             self._started = True
+            self._started_at = self._tick.date
 
     def on_new_day(self) -> None:
         self._refresh()
         self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
+        self._ended_at = self._tick.date
+
         self._refresh()
         self._store_snapshot(SnapshotEvent.BACKTEST_END)
+        self._update_backtest_to_finished()
+        self._report()
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
+    def _report(self) -> None:
+        duration = self._ended_at - self._started_at
+        performance_pct = self._performance_in_percentage * 100
+        drawdown_pct = self._drawdown_peak * 100
+
+        self._log.info(f"Backtest ID: {self._backtest_id}")
+        self._log.info(f"Strategy: {self._strategy}")
+        self._log.info(f"Duration: {duration}")
+        self._log.info(f"Started at: {self._started_at}")
+        self._log.info(f"Ended at: {self._ended_at}")
+        self._log.info(f"Executed orders: {self._executed_orders}")
+        self._log.info(f"Initial allocation: {self._allocation:.2f}")
+        self._log.info(f"Final NAV: {self._nav:.2f}")
+        self._log.info(f"Peak NAV: {self._nav_peak:.2f}")
+        self._log.info(f"Performance: {performance_pct:.2f}%")
+        self._log.info(f"Peak drawdown: {drawdown_pct:.2f}%")
+
     def _refresh(self) -> None:
         self._nav = self._orderbook.nav
         self._allocation = self._orderbook.allocation
@@ -153,6 +181,20 @@ class AnalyticService(AnalyticInterface):
                         "nav": self._nav,
                         "allocation": self._allocation,
                         "nav_peak": self._nav_peak,
+                    },
+                },
+            }
+        )
+
+    def _update_backtest_to_finished(self) -> None:
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": self._horizon_router.backtest_update,
+                "args": {
+                    "id": self._backtest_id,
+                    "body": {
+                        "status": BacktestStatus.COMPLETED.value,
                     },
                 },
             }

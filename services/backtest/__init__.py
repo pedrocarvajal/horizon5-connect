@@ -4,7 +4,6 @@ from multiprocessing import Queue
 from typing import Any, Dict, Optional
 
 from configs.timezone import TIMEZONE
-from enums.backtest_status import BacktestStatus
 from enums.command import Command
 from interfaces.asset import AssetInterface
 from models.tick import TickModel
@@ -127,7 +126,6 @@ class BacktestService:
         duration = get_duration(self._start_at, end_at)
 
         self._asset.on_end()
-        self._update_backtest()
         self._kill()
 
         self._log.info(f"Backtest completed in: {duration} | Quality: {quality:.2f}% ")
@@ -142,16 +140,6 @@ class BacktestService:
         )
 
         self._id = response["data"]["_id"]
-        self._log.info(f"Backtest created: {response}")
-
-    def _update_backtest(self) -> None:
-        response = self._horizon_router.backtest_update(
-            id=self._id,
-            body={
-                "status": BacktestStatus.COMPLETED.value,
-            },
-        )
-
         self._log.info(f"Backtest created: {response}")
 
     def _kill(self) -> None:

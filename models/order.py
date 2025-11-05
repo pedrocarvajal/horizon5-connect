@@ -78,15 +78,8 @@ class OrderModel(BaseModel):
     def open(self) -> None:
         self._log.info("Executing order")
 
-        if self.backtest:
-            self.status = OrderStatus.OPENED
-            self.executed_volume = self.volume
-
     def close(self) -> None:
         self._log.info("Closing order")
-
-        if self.backtest:
-            self.status = OrderStatus.CLOSED
 
     def to_dict(self) -> Dict[str, Any]:
         return {
