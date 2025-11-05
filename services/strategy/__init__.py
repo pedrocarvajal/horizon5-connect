@@ -148,6 +148,7 @@ class StrategyService(StrategyInterface):
         take_profit_price: float,
         stop_loss_price: float,
         volume: float,
+        variables: Dict[str, Any],
     ) -> None:
         order = OrderModel()
         order.source = self._id
@@ -162,6 +163,7 @@ class StrategyService(StrategyInterface):
         order.volume = volume
         order.created_at = self._tick.date
         order.updated_at = self._tick.date
+        order.variables = variables
 
         self.orderbook.open(order)
 

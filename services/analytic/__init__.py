@@ -100,21 +100,19 @@ class AnalyticService(AnalyticInterface):
 
     def on_tick(self, tick: TickModel) -> None:
         self._tick = tick
+        self._refresh()
 
         if not self._started:
-            self._refresh()
-            self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
             self._started = True
             self._started_at = self._tick.date
+            self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
 
     def on_new_day(self) -> None:
-        self._refresh()
         self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
         self._ended_at = self._tick.date
 
-        self._refresh()
         self._store_snapshot(SnapshotEvent.BACKTEST_END)
         self._update_backtest_to_finished()
         self._report()

@@ -38,6 +38,7 @@ class OrderModel(BaseModel):
 
     trades: List[TradeModel] = Field(default_factory=list)
     logs: List[str] = Field(default_factory=list)
+    variables: Dict[str, Any] = Field(default_factory=dict)
 
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
@@ -76,10 +77,10 @@ class OrderModel(BaseModel):
         )
 
     def open(self) -> None:
-        self._log.info("Executing order")
+        pass
 
     def close(self) -> None:
-        self._log.info("Closing order")
+        pass
 
     def to_dict(self) -> Dict[str, Any]:
         return {

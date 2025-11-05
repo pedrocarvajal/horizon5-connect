@@ -46,6 +46,9 @@ class OrderbookHandler:
         self._tick = tick
 
         for order in list(self._orders.values()):
+            order.close_price = tick.price
+            order.updated_at = tick.date
+
             ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)
             ready_to_close_stop_loss = order.check_if_ready_to_close_stop_loss(tick)
 
