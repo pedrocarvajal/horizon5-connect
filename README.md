@@ -7,13 +7,13 @@
 
 ## Roadmap
 
-### Phase 1: Core Infrastructure ✅
+### Core Infrastructure
 
-| Objective                                                                                                 | Status | Version |
-| --------------------------------------------------------------------------------------------------------- | ------ | ------- |
-| Alpha release: Basic framework architecture for strategy composition and backtesting with Binance gateway | ✅     | 0.1.0   |
+| Objective                                                                                                 | Status        | Version |
+| --------------------------------------------------------------------------------------------------------- | ------------- | ------- |
+| Alpha release: Basic framework architecture for strategy composition and backtesting with Binance gateway | _in-progress_ | 0.1.0   |
 
-### Phase 2: Performance Analysis & Reporting
+### Performance Analysis & Reporting
 
 | Objective                                                                                                                    | Status | Version |
 | ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------- |
@@ -21,7 +21,7 @@
 | Risk metrics calculation: Sharpe ratio, Sortino ratio, Calmar ratio, maximum drawdown, volatility, and risk-adjusted returns |        | 0.2.1   |
 | Performance attribution: Trade-by-trade analysis, win rate, profit factor, and expectancy metrics                            |        | 0.2.2   |
 
-### Phase 3: Strategy Optimization
+### Strategy Optimization
 
 | Objective                                                                                                 | Status | Version |
 | --------------------------------------------------------------------------------------------------------- | ------ | ------- |
@@ -29,7 +29,7 @@
 | Walk-forward analysis: Out-of-sample testing with rolling window optimization                             |        | 0.3.1   |
 | Multi-objective optimization: Simultaneous optimization of risk-adjusted returns and drawdown constraints |        | 0.3.2   |
 
-### Phase 4: Production Trading
+### Production Trading
 
 | Objective                                                                              | Status | Version |
 | -------------------------------------------------------------------------------------- | ------ | ------- |
@@ -37,7 +37,7 @@
 | Order management system: Position sizing, risk limits, and order execution monitoring  |        | 0.4.1   |
 | Real-time performance tracking: Live P&L, position tracking, and performance dashboard |        | 0.4.2   |
 
-### Phase 5: Risk Management & Stress Testing
+### Risk Management & Stress Testing
 
 | Objective                                                                                                          | Status | Version |
 | ------------------------------------------------------------------------------------------------------------------ | ------ | ------- |
@@ -46,7 +46,7 @@
 | Stress testing framework: Strategy resilience under volatility shocks, regime changes, and market stress scenarios |        | 0.5.2   |
 | Portfolio-level risk metrics: Correlation analysis, portfolio VaR, and diversification metrics                     |        | 0.5.3   |
 
-### Phase 6: Multi-Asset & Multi-Strategy Portfolio
+### Multi-Asset & Multi-Strategy Portfolio
 
 | Objective                                                                                           | Status | Version |
 | --------------------------------------------------------------------------------------------------- | ------ | ------- |
