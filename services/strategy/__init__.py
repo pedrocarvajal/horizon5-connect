@@ -92,7 +92,7 @@ class StrategyService(StrategyInterface):
         )
 
         self._analytic = AnalyticService(
-            strategy=self._id,
+            strategy_id=self._id,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             orderbook=self._orderbook,
@@ -151,7 +151,7 @@ class StrategyService(StrategyInterface):
         variables: Dict[str, Any],
     ) -> None:
         order = OrderModel()
-        order.source = self._id
+        order.strategy_id = self._id
         order.gateway = self.asset.gateway
         order.backtest = self._backtest
         order.backtest_id = self._backtest_id
@@ -207,6 +207,10 @@ class StrategyService(StrategyInterface):
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
+    @property
+    def id(self) -> str:
+        return self._id
+
     @property
     def enabled(self) -> bool:
         return self._enabled

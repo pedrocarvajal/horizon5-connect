@@ -328,118 +328,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportControllerResponse'
           description: ''
-  /api/reports/{id}/performances/:
-    get:
-      operationId: reports_performances_retrieve
-      description: Provides a list of report performances records saved on the database,
-        and also allows to filter the results by various parameters.
-      summary: Get report performances data
-      parameters:
-      - in: query
-        name: filter_by
-        schema:
-          type: string
-        description: 'Filter by field (format: column:value)'
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      - in: query
-        name: page
-        schema:
-          type: integer
-          default: 1
-        description: Page number
-      - in: query
-        name: page_size
-        schema:
-          type: integer
-          default: 10
-        description: Number of items per page
-      - in: query
-        name: sort
-        schema:
-          type: string
-          default: created_at
-        description: Field to sort by
-      - in: query
-        name: sort_order
-        schema:
-          type: string
-          enum:
-          - asc
-          - desc
-          default: desc
-        description: Sort order (asc or desc)
-      tags:
-      - Report Performances
-      security:
-      - ApiKeyAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportPerformancesControllerResponse'
-          description: ''
-  /api/reports/{id}/returns/:
-    get:
-      operationId: reports_returns_retrieve
-      description: Provides a list of report returns records saved on the database,
-        and also allows to filter the results by various parameters.
-      summary: Get report returns data
-      parameters:
-      - in: query
-        name: filter_by
-        schema:
-          type: string
-        description: 'Filter by field (format: column:value)'
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      - in: query
-        name: page
-        schema:
-          type: integer
-          default: 1
-        description: Page number
-      - in: query
-        name: page_size
-        schema:
-          type: integer
-          default: 10
-        description: Number of items per page
-      - in: query
-        name: sort
-        schema:
-          type: string
-          default: created_at
-        description: Field to sort by
-      - in: query
-        name: sort_order
-        schema:
-          type: string
-          enum:
-          - asc
-          - desc
-          default: desc
-        description: Sort order (asc or desc)
-      tags:
-      - Report Returns
-      security:
-      - ApiKeyAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportReturnsControllerResponse'
-          description: ''
   /api/snapshot/:
     post:
       operationId: snapshot_create
@@ -462,6 +350,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SnapshotResponse'
+          description: ''
+  /api/snapshot/{id}/:
+    delete:
+      operationId: snapshot_destroy
+      description: Deletes an existing snapshot record from the database. This operation
+        cannot be undone.
+      summary: Delete a snapshot
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Snapshot ID
+        required: true
+      tags:
+      - Snapshot
+      security:
+      - ApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotDeleteResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotNotFoundResponse'
           description: ''
   /api/snapshots/:
     get:
@@ -560,6 +479,8 @@ components:
       properties:
         asset:
           type: string
+        strategies:
+          type: string
         from_date:
           type: integer
         to_date:
@@ -567,6 +488,7 @@ components:
       required:
       - asset
       - from_date
+      - strategies
       - to_date
     BacktestResponse:
       type: object
@@ -645,14 +567,12 @@ components:
     OrderRequest:
       type: object
       properties:
-        id:
-          type: string
         backtest:
           type: boolean
         backtest_id:
           type: string
           nullable: true
-        source:
+        strategy_id:
           type: string
         symbol:
           type: string
@@ -708,12 +628,11 @@ components:
       - executed_volume
       - filled
       - gateway
-      - id
       - order_type
       - price
       - side
-      - source
       - status
+      - strategy_id
       - symbol
       - updated_at
       - volume
@@ -735,7 +654,7 @@ components:
       properties:
         backtest:
           type: boolean
-        source:
+        strategy_id:
           type: string
         symbol:
           type: string
@@ -818,82 +737,6 @@ components:
       required:
       - data
       - success
-    ReportPerformances:
-      type: object
-      properties:
-        id:
-          type: string
-        report_id:
-          type: string
-        value:
-          type: number
-          format: double
-        date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required:
-      - created_at
-      - date
-      - id
-      - report_id
-      - updated_at
-      - value
-    ReportPerformancesControllerResponse:
-      type: object
-      properties:
-        data:
-          $ref: '#/components/schemas/ReportPerformances'
-        success:
-          type: boolean
-        message:
-          type: string
-      required:
-      - data
-      - success
-    ReportReturns:
-      type: object
-      properties:
-        id:
-          type: string
-        report_id:
-          type: string
-        value:
-          type: number
-          format: double
-        date:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required:
-      - created_at
-      - date
-      - id
-      - report_id
-      - updated_at
-      - value
-    ReportReturnsControllerResponse:
-      type: object
-      properties:
-        data:
-          $ref: '#/components/schemas/ReportReturns'
-        success:
-          type: boolean
-        message:
-          type: string
-      required:
-      - data
-      - success
     Reports:
       type: object
       properties:
@@ -929,15 +772,37 @@ components:
           title: ' id'
       required:
       - _id
+    SnapshotDeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
+    SnapshotNotFoundResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
     SnapshotRequest:
       type: object
       properties:
-        session_id:
-          type: integer
+        backtest:
+          type: boolean
+        backtest_id:
+          type: string
+        strategy_id:
+          type: string
         event:
           type: string
-        date:
-          type: integer
         nav:
           type: number
           format: double
@@ -947,13 +812,42 @@ components:
         nav_peak:
           type: number
           format: double
+        r2:
+          type: number
+          format: double
+        cagr:
+          type: number
+          format: double
+        calmar_ratio:
+          type: number
+          format: double
+        expected_shortfall:
+          type: number
+          format: double
+        max_drawdown:
+          type: number
+          format: double
+        profit_factor:
+          type: number
+          format: double
+        recovery_factor:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        sortino_ratio:
+          type: number
+          format: double
+        ulcer_index:
+          type: number
+          format: double
+        created_at:
+          type: integer
       required:
-      - allocation
-      - date
-      - event
-      - nav
-      - nav_peak
-      - session_id
+      - backtest
+      - backtest_id
+      - strategy_id
     SnapshotResponse:
       type: object
       properties:

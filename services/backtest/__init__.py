@@ -134,6 +134,9 @@ class BacktestService:
         response = self._horizon_router.backtest_create(
             body={
                 "asset": self._asset.symbol,
+                "strategies": ",".join(
+                    [strategy.id for strategy in self._asset.strategies]
+                ),
                 "from_date": int(self._from_date.timestamp()),
                 "to_date": int(self._to_date.timestamp()),
             }
