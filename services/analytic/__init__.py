@@ -163,7 +163,7 @@ class AnalyticService(AnalyticInterface):
         allocation = self._snapshot.allocation
         nav = self._snapshot.nav
         elapsed_days = self._elapsed_days
-        performance = self._snapshot.performance
+        performance_percentage = self._snapshot.performance_percentage
         performance_history = self._snapshot.performance_history
         nav_history = self._snapshot.nav_history
         profit_history = self._snapshot.profit_history
@@ -174,7 +174,10 @@ class AnalyticService(AnalyticInterface):
         self._snapshot.calmar_ratio = get_calmar_ratio(self._snapshot.cagr, max_drawdown)
         self._snapshot.expected_shortfall = get_expected_shortfall(nav_history)
         self._snapshot.profit_factor = get_profit_factor(profit_history)
-        self._snapshot.recovery_factor = get_recovery_factor(performance, max_drawdown)
+        self._snapshot.recovery_factor = get_recovery_factor(
+            performance_percentage,
+            max_drawdown,
+        )
         self._snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
         self._snapshot.sortino_ratio = get_sortino_ratio(nav_history)
         self._snapshot.ulcer_index = get_ulcer_index(nav_history)
