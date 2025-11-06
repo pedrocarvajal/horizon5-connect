@@ -1,4 +1,5 @@
 import datetime
+import json
 from multiprocessing import Queue
 from typing import Any
 
@@ -11,6 +12,15 @@ from models.order import OrderModel
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
 from providers.horizon_router import HorizonRouterProvider
+from services.analytic.helpers.get_cagr import get_cagr
+from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
+from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
+from services.analytic.helpers.get_profit_factor import get_profit_factor
+from services.analytic.helpers.get_r2 import get_r2
+from services.analytic.helpers.get_recovery_factor import get_recovery_factor
+from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
+from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
+from services.analytic.helpers.get_ulcer_index import get_ulcer_index
 from services.logging import LoggingService
 from services.strategy.handlers.orderbook import OrderbookHandler
 
@@ -101,6 +111,7 @@ class AnalyticService(AnalyticInterface):
 
         elif order.status is OrderStatus.CLOSED:
             self._executed_orders += 1
+            self._snapshot.profit_history.append(order.profit)
             self._store_order(order)
 
         elif order.status is OrderStatus.CANCELLED:
@@ -116,11 +127,14 @@ class AnalyticService(AnalyticInterface):
             self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
 
     def on_new_day(self) -> None:
+        self._snapshot.performance_history.append(self._snapshot.performance)
+        self._snapshot.nav_history.append(self._snapshot.nav)
+        self._perform_calculations()
         self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_end(self) -> None:
         self._ended_at = self._tick.date
-
+        self._perform_calculations()
         self._store_snapshot(SnapshotEvent.BACKTEST_END)
         self._update_backtest_to_finished()
         self._report()
@@ -129,30 +143,52 @@ class AnalyticService(AnalyticInterface):
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     def _report(self) -> None:
-        duration = self._ended_at - self._started_at
-        nav_diff = self._snapshot.nav - self._snapshot.allocation
-        performance = nav_diff / self._snapshot.allocation
-        performance_pct = performance * 100
-        nav_diff = self._snapshot.nav - self._snapshot.nav_peak
-        drawdown = nav_diff / self._snapshot.nav_peak
-        drawdown_pct = drawdown * 100
-
         self._log.info(f"Backtest ID: {self._backtest_id}")
         self._log.info(f"Strategy: {self._strategy_id}")
-        self._log.info(f"Duration: {duration}")
-        self._log.info(f"Started at: {self._started_at}")
-        self._log.info(f"Ended at: {self._ended_at}")
-        self._log.info(f"Executed orders: {self._executed_orders}")
-        self._log.info(f"Initial allocation: {self._snapshot.allocation:.2f}")
-        self._log.info(f"Final NAV: {self._snapshot.nav:.2f}")
-        self._log.info(f"Peak NAV: {self._snapshot.nav_peak:.2f}")
-        self._log.info(f"Performance: {performance_pct:.2f}%")
-        self._log.info(f"Peak drawdown: {drawdown_pct:.2f}%")
+
+        self._log.debug(
+            json.dumps(
+                {
+                    **self._snapshot.to_dict(),
+                    "performance_history": self._snapshot.performance_history,
+                    "nav_history": self._snapshot.nav_history,
+                    "profit_history": self._snapshot.profit_history,
+                },
+                indent=4,
+                default=str,
+            )
+        )
+
+    def _perform_calculations(self) -> None:
+        allocation = self._snapshot.allocation
+        nav = self._snapshot.nav
+        elapsed_days = self._elapsed_days
+        performance = self._snapshot.performance
+        performance_history = self._snapshot.performance_history
+        nav_history = self._snapshot.nav_history
+        profit_history = self._snapshot.profit_history
+        max_drawdown = self._snapshot.max_drawdown
+
+        self._snapshot.r2 = get_r2(performance_history)
+        self._snapshot.cagr = get_cagr(allocation, nav, elapsed_days)
+        self._snapshot.calmar_ratio = get_calmar_ratio(self._snapshot.cagr, max_drawdown)
+        self._snapshot.expected_shortfall = get_expected_shortfall(nav_history)
+        self._snapshot.profit_factor = get_profit_factor(profit_history)
+        self._snapshot.recovery_factor = get_recovery_factor(performance, max_drawdown)
+        self._snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
+        self._snapshot.sortino_ratio = get_sortino_ratio(nav_history)
+        self._snapshot.ulcer_index = get_ulcer_index(nav_history)
 
     def _refresh(self) -> None:
         self._snapshot.nav = self._orderbook.nav
         self._snapshot.allocation = self._orderbook.allocation
         self._snapshot.nav_peak = max(self._snapshot.nav_peak, self._snapshot.nav)
+
+        if self._snapshot.drawdown < 0:
+            self._snapshot.max_drawdown = min(
+                self._snapshot.max_drawdown,
+                self._snapshot.drawdown,
+            )
 
     def _store_order(self, order: OrderModel) -> None:
         order = order.to_dict()
@@ -203,3 +239,7 @@ class AnalyticService(AnalyticInterface):
                 },
             }
         )
+
+    @property
+    def _elapsed_days(self) -> int:
+        return (self._tick.date - self._started_at).days

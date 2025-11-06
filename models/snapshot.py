@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -15,8 +15,8 @@ class SnapshotModel(BaseModel):
     backtest_id: str = Field(...)
     strategy_id: str = Field(...)
     event: Optional[SnapshotEvent] = Field(default=None)
-    nav: Optional[float] = Field(default=0, ge=0)
     allocation: Optional[float] = Field(default=0, ge=0)
+    nav: Optional[float] = Field(default=0, ge=0)
     nav_peak: Optional[float] = Field(default=0, ge=0)
 
     r2: Optional[float] = Field(default=0, ge=0, le=1)
@@ -29,6 +29,10 @@ class SnapshotModel(BaseModel):
     sharpe_ratio: Optional[float] = Field(default=0)
     sortino_ratio: Optional[float] = Field(default=0)
     ulcer_index: Optional[float] = Field(default=0, ge=0)
+
+    performance_history: Optional[List[float]] = Field(default=[])
+    nav_history: Optional[List[float]] = Field(default=[])
+    profit_history: Optional[List[float]] = Field(default=[])
 
     created_at: Optional[datetime.datetime] = None
 
@@ -65,3 +69,21 @@ class SnapshotModel(BaseModel):
             "ulcer_index": self.ulcer_index,
             "created_at": self.created_at,
         }
+
+    @property
+    def performance(self) -> float:
+        return self.nav - self.allocation
+
+    @property
+    def performance_percentage(self) -> float:
+        if self.allocation == 0:
+            return 0.0
+
+        return self.performance / self.allocation
+
+    @property
+    def drawdown(self) -> float:
+        if self.nav_peak == 0:
+            return 0.0
+
+        return (self.nav - self.nav_peak) / self.nav_peak
