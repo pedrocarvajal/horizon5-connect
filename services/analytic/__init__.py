@@ -44,7 +44,6 @@ class AnalyticService(AnalyticInterface):
     _tick: TickModel
     _snapshot: SnapshotModel
     _executed_orders: int
-    _rolling_window: int
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -83,7 +82,6 @@ class AnalyticService(AnalyticInterface):
         self._started = False
         self._tick = None
         self._executed_orders = 0
-        self._rolling_window = 30 * 6  # 6 months
 
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
@@ -166,9 +164,9 @@ class AnalyticService(AnalyticInterface):
         nav = self._snapshot.nav
         elapsed_days = self._elapsed_days
         performance = self._snapshot.performance_percentage
-        performance_history = self._snapshot.performance_history[-self._rolling_window :]
-        nav_history = self._snapshot.nav_history[-self._rolling_window :]
-        profit_history = self._snapshot.profit_history[-self._rolling_window :]
+        performance_history = self._snapshot.performance_history
+        nav_history = self._snapshot.nav_history
+        profit_history = self._snapshot.profit_history
         max_drawdown = self._snapshot.max_drawdown
 
         self._snapshot.r2 = get_r2(performance_history)
