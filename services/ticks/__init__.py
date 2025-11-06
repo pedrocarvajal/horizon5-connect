@@ -8,10 +8,14 @@ import polars
 from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
 from interfaces.asset import AssetInterface
+from models.tick import TickModel
 from services.logging import LoggingService
 
 
-class TickHandler:
+class TicksService:
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
     _asset: AssetInterface
     _from_date: datetime.datetime
@@ -19,10 +23,16 @@ class TickHandler:
     _restore_ticks: bool
     _log: LoggingService
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
         self._log = LoggingService()
-        self._log.setup("ticks_handler")
+        self._log.setup("ticks_service")
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
         self._from_date = kwargs.get("from_date")
@@ -43,6 +53,9 @@ class TickHandler:
 
         self._download()
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _download(self) -> None:
         if not self._restore_ticks:
             return
@@ -116,16 +129,20 @@ class TickHandler:
         self._log.info(f"Data saved to {ticks_folder / 'ticks.parquet'}")
         self._log.info(f"Total ticks: {ticks.height}")
 
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
     @property
     def folder(self) -> Path:
         return self._ticks_folder
 
     @property
-    def ticks(self) -> polars.DataFrame:
+    def ticks(self) -> List[TickModel]:
+        response = []
         ticks_folder = self.folder / self._asset.symbol
         ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
 
-        return (
+        filtered_ticks = (
             ticks.filter(
                 (polars.col("id") >= int(self._from_date.timestamp()))
                 & (polars.col("id") <= int(self._to_date.timestamp()))
@@ -133,3 +150,17 @@ class TickHandler:
             .sort("id")
             .collect(engine="streaming")
         )
+
+        for tick_row in filtered_ticks.iter_rows(named=True):
+            price = tick_row["price"]
+            date = datetime.datetime.fromtimestamp(
+                tick_row["id"],
+                tz=TIMEZONE,
+            )
+
+            tick = TickModel()
+            tick.date = date
+            tick.price = price
+            response.append(tick)
+
+        return response

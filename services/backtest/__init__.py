@@ -6,11 +6,10 @@ from typing import Any, Dict, Optional
 from configs.timezone import TIMEZONE
 from enums.command import Command
 from interfaces.asset import AssetInterface
-from models.tick import TickModel
 from providers.horizon_router import HorizonRouterProvider
-from services.backtest.handlers.tick import TickHandler
 from services.backtest.helpers.get_duration import get_duration
 from services.logging import LoggingService
+from services.ticks import TicksService
 
 
 class BacktestService:
@@ -18,7 +17,7 @@ class BacktestService:
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _id: str
-    _tick: TickHandler
+    _tick: TicksService
     _commands_queue: Queue
     _events_queue: Queue
     _horizon_router: Dict[str, Any]
@@ -52,7 +51,7 @@ class BacktestService:
         self._log.info("Backtesting service started")
 
         self._asset = asset()
-        self._tick = TickHandler()
+        self._tick = TicksService()
         self._horizon_router = HorizonRouterProvider()
 
         self._create_backtest()
@@ -97,7 +96,7 @@ class BacktestService:
             self._kill()
             return
 
-        if ticks.height == 0:
+        if len(ticks) == 0:
             self._log.error("No ticks found")
             return
 
@@ -105,10 +104,7 @@ class BacktestService:
             self._log.error("No enabled strategies found")
             return
 
-        for tick in ticks.iter_rows(named=True):
-            tick_model = TickModel()
-            tick_model.date = datetime.datetime.fromtimestamp(tick["id"], tz=TIMEZONE)
-            tick_model.price = tick["price"]
+        for tick_model in ticks:
             self._asset.on_tick(tick_model)
 
         self._on_end()
@@ -122,7 +118,7 @@ class BacktestService:
         expected_tick = int((end_timestamp - start_timestamp) / 60)
 
         end_at = datetime.datetime.now(TIMEZONE)
-        quality = (self._tick.ticks.height / expected_tick) * 100
+        quality = (len(self._tick.ticks) / expected_tick) * 100
         duration = get_duration(self._start_at, end_at)
 
         self._asset.on_end()
