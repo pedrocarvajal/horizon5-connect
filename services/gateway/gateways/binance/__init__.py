@@ -35,8 +35,8 @@ class Binance(GatewayInterface):
         **kwargs: Any,
     ) -> None:
         limit = kwargs.get("limit", 1000)
-        from_date = int(from_date.timestamp()) * 1000
-        to_date = int(to_date.timestamp()) * 1000
+        from_date = from_date * 1000
+        to_date = to_date * 1000
 
         while True:
             if from_date > to_date:

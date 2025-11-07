@@ -1,6 +1,9 @@
 # Import your assets here
-from assets.btcusdt import BTCUSDT
+from typing import Dict
 
-ASSETS = {
+from assets.btcusdt import BTCUSDT
+from interfaces.asset import AssetInterface
+
+ASSETS: Dict[str, type[AssetInterface]] = {
     "btcusdt": BTCUSDT,
 }

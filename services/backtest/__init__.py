@@ -57,8 +57,6 @@ class BacktestService:
         self._create_backtest()
 
         tick_setup = {
-            "from_date": from_date,
-            "to_date": to_date,
             "restore_ticks": restore_ticks,
         }
 
@@ -74,7 +72,6 @@ class BacktestService:
 
         self._tick.setup(
             **instances,
-            **{"asset": self._asset.symbol},
             **tick_setup,
         )
 
