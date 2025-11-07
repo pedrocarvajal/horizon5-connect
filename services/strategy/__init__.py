@@ -57,6 +57,8 @@ class StrategyService(StrategyInterface):
         self._last_timestamps = {}
         self._allocation = kwargs.get("allocation", 0.0)
 
+        self._enabled = kwargs.get("enabled", True)
+
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────

@@ -25,12 +25,14 @@ class BTCUSDT(AssetService):
         self._log.setup("asset_btcusdt")
 
         self._strategies = [
-            # EMA5BreakoutStrategy(
-            #     id="ema5_breakout",
-            #     allocation=50_000,
-            # ),
+            EMA5BreakoutStrategy(
+                id="ema5_breakout",
+                allocation=50_000,
+                enabled=True,
+            ),
             ReboundsOffSupportsStrategy(
                 id="rebounds_off_supports",
                 allocation=50_000,
+                enabled=False,
             ),
         ]
