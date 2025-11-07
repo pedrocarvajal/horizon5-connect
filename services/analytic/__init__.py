@@ -213,8 +213,12 @@ class AnalyticService(AnalyticInterface):
 
         body = {
             **self._snapshot.to_dict(),
+            "event": event.value,
             "created_at": int(float(self._snapshot.created_at.timestamp())),
         }
+
+        del body["performance"]
+        del body["performance_percentage"]
 
         self._commands_queue.put(
             {
