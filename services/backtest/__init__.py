@@ -74,6 +74,7 @@ class BacktestService:
 
         self._tick.setup(
             **instances,
+            **{"asset": self._asset.symbol},
             **tick_setup,
         )
 

@@ -7,7 +7,6 @@ import polars
 
 from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
-from interfaces.asset import AssetInterface
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -17,7 +16,7 @@ class TicksService:
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
-    _asset: AssetInterface
+    _asset: str
     _from_date: datetime.datetime
     _to_date: datetime.datetime
     _restore_ticks: bool
@@ -60,7 +59,7 @@ class TicksService:
         if not self._restore_ticks:
             return
 
-        self._log.info(f"Downloading data for {self._asset.symbol}")
+        self._log.info(f"Downloading data for {self._asset}")
         self._log.info(f"From date: {self._from_date}")
         self._log.info(f"To date: {self._to_date}")
 
@@ -100,7 +99,7 @@ class TicksService:
             ).strftime("%Y-%m-%d %H:%M:%S")
 
             self._log.info(
-                f"Downloading symbol: {self._asset.symbol}"
+                f"Downloading symbol: {self._asset}"
                 f" | Starting time: {start_date_formatted}"
                 f" | Current time: {current_date_formatted}"
                 f" | Ending time: {end_date_formatted}"
@@ -108,14 +107,14 @@ class TicksService:
             )
 
         self._asset.gateway.get_klines(
-            symbol=self._asset.symbol,
+            symbol=self._asset,
             timeframe="1m",
             from_date=self._from_date,
             to_date=self._to_date,
             callback=_process_klines,
         )
 
-        ticks_folder = self._ticks_folder / self._asset.symbol
+        ticks_folder = self._ticks_folder / self._asset
         ticks_folder.mkdir(parents=True, exist_ok=True)
         candlesticks = polars.DataFrame(candlesticks)
         ticks = candlesticks.select(
@@ -139,7 +138,7 @@ class TicksService:
     @property
     def ticks(self) -> List[TickModel]:
         response = []
-        ticks_folder = self.folder / self._asset.symbol
+        ticks_folder = self.folder / self._asset
         ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
 
         filtered_ticks = (
