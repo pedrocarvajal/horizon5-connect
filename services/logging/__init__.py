@@ -42,6 +42,16 @@ class LoggingService:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
         self.logger.info(formatted_message)
 
+    def title(self, message: str) -> None:
+        separator = "=" * 80
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.info(separator)
+        self.logger.info(formatted_message)
+        self.logger.info(separator)
+
+    def separator(self) -> None:
+        self.logger.info("=" * 80)
+
     def warning(self, message: str) -> None:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
         self.logger.warning(formatted_message)
