@@ -143,13 +143,14 @@ class TicksService:
 
             candlesticks.extend(klines)
             current_date = candlesticks[-1]["close_time"]
-            progress = (
+            progress = min(
                 get_progress_between_dates(
                     start_date_in_timestamp=start_timestamp,
                     end_date_in_timestamp=end_timestamp,
                     current_date_in_timestamp=current_date,
                 )
-                * 100
+                * 100,
+                100.0,
             )
 
             current_date_formatted = self._get_formatted_timestamp(current_date)
