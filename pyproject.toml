@@ -12,6 +12,7 @@ dependencies = [
     "pymongo>=4.15.3",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
+    "scikit-learn>=1.7.2",
 ]
 
 [tool.ruff]
