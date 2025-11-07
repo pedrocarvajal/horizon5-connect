@@ -86,8 +86,11 @@ class BacktestService:
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def run(self) -> None:
-        ticks = self._tick.ticks
         enabled_strategies = len(self._asset.strategies)
+        ticks = self._tick.ticks(
+            from_date=self._from_date,
+            to_date=self._to_date,
+        )
 
         if not self._id:
             self._log.error("Failed to create backtest...")
@@ -111,18 +114,13 @@ class BacktestService:
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     def _on_end(self) -> None:
-        start_timestamp = int(self._from_date.timestamp())
-        end_timestamp = int(self._to_date.timestamp())
-        expected_tick = int((end_timestamp - start_timestamp) / 60)
-
         end_at = datetime.datetime.now(TIMEZONE)
-        quality = (len(self._tick.ticks) / expected_tick) * 100
         duration = get_duration(self._start_at, end_at)
 
         self._asset.on_end()
         self._kill()
 
-        self._log.info(f"Backtest completed in: {duration} | Quality: {quality:.2f}% ")
+        self._log.info(f"Backtest completed in: {duration}")
 
     def _create_backtest(self) -> None:
         response = self._horizon_router.backtest_create(

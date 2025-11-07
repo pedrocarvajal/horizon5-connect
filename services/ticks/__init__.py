@@ -18,9 +18,8 @@ class TicksService:
     # ───────────────────────────────────────────────────────────────
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
     _asset: AssetInterface
-    _from_date: datetime.datetime
-    _to_date: datetime.datetime
     _restore_ticks: bool
+    _disable_download: bool
     _log: LoggingService
 
     # ───────────────────────────────────────────────────────────────
@@ -35,21 +34,11 @@ class TicksService:
     # ───────────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         self._asset = kwargs.get("asset")
-        self._to_date = datetime.datetime.now(tz=TIMEZONE)
-        self._from_date = self._to_date - datetime.timedelta(days=365 * 25)
-        self._restore_ticks = kwargs.get("restore_ticks")
+        self._restore_ticks = kwargs.get("restore_ticks", False)
+        self._disable_download = kwargs.get("disable_download", False)
 
         if self._asset is None:
             raise ValueError("Asset is required")
-
-        if self._from_date is None:
-            raise ValueError("From date is required")
-
-        if self._to_date is None:
-            raise ValueError("To date is required")
-
-        if self._restore_ticks is None:
-            raise ValueError("Restore data is required")
 
         self._download()
 
@@ -63,12 +52,14 @@ class TicksService:
         return self._get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
     def _get_download_start_date(self, parquet_file: Path) -> datetime.datetime:
+        date = datetime.datetime.now(tz=TIMEZONE) - datetime.timedelta(days=365 * 25)
+
         if self._restore_ticks:
             if parquet_file.exists():
                 self._log.info(f"Deleting existing data for {self._asset.symbol}")
                 parquet_file.unlink()
 
-            return self._from_date
+            return date
 
         if parquet_file.exists():
             existing_ticks = polars.scan_parquet(parquet_file)
@@ -80,7 +71,7 @@ class TicksService:
             return date
 
         self._log.info("No existing data found, starting fresh download")
-        return self._from_date
+        return date
 
     def _save_ticks(
         self,
@@ -114,17 +105,21 @@ class TicksService:
         self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
 
     def _download(self) -> None:
+        if self._disable_download:
+            return
+
         ticks_folder = self._ticks_folder / self._asset.symbol
         parquet_file = ticks_folder / "ticks.parquet"
         download_from_date = self._get_download_start_date(parquet_file)
+        download_to_date = datetime.datetime.now(tz=TIMEZONE)
 
         self._log.info(f"Downloading data for {self._asset.symbol}")
         self._log.info(f"From date: {download_from_date}")
-        self._log.info(f"To date: {self._to_date}")
+        self._log.info(f"To date: {download_to_date}")
 
         current_date = None
         start_timestamp = int(download_from_date.timestamp())
-        end_timestamp = int(self._to_date.timestamp())
+        end_timestamp = int(download_to_date.timestamp())
         candlesticks = []
 
         def _process_klines(klines: List[Dict[str, Any]]) -> None:
@@ -132,13 +127,6 @@ class TicksService:
             nonlocal candlesticks
 
             if not klines:
-                if not candlesticks:
-                    message = (
-                        f"No data available for {self._asset.symbol} from "
-                        f"{download_from_date}. Symbol might not have "
-                        f"historical data for the requested period."
-                    )
-                    self._log.warning(message)
                 return
 
             candlesticks.extend(klines)
@@ -171,7 +159,7 @@ class TicksService:
                 symbol=self._asset.symbol,
                 timeframe="1m",
                 from_date=int(download_from_date.timestamp()),
-                to_date=int(self._to_date.timestamp()),
+                to_date=int(download_to_date.timestamp()),
                 callback=_process_klines,
             )
 
@@ -181,7 +169,6 @@ class TicksService:
                 raise
 
         if not candlesticks:
-            self._log.warning(f"No data downloaded for {self._asset.symbol}")
             return
 
         self._save_ticks(candlesticks, parquet_file, ticks_folder)
@@ -193,16 +180,19 @@ class TicksService:
     def folder(self) -> Path:
         return self._ticks_folder
 
-    @property
-    def ticks(self) -> List[TickModel]:
+    def ticks(
+        self,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> List[TickModel]:
         response = []
         ticks_folder = self.folder / self._asset.symbol
         ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
 
         filtered_ticks = (
             ticks.filter(
-                (polars.col("id") >= int(self._from_date.timestamp()))
-                & (polars.col("id") <= int(self._to_date.timestamp()))
+                (polars.col("id") >= int(from_date.timestamp()))
+                & (polars.col("id") <= int(to_date.timestamp()))
             )
             .sort("id")
             .collect(engine="streaming")

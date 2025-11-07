@@ -24,7 +24,7 @@ class Commands(CommandsService):
 
 if __name__ == "__main__":
     to_date = datetime.datetime.now(tz=TIMEZONE)
-    from_date = to_date - datetime.timedelta(days=(365 * 5) - 7)
+    from_date = to_date - datetime.timedelta(days=(365 * 3))
     # from_date = to_date - datetime.timedelta(days=30 * 12)
     commands_queue = Queue()
     events_queue = Queue()
