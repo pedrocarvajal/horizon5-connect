@@ -5,25 +5,30 @@ from interfaces.indicator import IndicatorInterface
 from models.tick import TickModel
 from services.logging import LoggingService
 
-from .models.value import MAValueModel
+from .models.value import PriceAccelerationValueModel
 
 
-class MAIndicator(IndicatorInterface):
+class PriceAccelerationIndicator(IndicatorInterface):
     # ───────────────────────────────────────────────────────────
     # CONSTANTS
     # ───────────────────────────────────────────────────────────
-    _MULTIPLIER_COEFFICIENT: int = 2
+    MIN_TICKS_REQUIRED: int = 3
+    MIN_PRICES_FOR_VELOCITY: int = 2
+    MIN_VELOCITIES_FOR_ACCELERATION: int = 2
+    INITIAL_ACCELERATION: float = 0.0
 
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _name: str = "Moving Average"
+    _name: str = "Price Acceleration"
     _key: str
-    _period: int
-    _price_to_use: str
-    _exponential: bool
+    _window_size: int
     _candles: List[Dict[str, Any]]
-    _values: List[MAValueModel]
+    _price_to_use: str
+    _values: List[PriceAccelerationValueModel]
+    _prices: List[float]
+    _velocities: List[float]
+    _accelerations: List[float]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -31,20 +36,21 @@ class MAIndicator(IndicatorInterface):
     def __init__(
         self,
         key: str,
-        period: int = 5,
+        window_size: int = 5,
         price_to_use: str = "close_price",
-        exponential: bool = False,
         candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self._key = key
-        self._period = period
+        self._window_size = window_size
         self._price_to_use = price_to_use
-        self._exponential = exponential
         self._candles = candles if candles is not None else []
         self._values = []
+        self._prices = []
+        self._velocities = []
+        self._accelerations = []
 
         self._log = LoggingService()
-        self._log.setup("ma_indicator")
+        self._log.setup("price_acceleration_indicator")
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -52,7 +58,7 @@ class MAIndicator(IndicatorInterface):
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
 
-        if len(self._candles) < self._period:
+        if len(self._candles) < self.MIN_TICKS_REQUIRED:
             return
 
         if (
@@ -63,50 +69,53 @@ class MAIndicator(IndicatorInterface):
             self.refresh()
 
     def refresh(self) -> None:
-        if len(self._candles) < self._period:
+        if len(self._candles) < self.MIN_TICKS_REQUIRED:
             return
 
-        prices = [candle[self._price_to_use] for candle in self._candles[-self._period :]]
+        current_price = self._candles[-1][self._price_to_use]
+        self._prices.append(current_price)
 
-        if len(prices) < self._period:
+        if len(self._prices) < self.MIN_PRICES_FOR_VELOCITY:
+            value = PriceAccelerationValueModel()
+            value.date = self._candles[-1]["close_time"]
+            value.value = self.INITIAL_ACCELERATION
+            self._values.append(value)
             return
 
-        value = MAValueModel()
+        velocity = self._prices[-1] - self._prices[-2]
+        self._velocities.append(velocity)
+
+        if len(self._velocities) < self.MIN_VELOCITIES_FOR_ACCELERATION:
+            value = PriceAccelerationValueModel()
+            value.date = self._candles[-1]["close_time"]
+            value.value = self.INITIAL_ACCELERATION
+            self._values.append(value)
+            return
+
+        acceleration = self._velocities[-1] - self._velocities[-2]
+        self._accelerations.append(acceleration)
+
+        window_start = max(0, len(self._accelerations) - self._window_size)
+        window_accelerations = self._accelerations[window_start:]
+
+        value = PriceAccelerationValueModel()
         value.date = self._candles[-1]["close_time"]
-
-        if self._exponential:
-            if len(self._values) == 0:
-                value.value = self._compute_exponential(prices)
-            else:
-                multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
-                current_price = self._candles[-1][self._price_to_use]
-                value.value = (current_price * multiplier) + (
-                    self._values[-1].value * (1 - multiplier)
-                )
-        else:
-            value.value = self._compute_simple(prices)
+        value.value = sum(window_accelerations) / len(window_accelerations)
 
         self._values.append(value)
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
-    def _compute_exponential(self, prices: List[float]) -> float:
-        multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
-        exponential_moving_average = prices[0]
-
-        for price in prices[1:]:
-            exponential_moving_average = (price * multiplier) + (
-                exponential_moving_average * (1 - multiplier)
-            )
-
-        return exponential_moving_average
-
-    def _compute_simple(self, prices: List[float]) -> float:
-        return sum(prices) / len(prices)
-
     def _should_refresh(self, candle_close_time: datetime.datetime) -> bool:
         if len(self._values) == 0:
             return True
 
         return self._values[-1].date < candle_close_time
+
+    # ───────────────────────────────────────────────────────────
+    # GETTERS
+    # ───────────────────────────────────────────────────────────
+    @property
+    def values(self) -> List[PriceAccelerationValueModel]:
+        return self._values

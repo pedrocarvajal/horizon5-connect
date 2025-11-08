@@ -29,7 +29,6 @@ class StrategyService(StrategyInterface):
     _backtest_id: str
     _asset: AssetService
     _allocation: float
-    _indicators: Dict[str, IndicatorInterface]
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
     _chart: ChartHandler
@@ -50,7 +49,6 @@ class StrategyService(StrategyInterface):
         self._id = kwargs.get("id")
         self._backtest = False
         self._backtest_id = ""
-        self._indicators = {}
         self._candles = {}
         self._orderbook = None
         self._analytic = None
@@ -111,9 +109,6 @@ class StrategyService(StrategyInterface):
         self._check_timeframe_transitions(tick)
         self._orderbook.refresh(tick)
         self._analytic.on_tick(tick)
-
-        for indicator in self._indicators.values():
-            indicator.on_tick(tick)
 
         for candle in self._candles.values():
             candle.on_tick(tick)

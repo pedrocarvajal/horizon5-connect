@@ -42,6 +42,35 @@ class TicksService:
 
         self._download()
 
+    def ticks(
+        self,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> List[TickModel]:
+        response = []
+        ticks_folder = self.folder / self._asset.symbol
+        ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
+
+        filtered_ticks = (
+            ticks.filter(
+                (polars.col("id") >= int(from_date.timestamp()))
+                & (polars.col("id") <= int(to_date.timestamp()))
+            )
+            .sort("id")
+            .collect(engine="streaming")
+        )
+
+        for tick_row in filtered_ticks.iter_rows(named=True):
+            price = tick_row["price"]
+            date = self._get_datetime_from_timestamp(tick_row["id"])
+
+            tick = TickModel()
+            tick.date = date
+            tick.price = price
+            response.append(tick)
+
+        return response
+
     # ───────────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────────
@@ -179,32 +208,3 @@ class TicksService:
     @property
     def folder(self) -> Path:
         return self._ticks_folder
-
-    def ticks(
-        self,
-        from_date: datetime.datetime,
-        to_date: datetime.datetime,
-    ) -> List[TickModel]:
-        response = []
-        ticks_folder = self.folder / self._asset.symbol
-        ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
-
-        filtered_ticks = (
-            ticks.filter(
-                (polars.col("id") >= int(from_date.timestamp()))
-                & (polars.col("id") <= int(to_date.timestamp()))
-            )
-            .sort("id")
-            .collect(engine="streaming")
-        )
-
-        for tick_row in filtered_ticks.iter_rows(named=True):
-            price = tick_row["price"]
-            date = self._get_datetime_from_timestamp(tick_row["id"])
-
-            tick = TickModel()
-            tick.date = date
-            tick.price = price
-            response.append(tick)
-
-        return response

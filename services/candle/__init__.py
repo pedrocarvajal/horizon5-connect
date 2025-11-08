@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from enums.timeframe import Timeframe
 from interfaces.candle import CandleInterface
+from interfaces.indicator import IndicatorInterface
 from models.tick import TickModel
 
 
@@ -15,15 +16,23 @@ class CandleService(CandleInterface):
         self,
         timeframe: Timeframe,
         on_close: Optional[Callable[[Dict[str, Any]], None]] = None,
+        indicators: Optional[List[IndicatorInterface]] = None,
     ) -> None:
         self._timeframe = timeframe
         self._on_close = on_close
         self._candles: List[Dict[str, Any]] = []
+        self._indicators = indicators if indicators is not None else []
+
+        for indicator in self._indicators:
+            indicator._candles = self._candles
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        for indicator in self._indicators:
+            indicator.on_tick(tick)
+
         self._compute(tick)
 
     # ───────────────────────────────────────────────────────────
@@ -31,8 +40,11 @@ class CandleService(CandleInterface):
     # ───────────────────────────────────────────────────────────
     def _compute(self, tick: TickModel) -> None:
         if len(self._candles) == 0 or tick.date >= self._candles[-1]["close_time"]:
-            if len(self._candles) > 0 and self._on_close is not None:
-                self._on_close(candle=self._candles[-1])
+            if len(self._candles) > 0:
+                self._attach_indicators_to_candle(self._candles[-1])
+
+                if self._on_close is not None:
+                    self._on_close(candle=self._candles[-1])
 
             aligned_time = self._align_time_to_timeframe(tick.date)
             candle_duration = timedelta(seconds=self._timeframe.to_seconds())
@@ -43,6 +55,7 @@ class CandleService(CandleInterface):
                 "high_price": tick.price,
                 "low_price": tick.price,
                 "close_price": tick.price,
+                "i": {},
             }
 
             self._candles.append(candle)
@@ -112,9 +125,22 @@ class CandleService(CandleInterface):
     def _align_month(self, date: datetime) -> datetime:
         return date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    def _attach_indicators_to_candle(self, candle: Dict[str, Any]) -> None:
+        candle["i"] = {}
+
+        for indicator in self._indicators:
+            if len(indicator.values) > 0:
+                latest_value = indicator.values[-1]
+
+                if latest_value.date == candle["close_time"]:
+                    candle["i"][indicator.key] = {
+                        "value": latest_value.value,
+                        "date": latest_value.date,
+                    }
+
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
     @property
     def candles(self) -> List[Dict[str, Any]]:
-        return self._candles
+        return self._candles[0:-1]
