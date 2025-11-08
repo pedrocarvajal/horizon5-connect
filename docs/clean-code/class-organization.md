@@ -11,15 +11,19 @@ Follow these organization principles.
 
 ## Recommended Section Order
 
-1. Constants
-2. Public variables
-3. Private variables (prefixed with `_`)
-4. Constructor
-5. Main public methods
-6. Private methods (prefixed with `_`)
-   - Regular private methods first
-   - Helper methods last
-7. Properties (use `@property` decorator instead of getters/setters)
+Organize class members vertically in the following order:
+
+1. **Constants** - Define immutable class-level configuration values
+2. **Properties** - Declare all instance variables grouped by purpose:
+   - Interface-required properties (contract obligations from parent/interface)
+   - Class properties (internal state and business logic attributes)
+   - Dependencies (injected services, repositories, external collaborators)
+3. **Constructor** - Initialize instance with `__init__` method
+4. **Public Methods** - Define external API and public interface
+5. **Private Methods** - Implement internal logic (prefix with `_`):
+   - Core private methods for business logic
+   - Helper methods for formatting/parsing/conversion
+6. **Getters/Setters** - Expose properties using `@property` decorator, with each setter immediately following its corresponding getter
 
 ## Section Separators
 
@@ -33,14 +37,17 @@ Use visual separators to clearly mark each section in the class:
 
 Standard section names:
 
-- `CONSTANTS` - Class-level constants
-- `PROPERTIES` - Instance variables
-- `CONSTRUCTOR` - `__init__` method
-- `PUBLIC METHODS` - Public methods
-- `PRIVATE METHODS` - Private methods (prefixed with `_`)
-  - Regular private methods first
-  - Helper methods last (use inline comment to separate them)
-- `GETTERS` - Properties and getters
+- `CONSTANTS` - Class-level constants (immutable configuration values)
+- `PROPERTIES` - Instance variables organized in three subsections:
+  - `# Interface-required` - Properties required by parent class or interface contract
+  - `# Class properties` - Internal business logic attributes and state variables
+  - `# Dependencies` - External services, repositories, or helper classes injected via constructor
+- `CONSTRUCTOR` - The `__init__` method for initialization
+- `PUBLIC METHODS` - Public-facing methods exposed to external consumers
+- `PRIVATE METHODS` - Internal methods (prefixed with `_`) organized in two subsections:
+  - Regular private methods for core internal logic
+  - `# Helpers` - Utility/formatting methods (use inline comment to separate)
+- `GETTERS` - Property accessors using `@property` decorator. Each setter must immediately follow its corresponding getter (grouped by property)
 
 ## Access Modifiers
 
@@ -79,63 +86,106 @@ Functions should always start with a verb that clearly describes the action they
 ## Example Structure
 
 ```python
-class Order:
+class OrderProcessor(ProcessorInterface):
+    # ───────────────────────────────────────────────────────────
+    # CONSTANTS
+    # ───────────────────────────────────────────────────────────
+    MAX_RETRY_ATTEMPTS: int = 3
+    TIMEOUT_SECONDS: int = 30
+    DEFAULT_PRIORITY: int = 1
+
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    ticket: int
-    _entry_price: float
-    _stop_loss: float
+
+    # Interface-required
+    _id: str
+    _status: str
+    _results: List[ResultModel]
+
+    # Class properties
+    _retry_count: int
+    _timeout: int
+    _priority: int
+    _queue: List[OrderModel]
+    _processed_items: List[OrderModel]
+    _failed_items: List[OrderModel]
+    _last_execution_time: Optional[datetime]
+    _configuration: Dict[str, Any]
+    _is_active: bool
+
+    # Dependencies
+    _logger: LoggerService
+    _validator: ValidationService
+    _repository: DataRepository
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self, order_ticket: int):
-        self.ticket = order_ticket
-        self._entry_price = 0.0
-        self._stop_loss = 0.0
+    def __init__(
+        self,
+        id: str,
+        logger: LoggerService,
+        validator: ValidationService,
+        repository: DataRepository,
+        timeout: int = TIMEOUT_SECONDS
+    ) -> None:
+        self._id = id
+        self._timeout = timeout
+        self._logger = logger
+        self._validator = validator
+        self._repository = repository
+        self._queue = []
+        self._results = []
+        self._is_active = False
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
-    def open(self) -> bool:
+    def process(self) -> bool:
         pass
 
-    def close(self) -> bool:
+    def add_to_queue(self, order: OrderModel) -> None:
+        pass
+
+    def clear_queue(self) -> None:
         pass
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
-    def _validate_price(self, price: float) -> bool:
+    def _validate_order(self, order: OrderModel) -> bool:
         pass
 
-    def _update_internal_state(self) -> None:
+    def _execute_processing(self) -> None:
         pass
 
-    def _calculate_risk_reward(self) -> float:
+    def _handle_failure(self, error: Exception) -> None:
         pass
 
     # Helpers
-    def _format_order_data(self) -> dict:
+    def _format_result(self, data: dict) -> ResultModel:
         pass
 
-    def _normalize_price(self, price: float) -> float:
+    def _sanitize_input(self, value: str) -> str:
         pass
 
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
     @property
-    def entry_price(self) -> float:
-        return self._entry_price
+    def id(self) -> str:
+        return self._id
 
     @property
-    def stop_loss(self) -> float:
-        return self._stop_loss
+    def status(self) -> str:
+        return self._status
 
-    @stop_loss.setter
-    def stop_loss(self, price: float) -> None:
-        if self._validate_price(price):
-            self._stop_loss = price
+    @status.setter
+    def status(self, value: str) -> None:
+        self._status = value
+
+    @property
+    def results(self) -> List[ResultModel]:
+        return self._results
 ```

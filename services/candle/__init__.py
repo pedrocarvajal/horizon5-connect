@@ -133,10 +133,7 @@ class CandleService(CandleInterface):
                 latest_value = indicator.values[-1]
 
                 if latest_value.date == candle["close_time"]:
-                    candle["i"][indicator.key] = {
-                        "value": latest_value.value,
-                        "date": latest_value.date,
-                    }
+                    candle["i"][indicator.key] = latest_value.to_dict()
 
     # ───────────────────────────────────────────────────────────
     # GETTERS
