@@ -62,6 +62,17 @@ class Binance(GatewayInterface):
                 callback([])
                 break
 
+            if isinstance(data, dict) and "code" in data:
+                error_msg = data.get("msg", "Unknown error")
+                self._log.error(f"API Error: {error_msg} (code: {data['code']})")
+                callback([])
+                break
+
+            if not isinstance(data, list):
+                self._log.error(f"Unexpected response type: {type(data)}")
+                callback([])
+                break
+
             candlesticks = []
 
             for item in data:

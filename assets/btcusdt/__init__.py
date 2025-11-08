@@ -33,6 +33,6 @@ class BTCUSDT(AssetService):
             ReboundsOffSupportsStrategy(
                 id="rebounds_off_supports",
                 allocation=50_000,
-                enabled=False,
+                enabled=True,
             ),
         ]
