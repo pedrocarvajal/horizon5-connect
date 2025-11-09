@@ -211,3 +211,4 @@ storage/binance/
 *.lock
 .notes
 *.pkl
+*.zip

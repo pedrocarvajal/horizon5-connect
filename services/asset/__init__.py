@@ -48,12 +48,15 @@ class AssetService(AssetInterface):
         if self._backtest_id is None:
             raise ValueError("Backtest ID is required")
 
+        enabled_strategies = [s for s in self._strategies if s.enabled]
+
         for strategy in self._strategies:
             if not strategy.enabled:
                 self._log.warning(f"Strategy {strategy.name} is not enabled")
-                self._strategies.remove(strategy)
-                continue
 
+        self._strategies = enabled_strategies
+
+        for strategy in self._strategies:
             strategy.setup(
                 **kwargs,
             )

@@ -28,7 +28,7 @@ class BTCUSDT(AssetService):
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
                 allocation=50_000,
-                enabled=True,
+                enabled=False,
             ),
             ReboundsOffSupportsStrategy(
                 id="rebounds_off_supports",

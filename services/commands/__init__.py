@@ -75,6 +75,7 @@ class CommandsService:
 
                 if response.get("success") is False:
                     self._log.error(f"Failed to execute command {function}: {response}")
+                    self._log.error(args)
 
                 return True, False
 

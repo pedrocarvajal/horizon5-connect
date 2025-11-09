@@ -3,7 +3,6 @@ from multiprocessing import Process, Queue
 from typing import Any
 
 from configs.assets import ASSETS
-from configs.timezone import TIMEZONE
 from services.backtest import BacktestService
 from services.commands import CommandsService
 
@@ -23,9 +22,9 @@ class Commands(CommandsService):
 
 
 if __name__ == "__main__":
-    to_date = datetime.datetime.now(tz=TIMEZONE)
-    from_date = to_date - datetime.timedelta(days=(365 * 3))
-    # from_date = to_date - datetime.timedelta(days=30 * 12)
+    from_date = datetime.datetime.fromisoformat("2019-01-01")
+    to_date = datetime.datetime.fromisoformat("2025-11-09")
+
     commands_queue = Queue()
     events_queue = Queue()
 
