@@ -2,7 +2,7 @@ import datetime
 from multiprocessing import Process, Queue
 from typing import Any
 
-from assets.test_btcusdt import BTCUSDT
+from assets.horizon_btcusdt import BTCUSDT
 from services.backtest import BacktestService
 from services.commands import CommandsService
 

@@ -132,6 +132,14 @@ class AnalyticService(AnalyticInterface):
         self._perform_calculations()
         self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
+    def on_new_month(self) -> None:
+        performance = self._snapshot.performance
+        performance_percentage = self._snapshot.performance_percentage * 100
+
+        self._log.info(
+            f"Closing month, with: {performance:.2f} ({performance_percentage:.2f}%)."
+        )
+
     def on_end(self) -> None:
         self._ended_at = self._tick.date
         self._perform_calculations()
@@ -146,10 +154,15 @@ class AnalyticService(AnalyticInterface):
         self._log.info(f"Backtest ID: {self._backtest_id}")
         self._log.info(f"Strategy: {self._strategy_id}")
 
+        days_elapsed = (self._ended_at - self._started_at).days
+
         self._log.debug(
             json.dumps(
                 {
                     **self._snapshot.to_dict(),
+                    "started_at": self._started_at,
+                    "ended_at": self._ended_at,
+                    "days_elapsed": days_elapsed,
                     # "performance_history": self._snapshot.performance_history,
                     # "nav_history": self._snapshot.nav_history,
                     # "profit_history": self._snapshot.profit_history,

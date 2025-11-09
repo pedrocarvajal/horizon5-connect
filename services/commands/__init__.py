@@ -1,3 +1,4 @@
+import datetime
 from multiprocessing import Queue
 from typing import Any, Dict
 
@@ -12,6 +13,7 @@ class CommandsService:
     _commands_queue: Queue
     _events_queue: Queue
     _commands: Dict[str, Any]
+    _ping_made_at: datetime.datetime
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR

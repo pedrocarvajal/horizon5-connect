@@ -72,8 +72,9 @@ class OrderbookHandler:
             order.status = OrderStatus.CANCELLED
             order.executed_volume = 0
 
-        if order.volume > self._balance:
-            self._log.error("Balance is less than order volume, cannot open order.")
+        if order.volume * order.price > self._balance:
+            self._log.error("Balance is less than order cost, cannot open order.")
+
             order.status = OrderStatus.CANCELLED
             order.executed_volume = 0
 
@@ -84,7 +85,6 @@ class OrderbookHandler:
             self._balance -= order.volume * order.price
 
         if order.status is OrderStatus.CANCELLED:
-            self._balance += order.volume * order.price
             self._log.error(f"Order {order.id} was cancelled trying to open.")
 
         self._orders[order.id] = order
