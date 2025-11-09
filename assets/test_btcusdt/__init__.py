@@ -3,8 +3,7 @@ from typing import List
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
-from strategies.ema5_breakout import EMA5BreakoutStrategy
-from strategies.rebounds_off_supports import ReboundsOffSupportsStrategy
+from strategies.test import TestStrategy
 
 
 class BTCUSDT(AssetService):
@@ -25,13 +24,8 @@ class BTCUSDT(AssetService):
         self._log.setup("asset_btcusdt")
 
         self._strategies = [
-            EMA5BreakoutStrategy(
-                id="ema5_breakout",
-                allocation=50_000,
-                enabled=False,
-            ),
-            ReboundsOffSupportsStrategy(
-                id="rebounds_off_supports",
+            TestStrategy(
+                id="test",
                 allocation=50_000,
                 enabled=True,
             ),

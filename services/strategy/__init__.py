@@ -1,6 +1,6 @@
 import datetime
 from multiprocessing import Queue
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from enums.order_side import OrderSide
 from enums.timeframe import Timeframe
@@ -145,8 +145,11 @@ class StrategyService(StrategyInterface):
         take_profit_price: float,
         stop_loss_price: float,
         volume: float,
-        variables: Dict[str, Any],
+        variables: Optional[Dict[str, Any]] = None,
     ) -> None:
+        if variables is None:
+            variables = {}
+
         order = OrderModel()
         order.strategy_id = self._id
         order.gateway = self.asset.gateway

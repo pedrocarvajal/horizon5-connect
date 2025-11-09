@@ -2,7 +2,7 @@ import datetime
 from multiprocessing import Process, Queue
 from typing import Any
 
-from configs.assets import ASSETS
+from assets.test_btcusdt import BTCUSDT
 from services.backtest import BacktestService
 from services.commands import CommandsService
 
@@ -22,11 +22,11 @@ class Commands(CommandsService):
 
 
 if __name__ == "__main__":
-    from_date = datetime.datetime.fromisoformat("2019-01-01")
-    to_date = datetime.datetime.fromisoformat("2025-11-09")
-
     commands_queue = Queue()
     events_queue = Queue()
+
+    from_date = datetime.datetime.fromisoformat("2019-01-01")
+    to_date = datetime.datetime.fromisoformat("2025-11-09")
 
     processes = [
         Process(
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         Process(
             target=Backtest,
             kwargs={
-                "asset": ASSETS["btcusdt"],
+                "asset": BTCUSDT,
                 "from_date": from_date,
                 "to_date": to_date,
                 "commands_queue": commands_queue,
