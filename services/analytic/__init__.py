@@ -135,9 +135,11 @@ class AnalyticService(AnalyticInterface):
     def on_new_month(self) -> None:
         performance = self._snapshot.performance
         performance_percentage = self._snapshot.performance_percentage * 100
+        max_drawdown_percentage = self._snapshot.max_drawdown * 100
 
         self._log.info(
-            f"Closing month, with: {performance:.2f} ({performance_percentage:.2f}%)."
+            f"Closing month, with: {performance:.2f} ({performance_percentage:.2f}%), "
+            f"max drawdown: {max_drawdown_percentage:.2f}%."
         )
 
     def on_end(self) -> None:

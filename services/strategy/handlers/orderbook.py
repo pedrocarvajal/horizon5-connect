@@ -119,6 +119,12 @@ class OrderbookHandler:
 
         if self.free_margin < required_margin:
             self._log.error("Free margin is less than required margin, cannot open order.")
+            self._log.error(
+                f"Volume: {order.volume:.2f} | Price: {order.price:.2f} | "
+                f"Required margin: {required_margin:.2f} | "
+                f"Free margin: {self.free_margin:.2f}"
+            )
+
             order.status = OrderStatus.CANCELLED
             order.executed_volume = 0
 
@@ -158,8 +164,6 @@ class OrderbookHandler:
         self._orders[order.id] = order
         self._on_transaction(order)
 
-        self._log_after_open()
-
     def close(self, order: OrderModel) -> None:
         order.status = OrderStatus.CLOSED
         order.close_price = self._tick.price
@@ -177,8 +181,6 @@ class OrderbookHandler:
 
         self._orders[order.id] = order
         self._on_transaction(order)
-
-        self._log_after_close(order)
 
     def where(
         self,
@@ -204,29 +206,6 @@ class OrderbookHandler:
             f"Margin level: {self.margin_level:.2f}"
         )
 
-    def _log_after_open(self) -> None:
-        self._log.info(
-            f"Balance: {self.balance:.2f} | "
-            f"Allocation: {self.allocation:.2f} | "
-            f"NAV: {self.nav:.2f} | "
-            f"Exposure: {self.exposure:.2f} | "
-            f"PnL: {self.pnl:.2f} | "
-            f"Free margin: {self.free_margin:.2f} | "
-            f"Used margin: {self.used_margin:.2f} | "
-            f"Equity: {self.equity:.2f} | "
-            f"Margin level: {self.margin_level:.2f}"
-        )
-
-    def _log_after_close(self, order: OrderModel) -> None:
-        self._log.info(
-            f"After close → "
-            f"Balance: {self.balance:.2f} | "
-            f"NAV: {self.nav:.2f} | "
-            f"PnL realized: {order.profit:.2f} | "
-            f"Equity: {self.equity:.2f} | "
-            f"Margin level: {self.margin_level:.2f}"
-        )
-
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
@@ -244,7 +223,7 @@ class OrderbookHandler:
 
     @property
     def nav(self) -> float:
-        return self._balance + self.exposure + self.pnl
+        return self._balance + self.used_margin + self.pnl
 
     @property
     def exposure(self) -> float:
