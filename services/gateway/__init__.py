@@ -11,7 +11,6 @@ class GatewayService(GatewayInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _name: str
-    _credentials: Dict[str, str]
     _gateway: GatewayInterface
 
     # ───────────────────────────────────────────────────────────
@@ -55,7 +54,9 @@ class GatewayService(GatewayInterface):
             raise ValueError(f"Gateway {self._name} not found")
 
         self._log.info(f"Setting up gateway {self._name}")
-        self._gateway = self._gateways[self._name]["class"]()
+        self._gateway = self._gateways[self._name]["class"](
+            **self._gateways[self._name]["kwargs"]
+        )
 
     # ───────────────────────────────────────────────────────────
     # GETTERS
@@ -63,3 +64,9 @@ class GatewayService(GatewayInterface):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def configs(self) -> Dict[str, Any]:
+        return {
+            "margin_liquidation_ratio": 0.2,
+        }
