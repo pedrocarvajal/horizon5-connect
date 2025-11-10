@@ -1,14 +1,14 @@
 .ONESHELL:
-.PHONY: test test-e2e test-integration test-unit test-watch test-coverage help
+.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit help
 
-test:
+run-tests:
 	uv run python -m unittest discover -s tests -p "test_*.py" -v
 
-test-e2e:
+run-tests-e2e:
 	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v
 
-test-integration:
+run-tests-integration:
 	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v
 
-test-unit:
+run-tests-unit:
 	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v

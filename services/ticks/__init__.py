@@ -1,7 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, List
 
 import polars
 
@@ -9,6 +9,7 @@ from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
 from interfaces.asset import AssetInterface
 from models.tick import TickModel
+from services.gateway.models.kline import KlineModel
 from services.logging import LoggingService
 
 
@@ -104,12 +105,13 @@ class TicksService:
 
     def _save_ticks(
         self,
-        candlesticks: List[Dict[str, Any]],
+        klines: List[KlineModel],
         parquet_file: Path,
         ticks_folder: Path,
     ) -> None:
         ticks_folder.mkdir(parents=True, exist_ok=True)
-        candlesticks_data = polars.DataFrame(candlesticks)
+        klines_dict = [kline.model_dump() for kline in klines]
+        candlesticks_data = polars.DataFrame(klines_dict)
         new_ticks = candlesticks_data.select(
             [
                 (polars.col("close_time")).cast(polars.Int64).alias("id"),
@@ -149,17 +151,17 @@ class TicksService:
         current_date = None
         start_timestamp = int(download_from_date.timestamp())
         end_timestamp = int(download_to_date.timestamp())
-        candlesticks = []
+        klines_list: List[KlineModel] = []
 
-        def _process_klines(klines: List[Dict[str, Any]]) -> None:
+        def _process_klines(klines: List[KlineModel]) -> None:
             nonlocal current_date
-            nonlocal candlesticks
+            nonlocal klines_list
 
             if not klines:
                 return
 
-            candlesticks.extend(klines)
-            current_date = candlesticks[-1]["close_time"]
+            klines_list.extend(klines)
+            current_date = klines_list[-1].close_time
             progress = min(
                 get_progress_between_dates(
                     start_date_in_timestamp=start_timestamp,
@@ -185,6 +187,7 @@ class TicksService:
         try:
             gateway = self._asset.gateway
             gateway.get_klines(
+                futures=True,
                 symbol=self._asset.symbol,
                 timeframe="1m",
                 from_date=int(download_from_date.timestamp()),
@@ -194,13 +197,13 @@ class TicksService:
 
         except Exception as e:
             self._log.error(f"Error downloading data for {self._asset.symbol}: {e}")
-            if not candlesticks:
+            if not klines_list:
                 raise
 
-        if not candlesticks:
+        if not klines_list:
             return
 
-        self._save_ticks(candlesticks, parquet_file, ticks_folder)
+        self._save_ticks(klines_list, parquet_file, ticks_folder)
 
     # ───────────────────────────────────────────────────────────────
     # GETTERS

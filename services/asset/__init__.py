@@ -24,11 +24,14 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self) -> None:
+    def __init__(self, futures: bool = True) -> None:
         self._log = LoggingService()
         self._log.setup("asset_service")
 
-        self._gateway = GatewayService(self._gateway)
+        self._gateway = GatewayService(
+            self._gateway,
+            futures=futures,
+        )
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS

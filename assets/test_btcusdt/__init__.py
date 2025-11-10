@@ -18,7 +18,7 @@ class BTCUSDT(AssetService):
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(futures=True)
 
         self._log = LoggingService()
         self._log.setup("asset_btcusdt")
@@ -27,6 +27,7 @@ class BTCUSDT(AssetService):
             TestStrategy(
                 id="test",
                 allocation=50_000,
+                leverage=3,
                 enabled=True,
             ),
         ]

@@ -29,6 +29,7 @@ class StrategyService(StrategyInterface):
     _backtest_id: str
     _asset: AssetService
     _allocation: float
+    _leverage: int
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
     _chart: ChartHandler
@@ -54,7 +55,7 @@ class StrategyService(StrategyInterface):
         self._analytic = None
         self._last_timestamps = {}
         self._allocation = kwargs.get("allocation", 0.0)
-
+        self._leverage = kwargs.get("leverage", 1)
         self._enabled = kwargs.get("enabled", True)
 
     # ───────────────────────────────────────────────────────────
@@ -85,9 +86,14 @@ class StrategyService(StrategyInterface):
         if not self._id:
             raise ValueError("Strategy ID is required")
 
+        if self._leverage <= 0:
+            raise ValueError("Leverage must be greater than 0")
+
         self._orderbook = OrderbookHandler(
             balance=self._allocation,
             allocation=self._allocation,
+            leverage=self._leverage,
+            gateway=self.asset.gateway,
             on_transaction=self.on_transaction,
         )
 
