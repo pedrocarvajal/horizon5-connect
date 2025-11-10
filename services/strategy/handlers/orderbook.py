@@ -21,6 +21,7 @@ class OrderbookHandler:
     _orders: Dict[str, OrderModel]
     _tick: TickModel
     _on_transaction: Callable[[OrderModel], None]
+    _margin_call_active: bool
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -45,22 +46,34 @@ class OrderbookHandler:
         self._nav = 0.0
         self._exposure = 0.0
         self._on_transaction = on_transaction
+        self._margin_call_active = False
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def refresh(self, tick: TickModel) -> None:
         self._tick = tick
-        margin_liquidation_ratio = self._gateway.configs.get(
-            "margin_liquidation_ratio", 0.2
-        )
+        margin_liquidation_ratio = 0.005
+        margin_recovery_ratio = 0.02
 
-        if self._used_margin > 0 and self.margin_level < margin_liquidation_ratio:
-            self._log.critical("Margin level is less than 20, closing all orders.")
+        if self.used_margin > 0 and self.margin_level < margin_liquidation_ratio:
+            if not self._margin_call_active:
+                self._margin_call_active = True
+                self._log.critical(
+                    "Margin call triggered: closing all orders and blocking new operations."
+                )
 
             for order in list(self._orders.values()):
                 if order.status is OrderStatus.OPENED:
+                    self._log.warning(f"Closing order {order.id}.")
                     self.close(order)
+
+        if self._margin_call_active and self.margin_level > margin_recovery_ratio:
+            self._margin_call_active = False
+            self._log.info(
+                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. "
+                f"New operations allowed."
+            )
 
         for order in list(self._orders.values()):
             order.close_price = tick.price
@@ -82,6 +95,18 @@ class OrderbookHandler:
 
     def open(self, order: OrderModel) -> None:
         required_margin = (order.volume * order.price) / self._leverage
+        margin_liquidation_ratio = 0.005
+
+        if self._margin_call_active:
+            self._log.error(
+                "Margin call active: cannot open new orders until margin level recovers."
+            )
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+
+            self._orders[order.id] = order
+            self._on_transaction(order)
+            return
 
         if self._balance <= 0:
             self._log.error("Balance is less than 0, cannot open order.")
@@ -101,14 +126,39 @@ class OrderbookHandler:
             self._on_transaction(order)
             return
 
+        projected_used_margin = self.used_margin + required_margin
+        projected_balance = self._balance - required_margin
+        projected_equity = projected_balance + self.pnl
+        projected_margin_level = (
+            projected_equity / projected_used_margin
+            if projected_used_margin > 0
+            else float("inf")
+        )
+
+        if projected_margin_level < margin_liquidation_ratio:
+            self._log.error(
+                f"Projected margin level ({projected_margin_level:.2f}) "
+                f"would be below liquidation ratio ({margin_liquidation_ratio}). "
+                f"Cannot open order."
+            )
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+
+            self._orders[order.id] = order
+            self._on_transaction(order)
+            return
+
         order.status = OrderStatus.OPENED
         order.executed_volume = order.volume
+        order.close_price = order.price
         order.updated_at = self._tick.date
         order.open()
 
         self._balance -= required_margin
         self._orders[order.id] = order
         self._on_transaction(order)
+
+        self._log_after_open()
 
     def close(self, order: OrderModel) -> None:
         order.status = OrderStatus.CLOSED
@@ -128,6 +178,8 @@ class OrderbookHandler:
         self._orders[order.id] = order
         self._on_transaction(order)
 
+        self._log_after_close(order)
+
     def where(
         self,
         side: Optional[OrderSide] = None,
@@ -139,6 +191,41 @@ class OrderbookHandler:
             if (side is None or order.side == side)
             and (status is None or order.status == status)
         ]
+
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
+    def _log_before_open(self) -> None:
+        self._log.info(
+            f"Before open → "
+            f"Balance: {self.balance:.2f} | "
+            f"NAV: {self.nav:.2f} | "
+            f"Free margin: {self.free_margin:.2f} | "
+            f"Margin level: {self.margin_level:.2f}"
+        )
+
+    def _log_after_open(self) -> None:
+        self._log.info(
+            f"Balance: {self.balance:.2f} | "
+            f"Allocation: {self.allocation:.2f} | "
+            f"NAV: {self.nav:.2f} | "
+            f"Exposure: {self.exposure:.2f} | "
+            f"PnL: {self.pnl:.2f} | "
+            f"Free margin: {self.free_margin:.2f} | "
+            f"Used margin: {self.used_margin:.2f} | "
+            f"Equity: {self.equity:.2f} | "
+            f"Margin level: {self.margin_level:.2f}"
+        )
+
+    def _log_after_close(self, order: OrderModel) -> None:
+        self._log.info(
+            f"After close → "
+            f"Balance: {self.balance:.2f} | "
+            f"NAV: {self.nav:.2f} | "
+            f"PnL realized: {order.profit:.2f} | "
+            f"Equity: {self.equity:.2f} | "
+            f"Margin level: {self.margin_level:.2f}"
+        )
 
     # ───────────────────────────────────────────────────────────
     # GETTERS

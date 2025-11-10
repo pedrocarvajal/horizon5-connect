@@ -110,7 +110,7 @@ class TicksService:
         ticks_folder: Path,
     ) -> None:
         ticks_folder.mkdir(parents=True, exist_ok=True)
-        klines_dict = [kline.model_dump() for kline in klines]
+        klines_dict = [kline.model_dump(exclude={"response"}) for kline in klines]
         candlesticks_data = polars.DataFrame(klines_dict)
         new_ticks = candlesticks_data.select(
             [
@@ -187,7 +187,6 @@ class TicksService:
         try:
             gateway = self._asset.gateway
             gateway.get_klines(
-                futures=True,
                 symbol=self._asset.symbol,
                 timeframe="1m",
                 from_date=int(download_from_date.timestamp()),
