@@ -1,24 +1,33 @@
-from abc import ABC
-from typing import List, Optional, Type
+from typing import List
 
-from interfaces.asset import AssetInterface
-from models.backtest_settings import BacktestSettingsModel
+from interfaces.strategy import StrategyInterface
+from services.asset import AssetService
+from services.logging import LoggingService
+from strategies.ema5_breakout import EMA5BreakoutStrategy
 
 
-class PortfolioInterface(ABC):
+class Asset(AssetService):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _assets: List[Type[AssetInterface]]
-    _backtest_settings: Optional[BacktestSettingsModel]
+    _symbol = "BTCUSDT"
+    _gateway = "binance"
+    _strategies: List[type[StrategyInterface]]
 
     # ───────────────────────────────────────────────────────────
-    # GETTERS
+    # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    @property  # noqa: B027
-    def assets(self) -> List[AssetInterface]:
-        pass
+    def __init__(self) -> None:
+        super().__init__(futures=True)
 
-    @property  # noqa: B027
-    def backtest_settings(self) -> Optional[BacktestSettingsModel]:
-        pass
+        self._log = LoggingService()
+        self._log.setup("asset_btcusdt")
+
+        self._strategies = [
+            EMA5BreakoutStrategy(
+                id="ema5_breakout",
+                allocation=100_000,
+                leverage=3,
+                enabled=True,
+            ),
+        ]
