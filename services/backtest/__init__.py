@@ -80,6 +80,7 @@ class BacktestService:
         self._asset.setup(
             backtest=True,
             backtest_id=self._id,
+            backtest_settings=self._settings,
             **instances,
             **queues,
         )

@@ -1,5 +1,5 @@
 from multiprocessing import Queue
-from typing import Any, List
+from typing import Any, List, Optional
 
 from interfaces.asset import AssetInterface
 from interfaces.strategy import StrategyInterface
@@ -15,9 +15,8 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     _backtest: bool
     _strategies: List[StrategyInterface]
-    _commands_queue: Queue
-    _events_queue: Queue
-
+    _commands_queue: Optional[Queue]
+    _events_queue: Optional[Queue]
     _gateway: GatewayService
     _log: LoggingService
 
@@ -28,10 +27,12 @@ class AssetService(AssetInterface):
         self._log = LoggingService()
         self._log.setup("asset_service")
 
-        self._gateway = GatewayService(
-            self._gateway,
-            futures=futures,
-        )
+        self._strategies = []
+        self._commands_queue = None
+        self._events_queue = None
+        self._backtest = False
+        self._backtest_id = None
+        self._gateway = GatewayService(futures=futures)
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -76,21 +77,3 @@ class AssetService(AssetInterface):
         for strategy in self._strategies:
             strategy.on_end()
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
-    @property
-    def symbol(self) -> str:
-        return self._symbol
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def gateway(self) -> GatewayService:
-        return self._gateway
-
-    @property
-    def strategies(self) -> List[StrategyInterface]:
-        return self._strategies

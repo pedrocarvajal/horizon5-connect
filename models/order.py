@@ -36,6 +36,9 @@ class OrderModel(BaseModel):
     take_profit_price: float = Field(default=0.0, ge=0)
     stop_loss_price: float = Field(default=0.0, ge=0)
 
+    commission: float = Field(default=0.0, ge=0)
+    commission_percentage: float = Field(default=0.0, ge=0)
+
     trades: List[TradeModel] = Field(default_factory=list)
     logs: List[str] = Field(default_factory=list)
     variables: Dict[str, Any] = Field(default_factory=dict)
