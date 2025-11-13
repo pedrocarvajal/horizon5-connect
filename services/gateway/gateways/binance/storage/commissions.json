@@ -1,0 +1,10 @@
+{
+  "btcusdt": {
+    "maker": 0.0002,
+    "taker": 0.0005
+  },
+  "_default": {
+    "maker": 0.0002,
+    "taker": 0.0005
+  }
+}

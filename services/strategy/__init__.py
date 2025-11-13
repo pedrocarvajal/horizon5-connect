@@ -6,7 +6,6 @@ from enums.order_side import OrderSide
 from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
 from interfaces.candle import CandleInterface
-from interfaces.indicator import IndicatorInterface
 from interfaces.strategy import StrategyInterface
 from models.order import OrderModel
 from models.tick import TickModel

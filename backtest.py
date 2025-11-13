@@ -128,19 +128,12 @@ if __name__ == "__main__":
 
     portfolio = _load_portfolio(args.portfolio_path, parser)
     assets = getattr(portfolio, "assets", None)
-    settings = getattr(portfolio, "backtest_settings", None)
-
-    if hasattr(portfolio, "setup_backtest"):
-        portfolio.setup_backtest()
 
     if assets is None:
         assets = getattr(portfolio, "_assets", None)
 
     if not assets:
         parser.error("Portfolio must define at least one asset.")
-
-    if settings is None:
-        settings = getattr(portfolio, "_backtest_settings", None)
 
     processes = [
         Process(
@@ -162,7 +155,6 @@ if __name__ == "__main__":
                     "to_date": to_date,
                     "commands_queue": commands_queue,
                     "events_queue": events_queue,
-                    "settings": settings,
                     "args": args,
                 },
             )

@@ -1,8 +1,7 @@
 from abc import ABC
-from typing import List, Optional, Type
+from typing import List, Type
 
 from interfaces.asset import AssetInterface
-from models.backtest_settings import BacktestSettingsModel
 
 
 class PortfolioInterface(ABC):
@@ -10,15 +9,10 @@ class PortfolioInterface(ABC):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _assets: List[Type[AssetInterface]]
-    _backtest_settings: Optional[BacktestSettingsModel]
 
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
     @property  # noqa: B027
     def assets(self) -> List[AssetInterface]:
-        pass
-
-    @property  # noqa: B027
-    def backtest_settings(self) -> Optional[BacktestSettingsModel]:
         pass

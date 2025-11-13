@@ -14,6 +14,7 @@ class AssetService(AssetInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
+    _backtest_id: Optional[str]
     _strategies: List[StrategyInterface]
     _commands_queue: Optional[Queue]
     _events_queue: Optional[Queue]
@@ -32,7 +33,10 @@ class AssetService(AssetInterface):
         self._events_queue = None
         self._backtest = False
         self._backtest_id = None
-        self._gateway = GatewayService(futures=futures)
+        self._gateway = GatewayService(
+            gateway=self._gateway,
+            futures=futures,
+        )
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -76,4 +80,3 @@ class AssetService(AssetInterface):
     def on_end(self) -> None:
         for strategy in self._strategies:
             strategy.on_end()
-

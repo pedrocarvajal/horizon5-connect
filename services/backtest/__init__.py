@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 from configs.timezone import TIMEZONE
 from enums.command import Command
 from interfaces.asset import AssetInterface
-from models.backtest_settings import BacktestSettingsModel
 from providers.horizon_router import HorizonRouterProvider
 from services.backtest.helpers.get_duration import get_duration
 from services.logging import LoggingService
@@ -22,7 +21,6 @@ class BacktestService:
     _commands_queue: Queue
     _events_queue: Queue
     _horizon_router: Dict[str, Any]
-    _settings: Optional[BacktestSettingsModel]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -35,7 +33,6 @@ class BacktestService:
         commands_queue: Optional[Queue] = None,
         events_queue: Optional[Queue] = None,
         args: Optional[argparse.Namespace] = None,
-        settings: Optional[BacktestSettingsModel] = None,
     ) -> None:
         restore_ticks = args.restore_ticks == "true"
 
@@ -46,7 +43,6 @@ class BacktestService:
         self._restore_ticks = restore_ticks
         self._commands_queue = commands_queue
         self._events_queue = events_queue
-        self._settings = settings
 
         self._log = LoggingService()
         self._log.setup("backtest")
@@ -80,7 +76,6 @@ class BacktestService:
         self._asset.setup(
             backtest=True,
             backtest_id=self._id,
-            backtest_settings=self._settings,
             **instances,
             **queues,
         )
