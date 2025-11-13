@@ -43,6 +43,7 @@ class GatewayService(GatewayInterface):
         timeframe: str,
         from_date: Optional[int],
         to_date: Optional[int],
+        *,
         callback: Callable[[List[KlineModel]], None],
         **kwargs: Any,
     ) -> None:

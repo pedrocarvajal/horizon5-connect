@@ -1,6 +1,7 @@
 import datetime
 from multiprocessing import Process, Queue
 from typing import Any
+import argparse
 
 from assets.horizon_btcusdt import BTCUSDT
 from services.backtest import BacktestService
@@ -25,6 +26,13 @@ if __name__ == "__main__":
     commands_queue = Queue()
     events_queue = Queue()
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--portfolio-path", required=True)
+    parser.add_argument("--from-date", required=True)
+    parser.add_argument("--to-date", required=True)
+    parser.add_argument("--restore-ticks", choices=["true", "false"])
+    args = parser.parse_args()
+
     from_date = datetime.datetime.fromisoformat("2019-01-01")
     to_date = datetime.datetime.fromisoformat("2025-11-09")
 
@@ -44,6 +52,7 @@ if __name__ == "__main__":
                 "to_date": to_date,
                 "commands_queue": commands_queue,
                 "events_queue": events_queue,
+                "args": args,
             },
         ),
     ]

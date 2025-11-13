@@ -32,10 +32,8 @@ class BacktestService:
         to_date: datetime.datetime,
         commands_queue: Optional[Queue] = None,
         events_queue: Optional[Queue] = None,
+        args: Optional[argparse.Namespace] = None,
     ) -> None:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--restore-ticks", choices=["true", "false"])
-        args = parser.parse_args()
         restore_ticks = args.restore_ticks == "true"
 
         self._id = None
