@@ -79,12 +79,6 @@ class OrderModel(BaseModel):
             and tick.price <= self.stop_loss_price
         )
 
-    def open(self) -> None:
-        pass
-
-    def close(self) -> None:
-        pass
-
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,

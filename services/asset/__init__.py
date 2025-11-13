@@ -19,6 +19,7 @@ class AssetService(AssetInterface):
     _commands_queue: Optional[Queue]
     _events_queue: Optional[Queue]
     _gateway: GatewayService
+    _gateway_name: str
     _log: LoggingService
 
     # ───────────────────────────────────────────────────────────
@@ -34,7 +35,8 @@ class AssetService(AssetInterface):
         self._backtest = False
         self._backtest_id = None
         self._gateway = GatewayService(
-            gateway=self._gateway,
+            gateway=self._gateway_name,
+            sandbox=self._backtest,
             futures=futures,
         )
 

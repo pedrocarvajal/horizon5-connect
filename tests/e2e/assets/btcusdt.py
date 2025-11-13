@@ -9,7 +9,7 @@ class BTCUSDT(AssetService):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _symbol = "BTCUSDT"
-    _gateway = "binance"
+    _gateway_name = "binance"
     _strategies: List[type[StrategyInterface]]
 
     # ───────────────────────────────────────────────────────────

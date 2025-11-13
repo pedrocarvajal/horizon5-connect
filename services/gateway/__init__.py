@@ -16,6 +16,7 @@ class GatewayService(GatewayInterface):
     _name: str
     _gateway: GatewayInterface
     _futures: bool
+    _sandbox: bool
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -31,6 +32,7 @@ class GatewayService(GatewayInterface):
         self._gateways = GATEWAYS
         self._name = gateway
         self._futures = kwargs.get("futures", False)
+        self._sandbox = kwargs.get("sandbox", False)
 
         self._setup()
 
@@ -93,7 +95,8 @@ class GatewayService(GatewayInterface):
 
         self._log.info(f"Setting up gateway {self._name}")
         self._gateway = self._gateways[self._name]["class"](
-            **self._gateways[self._name]["kwargs"]
+            **self._gateways[self._name]["kwargs"],
+            sandbox=self._sandbox,
         )
 
     # ───────────────────────────────────────────────────────────

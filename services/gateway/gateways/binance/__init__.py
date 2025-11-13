@@ -1,6 +1,8 @@
 import hashlib
 import hmac
+import json
 from collections.abc import Callable
+from pathlib import Path
 from time import sleep, time
 from typing import Any, Dict, List, Optional
 
@@ -18,11 +20,15 @@ class Binance(GatewayInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _sandbox: bool
+
     _api_key: str
     _api_secret: str
 
     _api_url: str = "https://api.binance.com/api/v3"
     _fapi_url: str = "https://fapi.binance.com/fapi/v1"
+
+    _cached_fees: Optional[Dict[str, Any]] = None
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -32,10 +38,14 @@ class Binance(GatewayInterface):
         self._log.setup("dateway_binance")
         self._log.info("Initializing Binance gateway")
 
+        self._sandbox = kwargs.get("sandbox", False)
+
         self._api_key = kwargs.get("api_key")
         self._api_secret = kwargs.get("api_secret")
 
         self._are_credentials_set()
+
+        self._load_fees_config()
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -174,6 +184,22 @@ class Binance(GatewayInterface):
         futures: bool,
         symbol: str,
     ) -> Optional[TradingFeesModel]:
+        if self._sandbox:
+            if self._cached_fees:
+                symbol_fees = self._cached_fees.get(symbol.upper(), {})
+                maker_commission = symbol_fees.get("maker_commission", 0.0002)
+                taker_commission = symbol_fees.get("taker_commission", 0.0005)
+            else:
+                maker_commission = 0.0
+                taker_commission = 0.0
+
+            return TradingFeesModel(
+                symbol=symbol,
+                maker_commission=maker_commission,
+                taker_commission=taker_commission,
+                response=None,
+            )
+
         if futures:
             base_url = self._fapi_url
             endpoint = "commissionRate"
@@ -362,3 +388,26 @@ class Binance(GatewayInterface):
 
         except (ValueError, TypeError):
             return None
+
+    def _load_fees_config(self) -> None:
+        fees_file_path = Path(__file__).parent / "configs" / "fees.json"
+
+        if fees_file_path.exists():
+            try:
+                with fees_file_path.open("r") as f:
+                    self._cached_fees = json.load(f)
+                    self._log.info(f"Loaded trading fees from {fees_file_path}")
+                    return
+
+            except json.JSONDecodeError as e:
+                self._log.error(f"Error decoding JSON from {fees_file_path}: {e}")
+                self._cached_fees = {}
+                return
+
+            except Exception as e:
+                self._log.error(f"Error reading or parsing {fees_file_path}: {e}")
+                self._cached_fees = {}
+                return
+
+        self._log.warning(f"Trading fees configuration file not found at {fees_file_path}")
+        self._cached_fees = {}

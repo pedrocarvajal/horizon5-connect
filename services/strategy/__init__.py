@@ -13,7 +13,6 @@ from services.analytic import AnalyticService
 from services.asset import AssetService
 from services.logging import LoggingService
 
-from .handlers.chart import ChartHandler
 from .handlers.orderbook import OrderbookHandler
 from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
@@ -31,7 +30,6 @@ class StrategyService(StrategyInterface):
     _leverage: int
     _candles: Dict[Timeframe, CandleInterface]
     _orderbook: OrderbookHandler
-    _chart: ChartHandler
     _analytic: AnalyticInterface
     _commands_queue: Queue
     _events_queue: Queue
@@ -89,6 +87,8 @@ class StrategyService(StrategyInterface):
             raise ValueError("Leverage must be greater than 0")
 
         self._orderbook = OrderbookHandler(
+            backtest=self._backtest,
+            backtest_id=self._backtest_id,
             balance=self._allocation,
             allocation=self._allocation,
             leverage=self._leverage,
@@ -104,8 +104,6 @@ class StrategyService(StrategyInterface):
             commands_queue=self._commands_queue,
             events_queue=self._events_queue,
         )
-
-        self._chart = ChartHandler()
 
         self._log.info(f"Setting up {self.name}")
 

@@ -12,6 +12,8 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _backtest: bool
+    _backtest_id: str
     _allocation: float
     _balance: float
     _leverage: int
@@ -28,6 +30,8 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     def __init__(
         self,
+        backtest: bool,
+        backtest_id: str,
         allocation: float,
         balance: float,
         leverage: int,
@@ -37,6 +41,8 @@ class OrderbookHandler:
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
+        self._backtest = backtest
+        self._backtest_id = backtest_id
         self._allocation = allocation
         self._balance = balance
         self._orders = {}
@@ -53,8 +59,8 @@ class OrderbookHandler:
     # ───────────────────────────────────────────────────────────
     def refresh(self, tick: TickModel) -> None:
         self._tick = tick
-        margin_liquidation_ratio = 0.005
-        margin_recovery_ratio = 0.02
+        margin_liquidation_ratio = 0.001
+        margin_recovery_ratio = 0.05
 
         if self.used_margin > 0 and self.margin_level < margin_liquidation_ratio:
             if not self._margin_call_active:
@@ -95,7 +101,7 @@ class OrderbookHandler:
 
     def open(self, order: OrderModel) -> None:
         required_margin = (order.volume * order.price) / self._leverage
-        margin_liquidation_ratio = 0.005
+        margin_liquidation_ratio = 0.001
 
         if self._margin_call_active:
             self._log.error(
@@ -158,7 +164,6 @@ class OrderbookHandler:
         order.executed_volume = order.volume
         order.close_price = order.price
         order.updated_at = self._tick.date
-        order.open()
 
         self._balance -= required_margin
         self._orders[order.id] = order
@@ -168,7 +173,6 @@ class OrderbookHandler:
         order.status = OrderStatus.CLOSED
         order.close_price = self._tick.price
         order.updated_at = self._tick.date
-        order.close()
 
         if order.status is OrderStatus.CLOSED:
             margin_used = (order.volume * order.price) / self._leverage
