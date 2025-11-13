@@ -10,26 +10,26 @@ class StrategyInterface(ABC):
     def setup(self, **kwargs: Any) -> None:
         pass
 
-    def on_tick(self, tick: TickModel) -> None:
+    def on_tick(self, tick: TickModel) -> None:  # noqa: B027
         pass
 
-    def on_new_minute(self) -> None:
+    def on_new_minute(self) -> None:  # noqa: B027
         pass
 
-    def on_new_hour(self) -> None:
+    def on_new_hour(self) -> None:  # noqa: B027
         pass
 
-    def on_new_day(self) -> None:
+    def on_new_day(self) -> None:  # noqa: B027
         pass
 
-    def on_new_week(self) -> None:
+    def on_new_week(self) -> None:  # noqa: B027
         pass
 
-    def on_new_month(self) -> None:
+    def on_new_month(self) -> None:  # noqa: B027
         pass
 
-    def on_transaction(self, order: OrderModel) -> None:
+    def on_transaction(self, order: OrderModel) -> None:  # noqa: B027
         pass
 
-    def on_end(self) -> None:
+    def on_end(self) -> None:  # noqa: B027
         pass
