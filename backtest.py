@@ -1,13 +1,10 @@
 import argparse
 import datetime
-import importlib.util
-import inspect
 from multiprocessing import Process, Queue
-from pathlib import Path
 from typing import Any
 
 from configs.timezone import TIMEZONE
-from interfaces.portfolio import PortfolioInterface
+from helpers.get_portfolio_by_path import get_portfolio_by_path
 from services.backtest import BacktestService
 from services.commands import CommandsService
 
@@ -41,47 +38,6 @@ def _parse_date(
         return datetime.datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=TIMEZONE)
     except ValueError:
         parser.error(f"Invalid value for {argument}. Use YYYY-MM-DD (e.g. 2024-01-31).")
-
-
-def _load_portfolio(
-    path: str,
-    parser: argparse.ArgumentParser,
-) -> PortfolioInterface:
-    path_obj = Path(path)
-    resolved_path = path_obj if path_obj.is_absolute() else Path.cwd() / path_obj
-
-    if not resolved_path.is_file():
-        parser.error(
-            "Invalid value for --portfolio-path. Provide a Python file like "
-            "portfolios/portfolio.py."
-        )
-
-    spec = importlib.util.spec_from_file_location(
-        f"portfolio_module_{hash(resolved_path)}",
-        resolved_path.as_posix(),
-    )
-
-    if spec is None or spec.loader is None:
-        parser.error("Unable to load portfolio module.")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    portfolio_classes = [
-        member
-        for _, member in inspect.getmembers(module, inspect.isclass)
-        if issubclass(member, PortfolioInterface) and member is not PortfolioInterface
-    ]
-
-    if not portfolio_classes:
-        parser.error("Portfolio file must define a PortfolioInterface implementation.")
-
-    portfolio_class = portfolio_classes[0]
-
-    try:
-        return portfolio_class()
-    except TypeError as exc:
-        parser.error(f"Failed to instantiate portfolio: {exc}")
 
 
 if __name__ == "__main__":
@@ -126,7 +82,7 @@ if __name__ == "__main__":
         else datetime.datetime.now(tz=TIMEZONE)
     )
 
-    portfolio = _load_portfolio(args.portfolio_path, parser)
+    portfolio = get_portfolio_by_path(args.portfolio_path)
     assets = getattr(portfolio, "assets", None)
 
     if assets is None:

@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import hmac
 import json
@@ -7,9 +8,12 @@ from time import sleep, time
 from typing import Any, Dict, List, Optional
 
 import requests
+import websockets
 
+from configs.timezone import TIMEZONE
 from enums.http_status import HttpStatus
 from interfaces.gateway import GatewayInterface
+from models.tick import TickModel
 from services.gateway.models.kline import KlineModel
 from services.gateway.models.symbol_info import SymbolInfoModel
 from services.gateway.models.trading_fees import TradingFeesModel
@@ -27,6 +31,11 @@ class Binance(GatewayInterface):
 
     _api_url: str = "https://api.binance.com/api/v3"
     _fapi_url: str = "https://fapi.binance.com/fapi/v1"
+
+    _api_ws_url: str = "wss://stream.binance.com:9443/ws"  # TODO: Double check this later.
+    _fapi_ws_url: str = "wss://fstream.binance.com/ws"
+
+    _streams: List[str]
 
     _cached_fees: Optional[Dict[str, Any]] = None
 
@@ -254,9 +263,56 @@ class Binance(GatewayInterface):
 
         return self._get_first(data)
 
+    async def stream(
+        self,
+        futures: bool,
+        streams: List[str],
+        callback: Callable[[Any], None],
+    ) -> None:
+        base_url = self._fapi_ws_url if futures else self._api_ws_url
+        stream_path = "/".join(streams)
+        url = f"{base_url}/{stream_path}"
+
+        self._log.info(f"Connecting to WebSocket: {url}")
+
+        for stream in streams:
+            if not any(stream.endswith(suffix) for suffix in ["bookTicker"]):
+                self._log.error(f"Unsupported stream: {stream}")
+                return
+
+        async with websockets.connect(url) as websocket:
+            self._log.info(f"Connected to stream: {stream_path}")
+
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+                except Exception as e:
+                    self._log.error(f"Error processing message: {e}")
+                    continue
+
+                if data and data.get("e") == "bookTicker":
+                    tick = self._get_parsed_tick_from_stream(data)
+                    await callback(tick)
+                else:
+                    self._log.error(f"Unsupported event: {data.get('e')}")
+                    continue
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
+    def _get_parsed_tick_from_stream(self, data: Dict[str, Any]) -> TickModel:
+        best_bid = self._safe_float(data.get("b", 0.0))
+        best_ask = self._safe_float(data.get("a", 0.0))
+
+        price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
+
+        return TickModel(
+            price=price,
+            bid_price=best_bid,
+            ask_price=best_ask,
+            date=datetime.datetime.now(tz=TIMEZONE),
+        )
+
     def _are_credentials_set(self) -> bool:
         if not self._api_key or not self._api_secret:
             self._log.warning("API key or API secret is not set")

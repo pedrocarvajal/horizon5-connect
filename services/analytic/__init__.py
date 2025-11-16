@@ -64,11 +64,11 @@ class AnalyticService(AnalyticInterface):
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
 
-        if self._backtest_id is None:
-            raise ValueError("Backtest ID is required")
-
         if self._backtest is None:
             raise ValueError("Backtest is required")
+
+        if self._backtest and self._backtest_id is None:
+            raise ValueError("Backtest ID is required")
 
         if self._commands_queue is None:
             raise ValueError("Commands queue is required")

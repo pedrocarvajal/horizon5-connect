@@ -9,6 +9,8 @@ class TickModel(BaseModel):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     price: float = Field(default=0.0, ge=0)
+    bid_price: float = Field(default=0.0, ge=0)
+    ask_price: float = Field(default=0.0, ge=0)
     date: Optional[datetime.datetime] = None
 
     # ───────────────────────────────────────────────────────────

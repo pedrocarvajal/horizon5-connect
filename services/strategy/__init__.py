@@ -71,7 +71,7 @@ class StrategyService(StrategyInterface):
         if self._allocation <= 0:
             raise ValueError("Allocation must be greater than 0")
 
-        if self._backtest_id is None:
+        if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required")
 
         if self._commands_queue is None:
@@ -169,6 +169,9 @@ class StrategyService(StrategyInterface):
         order.variables = variables
 
         self.orderbook.open(order)
+
+    def is_running_in_backtest(self) -> bool:
+        return self._backtest
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS

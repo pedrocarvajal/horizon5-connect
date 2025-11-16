@@ -55,7 +55,7 @@ class AssetService(AssetInterface):
         if self._events_queue is None:
             raise ValueError("Events queue is required")
 
-        if self._backtest_id is None:
+        if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required")
 
         enabled_strategies = [s for s in self._strategies if s.enabled]

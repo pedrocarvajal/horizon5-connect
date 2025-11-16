@@ -45,3 +45,12 @@ class GatewayInterface(ABC):
         symbol: str,
     ) -> Optional[Dict[str, Any]]:
         pass
+
+    @abstractmethod
+    async def stream(
+        self,
+        futures: bool,
+        streams: List[str],
+        callback: Callable[[Any], None],
+    ) -> None:
+        pass

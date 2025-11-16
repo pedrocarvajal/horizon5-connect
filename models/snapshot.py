@@ -12,7 +12,7 @@ class SnapshotModel(BaseModel):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     backtest: bool = Field(default=False)
-    backtest_id: str = Field(...)
+    backtest_id: Optional[str] = None
     strategy_id: str = Field(...)
     event: Optional[SnapshotEvent] = Field(default=None)
     allocation: Optional[float] = Field(default=0, ge=0)

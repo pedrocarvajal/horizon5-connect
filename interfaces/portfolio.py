@@ -13,6 +13,6 @@ class PortfolioInterface(ABC):
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
-    @property  # noqa: B027
+    @property
     def assets(self) -> List[AssetInterface]:
-        pass
+        return self._assets

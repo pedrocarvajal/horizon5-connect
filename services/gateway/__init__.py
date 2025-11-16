@@ -86,6 +86,17 @@ class GatewayService(GatewayInterface):
             symbol=symbol,
         )
 
+    async def stream(
+        self,
+        streams: List[str],
+        callback: Callable[[Any], None],
+    ) -> None:
+        await self._gateway.stream(
+            futures=self._futures,
+            streams=streams,
+            callback=callback,
+        )
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
