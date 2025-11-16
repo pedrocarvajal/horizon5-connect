@@ -19,8 +19,9 @@ class ProductionService:
     _portfolio_path: str
     _assets: List[AssetInterface]
 
+    _stream_started_at: datetime.datetime
     _stream_last_updated_at: datetime.datetime
-    _stream_should_be_restarted: bool
+    _stream_tasks: List[asyncio.Task[None]]
 
     _commands_queue: Optional[Queue]
     _events_queue: Optional[Queue]
@@ -33,8 +34,9 @@ class ProductionService:
         self._log.setup("production_service")
 
         self._assets = []
+        self._stream_started_at = datetime.datetime.now(tz=TIMEZONE)
         self._stream_last_updated_at = datetime.datetime.now(tz=TIMEZONE)
-        self._stream_should_be_restarted = False
+        self._stream_tasks = []
 
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
@@ -87,39 +89,46 @@ class ProductionService:
 
     async def _supervisor(self) -> None:
         while True:
-            await asyncio.sleep(60)
+            await asyncio.sleep(10)
 
             stream_last_updated_at = self._stream_last_updated_at
             stream_time_diff = datetime.datetime.now(tz=TIMEZONE) - stream_last_updated_at
 
             if stream_time_diff > datetime.timedelta(seconds=10):
-                self._stream_should_be_restarted = True
-
                 self._log.error(
                     f"Stream has not been updated in the last 10 seconds: "
                     f"{stream_time_diff}. Restarting stream..."
                 )
 
-    def _restore_date(self) -> None:
-        pass
+                for task in self._stream_tasks:
+                    if not task.done():
+                        task.cancel()
 
     async def _connect(self) -> None:
-        tasks = []
+        while True:
+            self._stream_tasks = []
 
-        for asset in self._assets:
-            tasks.append(
-                asyncio.create_task(
-                    self._connect_gateway_stream(asset),
+            for asset in self._assets:
+                self._stream_tasks.append(
+                    asyncio.create_task(
+                        self._connect_gateway_stream(asset),
+                    )
                 )
-            )
 
-        await asyncio.gather(*tasks)
+            try:
+                await asyncio.gather(*self._stream_tasks)
+            except asyncio.CancelledError:
+                self._log.info("Stream tasks cancelled, reconnecting...")
+                self._stream_last_updated_at = datetime.datetime.now(tz=TIMEZONE)
+                await asyncio.sleep(1)
+                continue
 
     async def _connect_gateway_stream(
         self,
         asset: AssetInterface,
     ) -> None:
         gateway = asset.gateway
+        self._stream_started_at = datetime.datetime.now(tz=TIMEZONE)
 
         async def callback(tick: TickModel) -> None:
             self._stream_last_updated_at = tick.date
