@@ -29,8 +29,10 @@ class StrategyService(StrategyInterface):
     _allocation: float
     _leverage: int
     _candles: Dict[Timeframe, CandleInterface]
+
     _orderbook: OrderbookHandler
     _analytic: AnalyticInterface
+
     _commands_queue: Queue
     _events_queue: Queue
 
@@ -153,6 +155,9 @@ class StrategyService(StrategyInterface):
         if variables is None:
             variables = {}
 
+        if self.production:
+            return
+
         order = OrderModel()
         order.strategy_id = self._id
         order.gateway = self.asset.gateway
@@ -169,9 +174,6 @@ class StrategyService(StrategyInterface):
         order.variables = variables
 
         self.orderbook.open(order)
-
-    def is_running_in_backtest(self) -> bool:
-        return self._backtest
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -226,6 +228,10 @@ class StrategyService(StrategyInterface):
         return self._name
 
     @property
+    def backtest(self) -> bool:
+        return self._backtest
+
+    @property
     def asset(self) -> AssetService:
         return self._asset
 
@@ -252,3 +258,7 @@ class StrategyService(StrategyInterface):
     @property
     def orders(self) -> List[OrderModel]:
         return self._orderbook.orders
+
+    @property
+    def production(self) -> bool:
+        return not self.backtest and self._tick.sandbox

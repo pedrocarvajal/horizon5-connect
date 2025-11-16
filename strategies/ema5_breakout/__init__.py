@@ -64,8 +64,8 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_tick(tick)
         self._tick = tick
 
-        if not self.is_running_in_backtest():
-            self._log.info(f"Tick: {tick}")
+        if not self.production:
+            self._log.info(f"Production mode: tick: {tick.price}")
 
     def on_new_hour(self) -> None:
         super().on_new_hour()

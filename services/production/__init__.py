@@ -9,6 +9,7 @@ from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from models.tick import TickModel
 from services.logging import LoggingService
+from services.ticks import TicksService
 
 
 class ProductionService:
@@ -75,6 +76,9 @@ class ProductionService:
                 events_queue=self._events_queue,
             )
 
+        self._log.info("Collecting historical data")
+        self._collect_historical()
+
         self._log.info("Connecting to assets")
         asyncio.run(self._run_tasks())
 
@@ -103,6 +107,37 @@ class ProductionService:
                 for task in self._stream_tasks:
                     if not task.done():
                         task.cancel()
+
+    def _collect_historical(self) -> None:
+        for asset in self._assets:
+            tick_service = TicksService()
+            tick_service.setup(
+                asset=asset,
+                restore_ticks=False,
+                disable_download=False,
+            )
+
+            to_date = datetime.datetime.now(tz=TIMEZONE)
+            from_date = to_date - datetime.timedelta(days=365)
+
+            self._log.info(
+                f"Collecting historical data for {asset.symbol} "
+                f"from {from_date} to {to_date}"
+            )
+
+            ticks = tick_service.ticks(
+                from_date=from_date,
+                to_date=to_date,
+            )
+
+            self._log.info(f"Injecting {len(ticks)} ticks for {asset.symbol}")
+
+            asset.is_production_filling_ticks = True
+
+            for tick in ticks:
+                asset.on_tick(tick)
+
+            asset.is_production_filling_ticks = False
 
     async def _connect(self) -> None:
         while True:
