@@ -52,6 +52,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+"tests/unit/test_binance_adapter.py" = ["PLR2004"]
 
 [tool.ruff.format]
 quote-style = "double"

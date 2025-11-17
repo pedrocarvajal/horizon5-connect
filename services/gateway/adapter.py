@@ -11,10 +11,6 @@ class BaseGatewayAdapter(ABC):
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     @abstractmethod
-    def adapt_kline(self, raw_data: Any, symbol: str) -> KlineModel:
-        pass
-
-    @abstractmethod
     def adapt_klines_batch(self, raw_data: List[Any], symbol: str) -> List[KlineModel]:
         pass
 
