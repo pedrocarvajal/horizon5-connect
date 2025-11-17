@@ -5,9 +5,9 @@ from configs.gateways import GATEWAYS
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from interfaces.gateway import GatewayInterface
-from models.order import OrderModel
 from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 from services.logging import LoggingService
@@ -110,7 +110,7 @@ class GatewayService(GatewayInterface):
         price: Optional[float] = None,
         client_order_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> Optional[OrderModel]:
+    ) -> Optional[GatewayOrderModel]:
         return self._gateway.open(
             futures=self._futures,
             symbol=symbol,

@@ -3,6 +3,7 @@ import unittest
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from services.gateway import GatewayService
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.logging import LoggingService
 
 
@@ -19,8 +20,8 @@ class TestBinanceOpenOrder(unittest.TestCase):
             futures=True,
         )
 
-        leverage = 3
-        volume = 0.01
+        leverage = 5
+        volume = 0.005
 
         self._log.info(f"Setting leverage to {leverage}x for BTCUSDT")
 
@@ -45,10 +46,9 @@ class TestBinanceOpenOrder(unittest.TestCase):
                 "Please ensure your Binance account has sufficient balance."
             )
 
-            self.fail(
-                "Order should be created. Check account balance and margin requirements."
-            )
+            self.fail("Order should be created. Check account balance and margin requirements.")
 
+        assert isinstance(order, GatewayOrderModel), "Order should be a GatewayOrderModel"
         assert order.symbol == "BTCUSDT", "Symbol should match"
         assert order.side == OrderSide.BUY, "Side should be BUY"
         assert order.order_type == OrderType.MARKET, "Order type should be MARKET"

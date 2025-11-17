@@ -12,10 +12,10 @@ from enums.http_status import HttpStatus
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from interfaces.gateway import GatewayInterface
-from models.order import OrderModel
 from services.gateway.gateways.binance.adapter import BinanceAdapter
 from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 from services.logging import LoggingService
@@ -215,7 +215,7 @@ class Binance(GatewayInterface):
         price: Optional[float] = None,
         client_order_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> Optional[OrderModel]:
+    ) -> Optional[GatewayOrderModel]:
         if not futures:
             self._log.warning("Spot trading not yet implemented for open()")
             return None
@@ -232,24 +232,9 @@ class Binance(GatewayInterface):
         if not order:
             return None
 
-        gateway_order = self._adapter.adapt_order_response(
+        return self._adapter.adapt_order_response(
             response=order,
             symbol=symbol.upper(),
-        )
-
-        if not gateway_order:
-            return None
-
-        return OrderModel(
-            id=gateway_order.id,
-            symbol=gateway_order.symbol,
-            side=gateway_order.side,
-            order_type=gateway_order.order_type,
-            status=gateway_order.status,
-            volume=gateway_order.volume,
-            executed_volume=gateway_order.executed_volume,
-            price=gateway_order.price,
-            response=gateway_order.response,
         )
 
     def set_leverage(
@@ -534,8 +519,4 @@ class Binance(GatewayInterface):
     ) -> str:
         characters_to_mask = 4
 
-        return (
-            "*****" + str(value)[-characters_to_mask:]
-            if value and len(value) > characters_to_mask
-            else "*****"
-        )
+        return "*****" + str(value)[-characters_to_mask:] if value and len(value) > characters_to_mask else "*****"

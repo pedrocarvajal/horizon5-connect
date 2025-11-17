@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional
 
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
-from models.order import OrderModel
 from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
@@ -79,7 +79,7 @@ class GatewayInterface(ABC):
         price: Optional[float] = None,
         client_order_id: Optional[str] = None,
         **kwargs: Any,
-    ) -> Optional[OrderModel]:
+    ) -> Optional[GatewayOrderModel]:
         pass
 
     @abstractmethod
