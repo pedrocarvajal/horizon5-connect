@@ -7,6 +7,9 @@ from services.gateway.models.trading_fees import TradingFeesModel
 
 
 class BaseGatewayAdapter(ABC):
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     @abstractmethod
     def adapt_kline(self, raw_data: Any, symbol: str) -> KlineModel:
         pass
@@ -28,4 +31,3 @@ class BaseGatewayAdapter(ABC):
     @abstractmethod
     def validate_response(self, raw_data: Any) -> bool:
         pass
-
