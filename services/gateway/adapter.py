@@ -57,3 +57,6 @@ class BaseGatewayAdapter(ABC):
         raw_data: Any,
     ) -> bool:
         pass
+
+
+# coding review: 2025-11-17T12:52:12Z

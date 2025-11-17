@@ -9,6 +9,7 @@ from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from models.tick import TickModel
 from services.gateway.adapter import BaseGatewayAdapter
+from services.gateway.helpers import has_api_error, parse_optional_float
 from services.gateway.models.gateway_account import (
     GatewayAccountBalanceModel,
     GatewayAccountModel,
@@ -26,6 +27,7 @@ class BinanceAdapter(BaseGatewayAdapter):
     # ───────────────────────────────────────────────────────────
     _source: str
     _cached_fees: Optional[Dict[str, Any]] = None
+    _log: LoggingService
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -93,7 +95,7 @@ class BinanceAdapter(BaseGatewayAdapter):
             step_size=filters.get("step_size"),
             min_notional=filters.get("min_notional"),
             status=symbol_info.get("status", "TRADING"),
-            margin_percent=self._parse_margin_percent(symbol_info),
+            margin_percent=self._parse_margin_percent(symbol_info=symbol_info),
             response=symbol_info,
         )
 
@@ -130,8 +132,8 @@ class BinanceAdapter(BaseGatewayAdapter):
         self,
         response: Dict[str, Any],
     ) -> TickModel:
-        best_bid = self._safe_float(response.get("b", 0.0))
-        best_ask = self._safe_float(response.get("a", 0.0))
+        best_bid = parse_optional_float(value=response.get("b", 0.0))
+        best_ask = parse_optional_float(value=response.get("a", 0.0))
 
         price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
@@ -150,9 +152,9 @@ class BinanceAdapter(BaseGatewayAdapter):
         if not response:
             return False
 
-        if isinstance(response, dict) and "code" in response:
-            error_msg = response.get("msg", "Unknown error")
-            self._log.error(f"API Error: {error_msg} (code: {response['code']})")
+        has_error, error_msg, error_code = has_api_error(response=response)
+        if has_error:
+            self._log.error(f"API Error: {error_msg} (code: {error_code})")
             return False
 
         if not isinstance(response, list):
@@ -169,9 +171,9 @@ class BinanceAdapter(BaseGatewayAdapter):
         if not response:
             return None
 
-        if isinstance(response, dict) and "code" in response:
-            error_msg = response.get("msg", "Unknown error")
-            self._log.error(f"API Error: {error_msg} (code: {response['code']})")
+        has_error, error_msg, error_code = has_api_error(response=response)
+        if has_error:
+            self._log.error(f"API Error: {error_msg} (code: {error_code})")
             return None
 
         order_id = str(response.get("orderId", ""))
@@ -181,9 +183,9 @@ class BinanceAdapter(BaseGatewayAdapter):
         side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
         order_type = self._map_order_type(type_str=type_str)
         status = self.adapt_order_status(status_str=status_str)
-        price = self._safe_float(response.get("price", 0))
-        executed_qty = self._safe_float(response.get("executedQty", 0))
-        orig_qty = self._safe_float(response.get("origQty", 0))
+        price = parse_optional_float(value=response.get("price", 0))
+        executed_qty = parse_optional_float(value=response.get("executedQty", 0))
+        orig_qty = parse_optional_float(value=response.get("origQty", 0))
 
         return GatewayOrderModel(
             id=order_id,
@@ -213,21 +215,6 @@ class BinanceAdapter(BaseGatewayAdapter):
 
         return status_map.get(status_str.upper(), OrderStatus.OPENING)
 
-    def _map_order_type(
-        self,
-        type_str: str,
-    ) -> OrderType:
-        type_map = {
-            "MARKET": OrderType.MARKET,
-            "LIMIT": OrderType.LIMIT,
-            "STOP": OrderType.STOP_LOSS,
-            "STOP_MARKET": OrderType.STOP_LOSS,
-            "TAKE_PROFIT": OrderType.TAKE_PROFIT,
-            "TAKE_PROFIT_MARKET": OrderType.TAKE_PROFIT,
-        }
-
-        return type_map.get(type_str.upper(), OrderType.MARKET)
-
     def adapt_account_response(
         self,
         response: Dict[str, Any],
@@ -238,17 +225,17 @@ class BinanceAdapter(BaseGatewayAdapter):
         if not response:
             return None
 
-        if isinstance(response, dict) and "code" in response:
-            error_msg = response.get("msg", "Unknown error")
-            self._log.error(f"API Error: {error_msg} (code: {response['code']})")
+        has_error, error_msg, error_code = has_api_error(response=response)
+        if has_error:
+            self._log.error(f"API Error: {error_msg} (code: {error_code})")
             return None
 
         if futures:
             assets = response.get("assets", [])
 
             for asset_data in assets:
-                wallet_balance = self._safe_float(asset_data.get("walletBalance", 0))
-                locked_balance = self._safe_float(asset_data.get("locked", 0))
+                wallet_balance = parse_optional_float(value=asset_data.get("walletBalance", 0))
+                locked_balance = parse_optional_float(value=asset_data.get("locked", 0))
 
                 balances.append(
                     GatewayAccountBalanceModel(
@@ -259,11 +246,11 @@ class BinanceAdapter(BaseGatewayAdapter):
                     )
                 )
 
-            total_wallet_balance = self._safe_float(response.get("totalWalletBalance", 0))
-            total_margin_balance = self._safe_float(response.get("totalMarginBalance", 0))
-            total_unrealized_pnl = self._safe_float(response.get("totalUnrealizedProfit", 0))
-            total_position_initial_margin = self._safe_float(response.get("totalPositionInitialMargin", 0))
-            total_open_order_initial_margin = self._safe_float(response.get("totalOpenOrderInitialMargin", 0))
+            total_wallet_balance = parse_optional_float(value=response.get("totalWalletBalance", 0))
+            total_margin_balance = parse_optional_float(value=response.get("totalMarginBalance", 0))
+            total_unrealized_pnl = parse_optional_float(value=response.get("totalUnrealizedProfit", 0))
+            total_position_initial_margin = parse_optional_float(value=response.get("totalPositionInitialMargin", 0))
+            total_open_order_initial_margin = parse_optional_float(value=response.get("totalOpenOrderInitialMargin", 0))
 
             return GatewayAccountModel(
                 balances=balances,
@@ -281,8 +268,8 @@ class BinanceAdapter(BaseGatewayAdapter):
         total_locked = 0.0
 
         for balance_data in spot_balances:
-            free = self._safe_float(balance_data.get("free", 0))
-            locked = self._safe_float(balance_data.get("locked", 0))
+            free = parse_optional_float(value=balance_data.get("free", 0))
+            locked = parse_optional_float(value=balance_data.get("locked", 0))
             total_balance += free + locked
             total_locked += locked
 
@@ -309,6 +296,21 @@ class BinanceAdapter(BaseGatewayAdapter):
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
+    def _map_order_type(
+        self,
+        type_str: str,
+    ) -> OrderType:
+        type_map = {
+            "MARKET": OrderType.MARKET,
+            "LIMIT": OrderType.LIMIT,
+            "STOP": OrderType.STOP_LOSS,
+            "STOP_MARKET": OrderType.STOP_LOSS,
+            "TAKE_PROFIT": OrderType.TAKE_PROFIT,
+            "TAKE_PROFIT_MARKET": OrderType.TAKE_PROFIT,
+        }
+
+        return type_map.get(type_str.upper(), OrderType.MARKET)
+
     def _parse_filters(
         self,
         filters: List[Dict[str, Any]],
@@ -327,17 +329,17 @@ class BinanceAdapter(BaseGatewayAdapter):
             filter_type = filter_item.get("filterType", "")
 
             if filter_type == "PRICE_FILTER":
-                result["min_price"] = self._safe_float(filter_item.get("minPrice"))
-                result["max_price"] = self._safe_float(filter_item.get("maxPrice"))
-                result["tick_size"] = self._safe_float(filter_item.get("tickSize"))
+                result["min_price"] = parse_optional_float(value=filter_item.get("minPrice"))
+                result["max_price"] = parse_optional_float(value=filter_item.get("maxPrice"))
+                result["tick_size"] = parse_optional_float(value=filter_item.get("tickSize"))
 
             elif filter_type == "LOT_SIZE":
-                result["min_quantity"] = self._safe_float(filter_item.get("minQty"))
-                result["max_quantity"] = self._safe_float(filter_item.get("maxQty"))
-                result["step_size"] = self._safe_float(filter_item.get("stepSize"))
+                result["min_quantity"] = parse_optional_float(value=filter_item.get("minQty"))
+                result["max_quantity"] = parse_optional_float(value=filter_item.get("maxQty"))
+                result["step_size"] = parse_optional_float(value=filter_item.get("stepSize"))
 
             elif filter_type == "MIN_NOTIONAL":
-                result["min_notional"] = self._safe_float(filter_item.get("notional"))
+                result["min_notional"] = parse_optional_float(value=filter_item.get("notional"))
 
         return result
 
@@ -346,10 +348,10 @@ class BinanceAdapter(BaseGatewayAdapter):
         symbol_info: Dict[str, Any],
     ) -> Optional[float]:
         if "requiredMarginPercent" in symbol_info:
-            return self._safe_float(symbol_info.get("requiredMarginPercent"))
+            return parse_optional_float(value=symbol_info.get("requiredMarginPercent"))
 
         if "maintMarginPercent" in symbol_info:
-            return self._safe_float(symbol_info.get("maintMarginPercent"))
+            return parse_optional_float(value=symbol_info.get("maintMarginPercent"))
 
         return None
 
@@ -379,16 +381,6 @@ class BinanceAdapter(BaseGatewayAdapter):
         self._cached_fees = {}
 
     # Helpers
-    def _safe_float(
-        self,
-        value: Any,
-    ) -> Optional[float]:
-        try:
-            return float(value) if value is not None else None
-
-        except (ValueError, TypeError):
-            return None
-
     def _get_first(
         self,
         data: Any,
@@ -397,3 +389,6 @@ class BinanceAdapter(BaseGatewayAdapter):
             return data[0]
 
         return data
+
+
+# coding review: 2025-11-17T12:52:12Z

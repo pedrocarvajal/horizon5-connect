@@ -9,7 +9,9 @@ def parse_optional_float(value: Any) -> Optional[float]:
         return value
 
     if isinstance(value, (str, int)):
-        return float(value)
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
 
     return None
-

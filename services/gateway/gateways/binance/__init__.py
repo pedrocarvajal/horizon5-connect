@@ -99,7 +99,7 @@ class Binance(GatewayInterface):
                 futures=futures,
             )
 
-            if not self._adapter.validate_response(raw_data):
+            if not self._adapter.validate_response(response=raw_data):
                 callback([])
                 break
 
@@ -381,16 +381,21 @@ class Binance(GatewayInterface):
         request_params["signature"] = signature
         headers = {"X-MBX-APIKEY": self._api_key}
 
+        method_handlers = {
+            "GET": requests.get,
+            "POST": requests.post,
+            "DELETE": requests.delete,
+        }
+
+        method_upper = method.upper()
+        handler = method_handlers.get(method_upper)
+
+        if not handler:
+            self._log.error(f"Unsupported HTTP method: {method}")
+            return None
+
         try:
-            if method.upper() == "GET":
-                response = requests.get(url, params=request_params, headers=headers)
-            elif method.upper() == "POST":
-                response = requests.post(url, params=request_params, headers=headers)
-            elif method.upper() == "DELETE":
-                response = requests.delete(url, params=request_params, headers=headers)
-            else:
-                self._log.error(f"Unsupported HTTP method: {method}")
-                return None
+            response = handler(url, params=request_params, headers=headers)
 
             if response.status_code != HttpStatus.OK.value:
                 self._log.error(f"HTTP Error {response.status_code}: {response.text}")
@@ -520,3 +525,6 @@ class Binance(GatewayInterface):
         characters_to_mask = 4
 
         return "*****" + str(value)[-characters_to_mask:] if value and len(value) > characters_to_mask else "*****"
+
+
+# coding review: 2025-11-17T12:52:12Z
