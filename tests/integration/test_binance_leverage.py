@@ -1,3 +1,4 @@
+# Last coding review: 2025-11-17 16:41:48
 import unittest
 
 from services.gateway import GatewayService
@@ -5,23 +6,27 @@ from services.logging import LoggingService
 
 
 class TestBinanceLeverage(unittest.TestCase):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _log: LoggingService
+    _gateway: GatewayService
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         self._log = LoggingService()
-        self._log.setup("test_binance_leverage")
-
-    def test_get_leverage_info(self) -> None:
-        gateway = GatewayService(
-            "binance",
+        self._log.setup(name="test_binance_leverage")
+        self._gateway = GatewayService(
+            gateway="binance",
             futures=True,
         )
 
+    def test_get_leverage_info(self) -> None:
         self._log.info("Getting leverage info for BTCUSDT")
 
-        leverage_info = gateway.get_leverage_info(
-            symbol="btcusdt",
-        )
+        leverage_info = self._gateway.get_leverage_info(symbol="btcusdt")
 
         assert leverage_info is not None, "Leverage info should not be None"
         assert "symbol" in leverage_info, "Leverage info should contain symbol"
@@ -40,14 +45,10 @@ class TestBinanceLeverage(unittest.TestCase):
 
     def test_set_leverage(self) -> None:
         leverage = 3
-        gateway = GatewayService(
-            "binance",
-            futures=True,
-        )
 
         self._log.info(f"Setting leverage to {leverage}x for BTCUSDT")
 
-        result = gateway.set_leverage(
+        result = self._gateway.set_leverage(
             symbol="btcusdt",
             leverage=leverage,
         )
@@ -57,23 +58,17 @@ class TestBinanceLeverage(unittest.TestCase):
 
     def test_set_and_get_leverage(self) -> None:
         leverage = 5
-        gateway = GatewayService(
-            "binance",
-            futures=True,
-        )
 
         self._log.info(f"Setting leverage to {leverage}x for BTCUSDT")
 
-        set_result = gateway.set_leverage(
+        set_result = self._gateway.set_leverage(
             symbol="btcusdt",
             leverage=leverage,
         )
 
         assert set_result is True, "Leverage should be set successfully"
 
-        leverage_info = gateway.get_leverage_info(
-            symbol="btcusdt",
-        )
+        leverage_info = self._gateway.get_leverage_info(symbol="btcusdt")
         assert leverage_info is not None, "Leverage info should not be None"
 
         self._log.info(f"Leverage info after setting: {leverage_info}")
