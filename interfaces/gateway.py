@@ -83,6 +83,17 @@ class GatewayInterface(ABC):
         pass
 
     @abstractmethod
+    def close(
+        self,
+        futures: bool,
+        symbol: str,
+        order_id: Optional[str] = None,
+        client_order_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        pass
+
+    @abstractmethod
     def account(
         self,
         futures: bool,

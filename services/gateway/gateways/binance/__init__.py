@@ -220,12 +220,49 @@ class Binance(GatewayInterface):
             self._log.warning("Spot trading not yet implemented for open()")
             return None
 
+        if order_type == OrderType.LIMIT and not price:
+            self._log.error("Price is required for LIMIT orders")
+            return None
+
+        if order_type == OrderType.MARKET and price:
+            self._log.warning("Price parameter is ignored for MARKET orders")
+
         order = self._open_order(
             symbol=symbol.upper(),
             side=side,
             order_type=order_type,
             volume=volume,
-            price=price,
+            price=price if order_type == OrderType.LIMIT else None,
+            client_order_id=client_order_id,
+        )
+
+        if not order:
+            return None
+
+        return self._adapter.adapt_order_response(
+            response=order,
+            symbol=symbol.upper(),
+        )
+
+    def close(
+        self,
+        futures: bool,
+        symbol: str,
+        order_id: Optional[str] = None,
+        client_order_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        if not futures:
+            self._log.warning("Spot trading not yet implemented for close()")
+            return None
+
+        if not order_id and not client_order_id:
+            self._log.error("Either order_id or client_order_id must be provided")
+            return None
+
+        order = self._close_order(
+            symbol=symbol.upper(),
+            order_id=order_id,
             client_order_id=client_order_id,
         )
 
@@ -426,17 +463,44 @@ class Binance(GatewayInterface):
         }
 
         if order_type == OrderType.LIMIT:
-            if not price:
-                self._log.error("Price is required for LIMIT orders")
+            if price is None or price <= 0:
+                self._log.error("Valid price is required for LIMIT orders")
                 return None
+
             params["price"] = price
             params["timeInForce"] = "GTC"
+
+        if order_type == OrderType.MARKET and price is not None:
+            self._log.debug("Price parameter ignored for MARKET orders")
 
         if client_order_id:
             params["newClientOrderId"] = client_order_id
 
         return self._execute(
             method="POST",
+            url=url,
+            params=params,
+        )
+
+    def _close_order(
+        self,
+        symbol: str,
+        order_id: Optional[str] = None,
+        client_order_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        url = f"{self._fapi_url}/order"
+
+        params = {
+            "symbol": symbol,
+        }
+
+        if order_id:
+            params["orderId"] = order_id
+        elif client_order_id:
+            params["origClientOrderId"] = client_order_id
+
+        return self._execute(
+            method="DELETE",
             url=url,
             params=params,
         )

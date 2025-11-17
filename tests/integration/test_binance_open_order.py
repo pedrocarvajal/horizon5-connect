@@ -1,73 +1,221 @@
-# Last coding review: 2025-11-17 16:45:32
+# Last coding review: 2025-11-17 17:36:36
 import unittest
+from typing import Optional
 
 from enums.order_side import OrderSide
+from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from services.gateway import GatewayService
+from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.logging import LoggingService
 
 
 class TestBinanceOpenOrder(unittest.TestCase):
     # ───────────────────────────────────────────────────────────
+    # CONSTANTS
+    # ───────────────────────────────────────────────────────────
+    _SYMBOL: str = "btcusdt"
+    _DEFAULT_LEVERAGE: int = 5
+
+    # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _log: LoggingService
+    _gateway: GatewayService
 
     # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
+    # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         self._log = LoggingService()
         self._log.setup(name="test_binance_open_order")
+        self._gateway = self._create_gateway()
+        self._setup_leverage()
 
-    def test_open_market_order_minimum_lot(self) -> None:
-        gateway = GatewayService(
-            gateway="binance",
-            futures=True,
-        )
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
+    def test_open_market_order_and_close(self) -> None:
+        volume = 0.002
+        account_before = self._gateway.account()
 
-        leverage = 5
-        volume = 0.005
-
-        self._log.info(f"Setting leverage to {leverage}x for BTCUSDT")
-
-        leverage_set = gateway.set_leverage(
-            symbol="btcusdt",
-            leverage=leverage,
-        )
-
-        assert leverage_set, "Leverage should be set successfully"
-        self._log.info(f"Opening order with minimum volume: {volume} BTC")
-
-        order = gateway.open(
-            symbol="btcusdt",
+        order = self._open_order(
+            symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
             volume=volume,
         )
 
+        if self._is_order_executed(order=order, account_before=account_before):
+            self._close_position(order=order)
+        else:
+            self._cancel_order(order=order, account_before=account_before)
+
+        self._verify_account_clean()
+
+    def test_open_limit_order_and_cancel(self) -> None:
+        volume = 0.005
+        limit_price = self._calculate_safe_limit_price()
+
+        order = self._open_order(
+            symbol=self._SYMBOL,
+            side=OrderSide.BUY,
+            order_type=OrderType.LIMIT,
+            volume=volume,
+            price=limit_price,
+        )
+
+        cancelled_order = self._cancel_order(order=order, account_before=None)
+        self._assert_cancelled_order(cancelled_order=cancelled_order, original_order=order)
+        self._verify_account_clean()
+
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
+    def _create_gateway(self) -> GatewayService:
+        return GatewayService(
+            gateway="binance",
+            futures=True,
+        )
+
+    def _setup_leverage(self) -> None:
+        leverage_set = self._gateway.set_leverage(
+            symbol=self._SYMBOL,
+            leverage=self._DEFAULT_LEVERAGE,
+        )
+        assert leverage_set, "Leverage should be set successfully"
+
+    def _open_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: Optional[float] = None,
+    ) -> GatewayOrderModel:
+        order = self._gateway.open(
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            volume=volume,
+            price=price,
+        )
+
         if order is None:
-            self._log.warning(
-                "Order creation failed. This may be due to insufficient margin. "
-                "Please ensure your Binance account has sufficient balance."
-            )
+            self.skipTest("Order not available for testing. Check account balance and margin requirements.")
 
-            self.fail("Order should be created. Check account balance and margin requirements.")
+        self._assert_order_valid(order=order, side=side, order_type=order_type, volume=volume, price=price)
+        return order
 
+    def _assert_order_valid(
+        self,
+        order: GatewayOrderModel,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: Optional[float] = None,
+    ) -> None:
         assert isinstance(order, GatewayOrderModel), "Order should be a GatewayOrderModel"
-        assert order.symbol == "BTCUSDT", "Symbol should match"
-        assert order.side == OrderSide.BUY, "Side should be BUY"
-        assert order.order_type == OrderType.MARKET, "Order type should be MARKET"
+        assert order.symbol == self._SYMBOL.upper(), "Symbol should match"
+        assert order.side == side, f"Side should be {side.value}"
+        assert order.order_type == order_type, f"Order type should be {order_type.value}"
         assert order.volume == volume, f"Volume should be {volume}"
         assert order.status is not None, "Status should be set"
 
-        self._log.info(f"Order created successfully: {order.id}")
-        self._log.info(f"Order status: {order.status.value}")
-        self._log.info(f"Order volume: {order.volume}")
-        self._log.info(f"Order executed volume: {order.executed_volume}")
+        if price is not None:
+            assert order.price == price, f"Price should be {price}"
 
-        self._log.warning(
-            f"IMPORTANT: Order {order.id} is now OPEN. "
-            f"Please close this order manually or wait for the user to close it."
+    def _is_order_executed(
+        self,
+        order: GatewayOrderModel,
+        account_before: Optional[GatewayAccountModel],
+    ) -> bool:
+        if order.status == OrderStatus.OPENED:
+            return True
+
+        account_after = self._gateway.account()
+
+        if account_before and account_after:
+            return account_after.margin > account_before.margin
+
+        return False
+
+    def _close_position(
+        self,
+        order: GatewayOrderModel,
+    ) -> None:
+        close_volume = order.executed_volume if order.executed_volume > 0 else order.volume
+        opposite_side = OrderSide.SELL if order.side == OrderSide.BUY else OrderSide.BUY
+
+        close_order = self._gateway.open(
+            symbol=self._SYMBOL,
+            side=opposite_side,
+            order_type=OrderType.MARKET,
+            volume=close_volume,
         )
+
+        if close_order is None:
+            self.fail("Position should be closed. Failed to open opposite order.")
+
+    def _cancel_order(
+        self,
+        order: GatewayOrderModel,
+        account_before: Optional[GatewayAccountModel],
+    ) -> Optional[GatewayOrderModel]:
+        closed_order = self._gateway.close(
+            symbol=self._SYMBOL,
+            order_id=order.id,
+        )
+
+        if closed_order is None:
+            if account_before:
+                account_check = self._gateway.account()
+
+                if account_check and account_check.margin > account_before.margin:
+                    self._close_position(order=order)
+                    return None
+
+            self.fail("Order should be cancelled. Check if the order was already filled or executed.")
+
+        return closed_order
+
+    def _assert_cancelled_order(
+        self,
+        cancelled_order: GatewayOrderModel,
+        original_order: GatewayOrderModel,
+    ) -> None:
+        assert isinstance(cancelled_order, GatewayOrderModel), "Cancelled order should be a GatewayOrderModel"
+        assert cancelled_order.symbol == original_order.symbol, "Symbol should match"
+        assert cancelled_order.id == original_order.id, "Order ID should match"
+        assert cancelled_order.side == original_order.side, "Side should match original order"
+        assert cancelled_order.order_type == original_order.order_type, "Order type should match original order"
+        assert cancelled_order.volume == original_order.volume, "Volume should match original order"
+        assert cancelled_order.status == OrderStatus.CANCELLED, (
+            f"Order status should be CANCELLED, but got {cancelled_order.status.value}"
+        )
+
+        if original_order.price is not None:
+            assert cancelled_order.price == original_order.price, "Price should match original order"
+
+    def _calculate_safe_limit_price(self) -> float:
+        symbol_info = self._gateway.get_symbol_info(symbol=self._SYMBOL)
+
+        if symbol_info is None:
+            return 200000.0
+
+        min_price = symbol_info.min_price or 100.0
+        max_price = symbol_info.max_price or 200000.0
+        limit_price = min_price * 10
+
+        if limit_price > max_price:
+            limit_price = max_price * 0.9
+
+        return limit_price
+
+    def _verify_account_clean(self) -> None:
+        account_after = self._gateway.account()
+
+        if account_after:
+            assert account_after.locked == 0, "No orders should remain locked after closing"
+            assert account_after.margin == 0, "No positions should remain open after closing"

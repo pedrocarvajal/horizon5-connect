@@ -128,6 +128,21 @@ class GatewayService(GatewayInterface):
             **kwargs,
         )
 
+    def close(
+        self,
+        symbol: str,
+        order_id: Optional[str] = None,
+        client_order_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        return self._gateway.close(
+            futures=self._futures,
+            symbol=symbol,
+            order_id=order_id,
+            client_order_id=client_order_id,
+            **kwargs,
+        )
+
     def set_leverage(
         self,
         symbol: str,
