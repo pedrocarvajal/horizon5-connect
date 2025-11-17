@@ -1,4 +1,4 @@
-# Last coding review: 2025-11-17 16:40:03
+# Last coding review: 2025-11-17 17:49:49
 import unittest
 from typing import Optional
 
@@ -56,11 +56,18 @@ class TestBinanceAccount(unittest.TestCase):
             futures=futures,
         )
 
-    def _validate_account_info(self, account_info: Optional[GatewayAccountModel]) -> None:
+    def _validate_account_info(
+        self,
+        account_info: Optional[GatewayAccountModel],
+    ) -> None:
         assert account_info is not None, "Account info should not be None"
         assert isinstance(account_info, GatewayAccountModel), "Account info should be a GatewayAccountModel"
 
-    def _log_account_balances(self, account_info: Optional[GatewayAccountModel], futures: bool) -> None:
+    def _log_account_balances(
+        self,
+        account_info: Optional[GatewayAccountModel],
+        futures: bool,
+    ) -> None:
         if account_info is None:
             return
 
@@ -72,7 +79,11 @@ class TestBinanceAccount(unittest.TestCase):
             elif balance.balance > 0 or balance.locked > 0:
                 self._log.info(f"Asset: {balance.asset}, Balance: {balance.balance}, Locked: {balance.locked}")
 
-    def _log_account_summary(self, account_info: Optional[GatewayAccountModel], futures: bool) -> None:
+    def _log_account_summary(
+        self,
+        account_info: Optional[GatewayAccountModel],
+        futures: bool,
+    ) -> None:
         if account_info is None:
             return
 
