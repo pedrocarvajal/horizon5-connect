@@ -1,3 +1,4 @@
+# Last coding review: 2025-11-17 16:40:03
 import unittest
 
 from services.gateway import GatewayService
@@ -6,15 +7,21 @@ from services.logging import LoggingService
 
 
 class TestBinanceAccount(unittest.TestCase):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _log: LoggingService
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         self._log = LoggingService()
-        self._log.setup("test_binance_account")
+        self._log.setup(name="test_binance_account")
 
     def test_get_futures_account(self) -> None:
         gateway = GatewayService(
-            "binance",
+            gateway="binance",
             futures=True,
         )
 
@@ -23,20 +30,14 @@ class TestBinanceAccount(unittest.TestCase):
         account_info = gateway.account()
 
         assert account_info is not None, "Account info should not be None"
-        assert isinstance(account_info, GatewayAccountModel), (
-            "Account info should be a GatewayAccountModel"
-        )
+        assert isinstance(account_info, GatewayAccountModel), "Account info should be a GatewayAccountModel"
 
         self._log.info("Account info retrieved successfully")
         self._log.info(f"Account balances: {len(account_info.balances)}")
 
         for balance in account_info.balances:
             if balance.balance and balance.balance > 0:
-                self._log.info(
-                    f"Asset: {balance.asset}, "
-                    f"Balance: {balance.balance}, "
-                    f"Locked: {balance.locked}"
-                )
+                self._log.info(f"Asset: {balance.asset}, Balance: {balance.balance}, Locked: {balance.locked}")
 
         self._log.info(f"Total Balance: {account_info.balance}")
         self._log.info(f"NAV: {account_info.nav}")
@@ -45,7 +46,7 @@ class TestBinanceAccount(unittest.TestCase):
 
     def test_get_spot_account(self) -> None:
         gateway = GatewayService(
-            "binance",
+            gateway="binance",
             futures=False,
         )
 
@@ -54,19 +55,13 @@ class TestBinanceAccount(unittest.TestCase):
         account_info = gateway.account()
 
         assert account_info is not None, "Account info should not be None"
-        assert isinstance(account_info, GatewayAccountModel), (
-            "Account info should be a GatewayAccountModel"
-        )
+        assert isinstance(account_info, GatewayAccountModel), "Account info should be a GatewayAccountModel"
 
         self._log.info("Account info retrieved successfully")
 
         for balance in account_info.balances:
             if balance.balance > 0 or balance.locked > 0:
-                self._log.info(
-                    f"Asset: {balance.asset}, "
-                    f"Balance: {balance.balance}, "
-                    f"Locked: {balance.locked}"
-                )
+                self._log.info(f"Asset: {balance.asset}, Balance: {balance.balance}, Locked: {balance.locked}")
 
         self._log.info(f"Total Balance: {account_info.balance}")
         self._log.info(f"NAV: {account_info.nav}")
