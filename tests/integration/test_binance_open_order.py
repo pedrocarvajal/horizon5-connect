@@ -8,15 +8,21 @@ from services.logging import LoggingService
 
 
 class TestBinanceOpenOrder(unittest.TestCase):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _log: LoggingService
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         self._log = LoggingService()
-        self._log.setup("test_binance_open_order")
+        self._log.setup(name="test_binance_open_order")
 
     def test_open_market_order_minimum_lot(self) -> None:
         gateway = GatewayService(
-            "binance",
+            gateway="binance",
             futures=True,
         )
 
