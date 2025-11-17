@@ -3,7 +3,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class SymbolInfoModel(BaseModel):
+class GatewaySymbolInfoModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────

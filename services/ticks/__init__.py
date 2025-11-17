@@ -9,7 +9,7 @@ from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
 from interfaces.asset import AssetInterface
 from models.tick import TickModel
-from services.gateway.models.kline import KlineModel
+from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.logging import LoggingService
 
 
@@ -105,7 +105,7 @@ class TicksService:
 
     def _save_ticks(
         self,
-        klines: List[KlineModel],
+        klines: List[GatewayKlineModel],
         parquet_file: Path,
         ticks_folder: Path,
     ) -> None:
@@ -151,9 +151,9 @@ class TicksService:
         current_date = None
         start_timestamp = int(download_from_date.timestamp())
         end_timestamp = int(download_to_date.timestamp())
-        klines_list: List[KlineModel] = []
+        klines_list: List[GatewayKlineModel] = []
 
-        def _process_klines(klines: List[KlineModel]) -> None:
+        def _process_klines(klines: List[GatewayKlineModel]) -> None:
             nonlocal current_date
             nonlocal klines_list
 

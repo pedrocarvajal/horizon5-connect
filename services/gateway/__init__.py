@@ -2,10 +2,14 @@ from collections.abc import Callable
 from typing import Any, Dict, List, Optional
 
 from configs.gateways import GATEWAYS
+from enums.order_side import OrderSide
+from enums.order_type import OrderType
 from interfaces.gateway import GatewayInterface
-from services.gateway.models.kline import KlineModel
-from services.gateway.models.symbol_info import SymbolInfoModel
-from services.gateway.models.trading_fees import TradingFeesModel
+from models.order import OrderModel
+from services.gateway.models.gateway_account import GatewayAccountModel
+from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 from services.logging import LoggingService
 
 
@@ -46,7 +50,7 @@ class GatewayService(GatewayInterface):
         from_date: Optional[int],
         to_date: Optional[int],
         *,
-        callback: Callable[[List[KlineModel]], None],
+        callback: Callable[[List[GatewayKlineModel]], None],
         **kwargs: Any,
     ) -> None:
         self._gateway.get_klines(
@@ -62,7 +66,7 @@ class GatewayService(GatewayInterface):
     def get_symbol_info(
         self,
         symbol: str,
-    ) -> Optional[SymbolInfoModel]:
+    ) -> Optional[GatewaySymbolInfoModel]:
         return self._gateway.get_symbol_info(
             futures=self._futures,
             symbol=symbol,
@@ -71,7 +75,7 @@ class GatewayService(GatewayInterface):
     def get_trading_fees(
         self,
         symbol: str,
-    ) -> Optional[TradingFeesModel]:
+    ) -> Optional[GatewayTradingFeesModel]:
         return self._gateway.get_trading_fees(
             futures=self._futures,
             symbol=symbol,
@@ -97,6 +101,47 @@ class GatewayService(GatewayInterface):
             callback=callback,
         )
 
+    def open(
+        self,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: Optional[float] = None,
+        client_order_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Optional[OrderModel]:
+        return self._gateway.open(
+            futures=self._futures,
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            volume=volume,
+            price=price,
+            client_order_id=client_order_id,
+            **kwargs,
+        )
+
+    def set_leverage(
+        self,
+        symbol: str,
+        leverage: int,
+    ) -> bool:
+        return self._gateway.set_leverage(
+            futures=self._futures,
+            symbol=symbol,
+            leverage=leverage,
+        )
+
+    def account(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayAccountModel]:
+        return self._gateway.account(
+            futures=self._futures,
+            **kwargs,
+        )
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
@@ -107,7 +152,6 @@ class GatewayService(GatewayInterface):
         self._log.info(f"Setting up gateway {self._name}")
         self._gateway = self._gateways[self._name]["class"](
             **self._gateways[self._name]["kwargs"],
-            sandbox=self._sandbox,
         )
 
     # ───────────────────────────────────────────────────────────

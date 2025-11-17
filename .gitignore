@@ -212,3 +212,5 @@ storage/binance/
 .notes
 *.pkl
 *.zip
+
+.plan

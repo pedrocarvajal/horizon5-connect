@@ -3,7 +3,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class TradingFeesModel(BaseModel):
+class GatewayTradingFeesModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────

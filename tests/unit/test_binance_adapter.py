@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 from models.tick import TickModel
 from services.gateway.gateways.binance.adapter import BinanceAdapter
-from services.gateway.models.kline import KlineModel
-from services.gateway.models.symbol_info import SymbolInfoModel
-from services.gateway.models.trading_fees import TradingFeesModel
+from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
 
 class TestBinanceAdapter(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestBinanceAdapter(unittest.TestCase):
         result = self.adapter.adapt_klines_batch([raw_kline], "BTCUSDT")
 
         assert len(result) == 1
-        assert isinstance(result[0], KlineModel)
+        assert isinstance(result[0], GatewayKlineModel)
         assert result[0].source == "binance"
         assert result[0].symbol == "BTCUSDT"
         assert result[0].open_time == 1704067200
@@ -82,7 +82,7 @@ class TestBinanceAdapter(unittest.TestCase):
         result = self.adapter.adapt_klines_batch(raw_klines, "BTCUSDT")
 
         assert len(result) == 2
-        assert all(isinstance(k, KlineModel) for k in result)
+        assert all(isinstance(k, GatewayKlineModel) for k in result)
         assert result[0].open_price == 42350.50
         assert result[1].open_price == 42450.75
 
@@ -120,7 +120,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = self.adapter.adapt_symbol_info(raw_response)
 
-        assert isinstance(result, SymbolInfoModel)
+        assert isinstance(result, GatewaySymbolInfoModel)
         assert result.symbol == "BTCUSDT"
         assert result.base_asset == "BTC"
         assert result.quote_asset == "USDT"
@@ -158,7 +158,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = self.adapter.adapt_symbol_info(raw_response)
 
-        assert isinstance(result, SymbolInfoModel)
+        assert isinstance(result, GatewaySymbolInfoModel)
         assert result.margin_percent == 0.05
 
     def test_adapt_trading_fees_spot(self) -> None:
@@ -170,7 +170,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = self.adapter.adapt_trading_fees(raw_response, futures=False)
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "BTCUSDT"
         assert result.maker_commission == 0.001
         assert result.taker_commission == 0.001
@@ -184,7 +184,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = self.adapter.adapt_trading_fees(raw_response, futures=True)
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "BTCUSDT"
         assert result.maker_commission == 0.0002
         assert result.taker_commission == 0.0004
@@ -204,7 +204,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = self.adapter.adapt_trading_fees(raw_response, futures=False)
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "BTCUSDT"
 
     def test_adapt_trading_fees_sandbox_with_cached_fees(self) -> None:
@@ -218,7 +218,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = adapter.adapt_trading_fees_sandbox("BTCUSDT")
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "BTCUSDT"
         assert result.maker_commission == 0.0002
         assert result.taker_commission == 0.0005
@@ -230,7 +230,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = adapter.adapt_trading_fees_sandbox("BTCUSDT")
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "BTCUSDT"
         assert result.maker_commission == 0.0
         assert result.taker_commission == 0.0
@@ -241,7 +241,7 @@ class TestBinanceAdapter(unittest.TestCase):
 
         result = adapter.adapt_trading_fees_sandbox("ETHUSDT")
 
-        assert isinstance(result, TradingFeesModel)
+        assert isinstance(result, GatewayTradingFeesModel)
         assert result.symbol == "ETHUSDT"
         assert result.maker_commission == 0.0002
         assert result.taker_commission == 0.0005

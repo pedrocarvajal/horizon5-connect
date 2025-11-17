@@ -2,9 +2,13 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Dict, List, Optional
 
-from services.gateway.models.kline import KlineModel
-from services.gateway.models.symbol_info import SymbolInfoModel
-from services.gateway.models.trading_fees import TradingFeesModel
+from enums.order_side import OrderSide
+from enums.order_type import OrderType
+from models.order import OrderModel
+from services.gateway.models.gateway_account import GatewayAccountModel
+from services.gateway.models.gateway_kline import GatewayKlineModel
+from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
 
 class GatewayInterface(ABC):
@@ -17,7 +21,7 @@ class GatewayInterface(ABC):
         from_date: Optional[int],
         to_date: Optional[int],
         *,
-        callback: Callable[[List[KlineModel]], None],
+        callback: Callable[[List[GatewayKlineModel]], None],
         **kwargs: Any,
     ) -> None:
         pass
@@ -27,7 +31,7 @@ class GatewayInterface(ABC):
         self,
         futures: bool,
         symbol: str,
-    ) -> Optional[SymbolInfoModel]:
+    ) -> Optional[GatewaySymbolInfoModel]:
         pass
 
     @abstractmethod
@@ -35,7 +39,7 @@ class GatewayInterface(ABC):
         self,
         futures: bool,
         symbol: str,
-    ) -> Optional[TradingFeesModel]:
+    ) -> Optional[GatewayTradingFeesModel]:
         pass
 
     @abstractmethod
@@ -53,4 +57,35 @@ class GatewayInterface(ABC):
         streams: List[str],
         callback: Callable[[Any], None],
     ) -> None:
+        pass
+
+    @abstractmethod
+    def set_leverage(
+        self,
+        futures: bool,
+        symbol: str,
+        leverage: int,
+    ) -> bool:
+        pass
+
+    @abstractmethod
+    def open(
+        self,
+        futures: bool,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: Optional[float] = None,
+        client_order_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Optional[OrderModel]:
+        pass
+
+    @abstractmethod
+    def account(
+        self,
+        futures: bool,
+        **kwargs: Any,
+    ) -> Optional[GatewayAccountModel]:
         pass
