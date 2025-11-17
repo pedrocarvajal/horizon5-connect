@@ -1,318 +1,150 @@
-import datetime
 import hashlib
 import hmac
 import json
 from collections.abc import Callable
-from pathlib import Path
 from time import sleep, time
 from typing import Any, Dict, List, Optional
 
 import requests
 import websockets
 
-from configs.timezone import TIMEZONE
 from enums.http_status import HttpStatus
 from interfaces.gateway import GatewayInterface
-from models.tick import TickModel
+from services.gateway.gateways.binance.adapter import BinanceAdapter
 from services.gateway.models.kline import KlineModel
 from services.gateway.models.symbol_info import SymbolInfoModel
 from services.gateway.models.trading_fees import TradingFeesModel
 from services.logging import LoggingService
 
 
-class Binance(GatewayInterface):
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-    _sandbox: bool
-
+class _BinanceClient:
     _api_key: str
     _api_secret: str
+    _sandbox: bool
 
     _api_url: str = "https://api.binance.com/api/v3"
     _fapi_url: str = "https://fapi.binance.com/fapi/v1"
 
-    _api_ws_url: str = "wss://stream.binance.com:9443/ws"  # TODO: Double check this later.
+    _api_ws_url: str = "wss://stream.binance.com:9443/ws"
     _fapi_ws_url: str = "wss://fstream.binance.com/ws"
 
-    _streams: List[str]
-
-    _cached_fees: Optional[Dict[str, Any]] = None
-
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, api_key: str, api_secret: str, sandbox: bool = False) -> None:
         self._log = LoggingService()
-        self._log.setup("dateway_binance")
-        self._log.info("Initializing Binance gateway")
+        self._log.setup("binance_client")
 
-        self._sandbox = kwargs.get("sandbox", False)
-
-        self._api_key = kwargs.get("api_key")
-        self._api_secret = kwargs.get("api_secret")
+        self._api_key = api_key
+        self._api_secret = api_secret
+        self._sandbox = sandbox
 
         self._are_credentials_set()
 
-        self._load_fees_config()
-
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
-        futures: bool,
         symbol: str,
-        timeframe: str,
-        from_date: Optional[int],
-        to_date: Optional[int],
-        *,
-        callback: Callable[[List[KlineModel]], None],
-        **kwargs: Any,
-    ) -> None:
-        limit = kwargs.get("limit", 1000)
-        from_date = int(from_date * 1000)
-        to_date = int(to_date * 1000)
-
-        while True:
-            if from_date > to_date:
-                callback([])
-                break
-
-            params = {
-                "symbol": symbol.upper(),
-                "interval": timeframe,
-                "startTime": from_date,
-                "endTime": to_date,
-                "limit": limit,
-            }
-
-            try:
-                base_url = self._fapi_url if futures else self._api_url
-                response = requests.get(f"{base_url}/klines", params=params)
-
-                if response.status_code != HttpStatus.OK.value:
-                    self._log.error(f"HTTP Error {response.status_code}: {response.text}")
-                    callback([])
-                    break
-
-                data = response.json()
-            except requests.exceptions.RequestException as e:
-                self._log.error(f"Error fetching klines: {e}")
-                raise e
-
-            if not self._validate_api_response(data):
-                callback([])
-                break
-
-            klines = []
-
-            for item in data:
-                open_time = int(float(item[0]) / 1000)
-                close_time = int(float(item[6]) / 1000)
-
-                kline = KlineModel(
-                    source="binance",
-                    symbol=symbol,
-                    open_time=open_time,
-                    open_price=float(item[1]),
-                    high_price=float(item[2]),
-                    low_price=float(item[3]),
-                    close_price=float(item[4]),
-                    volume=float(item[5]),
-                    close_time=close_time,
-                    quote_asset_volume=float(item[7]),
-                    number_of_trades=int(item[8]),
-                    taker_buy_base_asset_volume=float(item[9]),
-                    taker_buy_quote_asset_volume=float(item[10]),
-                    response=item,
-                )
-
-                klines.append(kline)
-
-            last_kline = klines[-1]
-            from_date = int(last_kline.close_time * 1000)
-            sleep(0.25)
-
-            callback(klines)
-
-    def get_symbol_info(
-        self,
-        futures: bool,
-        symbol: str,
-    ) -> Optional[SymbolInfoModel]:
+        interval: str,
+        start_time: int,
+        end_time: int,
+        limit: int = 1000,
+        futures: bool = False,
+    ) -> Optional[List[Any]]:
         base_url = self._fapi_url if futures else self._api_url
-        endpoint = "exchangeInfo"
-        url = f"{base_url}/{endpoint}"
+
         params = {
             "symbol": symbol.upper(),
+            "interval": interval,
+            "startTime": start_time,
+            "endTime": end_time,
+            "limit": limit,
         }
 
         try:
-            response = requests.get(
-                url,
-                params=params,
-            )
+            response = requests.get(f"{base_url}/klines", params=params)
 
             if response.status_code != HttpStatus.OK.value:
                 self._log.error(f"HTTP Error {response.status_code}: {response.text}")
                 return None
 
-            data = response.json()
-
-            if "symbols" in data and len(data["symbols"]) > 0:
-                symbol_info = data["symbols"][0]
-                filters = self._parse_binance_filters(symbol_info.get("filters", []))
-
-                return SymbolInfoModel(
-                    symbol=symbol_info.get("symbol", ""),
-                    base_asset=symbol_info.get("baseAsset", ""),
-                    quote_asset=symbol_info.get("quoteAsset", ""),
-                    price_precision=symbol_info.get("pricePrecision", 2),
-                    quantity_precision=symbol_info.get("quantityPrecision", 2),
-                    min_price=filters.get("min_price"),
-                    max_price=filters.get("max_price"),
-                    tick_size=filters.get("tick_size"),
-                    min_quantity=filters.get("min_quantity"),
-                    max_quantity=filters.get("max_quantity"),
-                    step_size=filters.get("step_size"),
-                    min_notional=filters.get("min_notional"),
-                    status=symbol_info.get("status", "TRADING"),
-                    margin_percent=self._parse_margin_percent(symbol_info),
-                    response=symbol_info,
-                )
-
-            return None
+            return response.json()
 
         except requests.exceptions.RequestException as e:
-            self._log.error(f"Error fetching symbol info: {e}")
+            self._log.error(f"Error fetching klines: {e}")
+            return None
+
+    def get_exchange_info(
+        self, symbol: str, futures: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        base_url = self._fapi_url if futures else self._api_url
+        params = {"symbol": symbol.upper()}
+
+        try:
+            response = requests.get(f"{base_url}/exchangeInfo", params=params)
+
+            if response.status_code != HttpStatus.OK.value:
+                self._log.error(f"HTTP Error {response.status_code}: {response.text}")
+                return None
+
+            return response.json()
+
+        except requests.exceptions.RequestException as e:
+            self._log.error(f"Error fetching exchange info: {e}")
             return None
 
     def get_trading_fees(
-        self,
-        futures: bool,
-        symbol: str,
-    ) -> Optional[TradingFeesModel]:
-        if self._sandbox:
-            if self._cached_fees:
-                symbol_fees = self._cached_fees.get(symbol.upper(), {})
-                maker_commission = symbol_fees.get("maker_commission", 0.0002)
-                taker_commission = symbol_fees.get("taker_commission", 0.0005)
-            else:
-                maker_commission = 0.0
-                taker_commission = 0.0
-
-            return TradingFeesModel(
-                symbol=symbol,
-                maker_commission=maker_commission,
-                taker_commission=taker_commission,
-                response=None,
-            )
-
+        self, symbol: str, futures: bool = False
+    ) -> Optional[Dict[str, Any]]:
         if futures:
             base_url = self._fapi_url
             endpoint = "commissionRate"
-            params = {"symbol": symbol.upper()}
         else:
             base_url = "https://api.binance.com/sapi/v1"
             endpoint = "asset/tradeFee"
-            params = {"symbol": symbol.upper()}
 
-        url = f"{base_url}/{endpoint}"
-        data = self._request(url, params=params, requires_auth=True)
+        params = {"symbol": symbol.upper()}
+        return self._authenticated_request(f"{base_url}/{endpoint}", params)
 
-        if not data:
-            return None
-
-        fees_data = self._get_first(data)
-
-        if not fees_data:
-            return None
-
-        symbol_name = fees_data.get("symbol", symbol.upper())
-
-        if futures:
-            maker_commission = fees_data.get("makerCommissionRate")
-            taker_commission = fees_data.get("takerCommissionRate")
-        else:
-            maker_commission = fees_data.get("makerCommission")
-            taker_commission = fees_data.get("takerCommission")
-
-        return TradingFeesModel(
-            symbol=symbol_name,
-            maker_commission=maker_commission,
-            taker_commission=taker_commission,
-            response=fees_data,
-        )
-
-    def get_leverage_info(
-        self,
-        futures: bool,
-        symbol: str,
-    ) -> Optional[Dict[str, Any]]:
-        if not futures:
-            self._log.warning("Leverage info only available for futures")
-            return None
-
+    def get_leverage_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         url = f"{self._fapi_url}/leverageBracket"
         params = {"symbol": symbol.upper()}
-        data = self._request(url, params=params, requires_auth=True)
+        return self._authenticated_request(url, params)
 
-        if not data:
+    def _authenticated_request(
+        self,
+        url: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        if not self._api_key or not self._api_secret:
+            self._log.error("API credentials required for authenticated request")
             return None
 
-        return self._get_first(data)
+        request_params = params.copy() if params else {}
+        timestamp = int(time() * 1000)
+        request_params["timestamp"] = timestamp
 
-    async def stream(
-        self,
-        futures: bool,
-        streams: List[str],
-        callback: Callable[[Any], None],
-    ) -> None:
-        base_url = self._fapi_ws_url if futures else self._api_ws_url
-        stream_path = "/".join(streams)
-        url = f"{base_url}/{stream_path}"
+        query_string = "&".join(f"{k}={v}" for k, v in request_params.items())
+        signature = self._generate_signature(query_string)
+        request_params["signature"] = signature
 
-        self._log.info(f"Connecting to WebSocket: {url}")
+        headers = {"X-MBX-APIKEY": self._api_key}
 
-        for stream in streams:
-            if not any(stream.endswith(suffix) for suffix in ["bookTicker"]):
-                self._log.error(f"Unsupported stream: {stream}")
-                return
+        try:
+            response = requests.get(url, params=request_params, headers=headers)
 
-        async with websockets.connect(url) as websocket:
-            self._log.info(f"Connected to stream: {stream_path}")
+            if response.status_code != HttpStatus.OK.value:
+                self._log.error(f"HTTP Error {response.status_code}: {response.text}")
+                return None
 
-            async for message in websocket:
-                try:
-                    data = json.loads(message)
-                except Exception as e:
-                    self._log.error(f"Error processing message: {e}")
-                    continue
+            return response.json()
 
-                if data and data.get("e") == "bookTicker":
-                    tick = self._get_parsed_tick_from_stream(data)
-                    await callback(tick)
-                else:
-                    self._log.error(f"Unsupported event: {data.get('e')}")
-                    continue
+        except requests.exceptions.RequestException as e:
+            self._log.error(f"Error making authenticated request: {e}")
+            return None
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
-    def _get_parsed_tick_from_stream(self, data: Dict[str, Any]) -> TickModel:
-        best_bid = self._safe_float(data.get("b", 0.0))
-        best_ask = self._safe_float(data.get("a", 0.0))
-
-        price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
-
-        return TickModel(
-            sandbox=False,
-            price=price,
-            bid_price=best_bid,
-            ask_price=best_ask,
-            date=datetime.datetime.now(tz=TIMEZONE),
-        )
+    def _generate_signature(self, query_string: str) -> str:
+        return hmac.new(
+            self._api_secret.encode("utf-8"),
+            query_string.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
 
     def _are_credentials_set(self) -> bool:
         if not self._api_key or not self._api_secret:
@@ -337,134 +169,157 @@ class Binance(GatewayInterface):
             else "*****"
         )
 
-    def _generate_signature(self, query_string: str) -> str:
-        return hmac.new(
-            self._api_secret.encode("utf-8"),
-            query_string.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
+    @property
+    def ws_url(self) -> str:
+        return self._api_ws_url
 
-    def _request(
+    @property
+    def fws_url(self) -> str:
+        return self._fapi_ws_url
+
+
+class Binance(GatewayInterface):
+    _sandbox: bool
+    _client: _BinanceClient
+    _adapter: BinanceAdapter
+
+    def __init__(self, **kwargs: Any) -> None:
+        self._log = LoggingService()
+        self._log.setup("gateway_binance")
+        self._log.info("Initializing Binance gateway")
+
+        self._sandbox = kwargs.get("sandbox", False)
+
+        self._client = _BinanceClient(
+            api_key=kwargs.get("api_key"),
+            api_secret=kwargs.get("api_secret"),
+            sandbox=self._sandbox,
+        )
+
+        self._adapter = BinanceAdapter(source_name="binance", sandbox=self._sandbox)
+
+    def get_klines(
         self,
-        url: str,
-        params: Optional[Dict[str, Any]] = None,
-        requires_auth: bool = False,
+        futures: bool,
+        symbol: str,
+        timeframe: str,
+        from_date: Optional[int],
+        to_date: Optional[int],
+        *,
+        callback: Callable[[List[KlineModel]], None],
+        **kwargs: Any,
+    ) -> None:
+        limit = kwargs.get("limit", 1000)
+        from_date_ms = int(from_date * 1000)
+        to_date_ms = int(to_date * 1000)
+
+        while True:
+            if from_date_ms > to_date_ms:
+                callback([])
+                break
+
+            raw_data = self._client.get_klines(
+                symbol=symbol,
+                interval=timeframe,
+                start_time=from_date_ms,
+                end_time=to_date_ms,
+                limit=limit,
+                futures=futures,
+            )
+
+            if not self._adapter.validate_response(raw_data):
+                callback([])
+                break
+
+            klines = self._adapter.adapt_klines_batch(raw_data, symbol)
+
+            if not klines:
+                callback([])
+                break
+
+            last_kline = klines[-1]
+            from_date_ms = int(last_kline.close_time * 1000)
+            sleep(0.25)
+
+            callback(klines)
+
+    def get_symbol_info(
+        self,
+        futures: bool,
+        symbol: str,
+    ) -> Optional[SymbolInfoModel]:
+        raw_data = self._client.get_exchange_info(symbol, futures)
+
+        if not raw_data:
+            self._log.error(f"Failed to fetch symbol info for {symbol}")
+            return None
+
+        return self._adapter.adapt_symbol_info(raw_data)
+
+    def get_trading_fees(
+        self,
+        futures: bool,
+        symbol: str,
+    ) -> Optional[TradingFeesModel]:
+        if self._sandbox:
+            return self._adapter.adapt_trading_fees_sandbox(symbol)
+
+        raw_data = self._client.get_trading_fees(symbol, futures)
+
+        if not raw_data:
+            return None
+
+        return self._adapter.adapt_trading_fees(raw_data, futures)
+
+    def get_leverage_info(
+        self,
+        futures: bool,
+        symbol: str,
     ) -> Optional[Dict[str, Any]]:
-        if requires_auth and (not self._api_key or not self._api_secret):
-            self._log.error("API credentials required for authenticated request")
+        if not futures:
+            self._log.warning("Leverage info only available for futures")
             return None
 
-        headers = {}
-        request_params = params.copy() if params else {}
+        raw_data = self._client.get_leverage_info(symbol)
 
-        if requires_auth:
-            timestamp = int(time() * 1000)
-            request_params["timestamp"] = timestamp
-            query_string = "&".join(f"{k}={v}" for k, v in request_params.items())
-            signature = self._generate_signature(query_string)
-            request_params["signature"] = signature
-            headers["X-MBX-APIKEY"] = self._api_key
-
-        try:
-            response = requests.get(url, params=request_params, headers=headers)
-
-            if response.status_code != HttpStatus.OK.value:
-                self._log.error(f"HTTP Error {response.status_code}: {response.text}")
-                return None
-
-            return response.json()
-
-        except requests.exceptions.RequestException as e:
-            self._log.error(f"Error making request to {url}: {e}")
+        if not raw_data:
             return None
 
-    def _validate_api_response(self, data: Any) -> bool:
-        if not data:
-            return False
+        if isinstance(raw_data, list) and len(raw_data) > 0:
+            return raw_data[0]
 
-        if isinstance(data, dict) and "code" in data:
-            error_msg = data.get("msg", "Unknown error")
-            self._log.error(f"API Error: {error_msg} (code: {data['code']})")
-            return False
+        return raw_data
 
-        if not isinstance(data, list):
-            self._log.error(f"Unexpected response type: {type(data)}")
-            return False
+    async def stream(
+        self,
+        futures: bool,
+        streams: List[str],
+        callback: Callable[[Any], None],
+    ) -> None:
+        base_url = self._client.fws_url if futures else self._client.ws_url
+        stream_path = "/".join(streams)
+        url = f"{base_url}/{stream_path}"
 
-        return True
+        self._log.info(f"Connecting to WebSocket: {url}")
 
-    def _get_first(self, data: Any) -> Dict[str, Any]:
-        if isinstance(data, list) and len(data) > 0:
-            return data[0]
-
-        return data
-
-    def _parse_binance_filters(
-        self, filters: List[Dict[str, Any]]
-    ) -> Dict[str, Optional[float]]:
-        result = {
-            "min_price": None,
-            "max_price": None,
-            "tick_size": None,
-            "min_quantity": None,
-            "max_quantity": None,
-            "step_size": None,
-            "min_notional": None,
-        }
-
-        for filter_item in filters:
-            filter_type = filter_item.get("filterType", "")
-
-            if filter_type == "PRICE_FILTER":
-                result["min_price"] = self._safe_float(filter_item.get("minPrice"))
-                result["max_price"] = self._safe_float(filter_item.get("maxPrice"))
-                result["tick_size"] = self._safe_float(filter_item.get("tickSize"))
-
-            elif filter_type == "LOT_SIZE":
-                result["min_quantity"] = self._safe_float(filter_item.get("minQty"))
-                result["max_quantity"] = self._safe_float(filter_item.get("maxQty"))
-                result["step_size"] = self._safe_float(filter_item.get("stepSize"))
-
-            elif filter_type == "MIN_NOTIONAL":
-                result["min_notional"] = self._safe_float(filter_item.get("notional"))
-
-        return result
-
-    def _parse_margin_percent(self, symbol_info: Dict[str, Any]) -> Optional[float]:
-        if "requiredMarginPercent" in symbol_info:
-            return self._safe_float(symbol_info.get("requiredMarginPercent"))
-
-        if "maintMarginPercent" in symbol_info:
-            return self._safe_float(symbol_info.get("maintMarginPercent"))
-
-        return None
-
-    def _safe_float(self, value: Any) -> Optional[float]:
-        try:
-            return float(value) if value is not None else None
-
-        except (ValueError, TypeError):
-            return None
-
-    def _load_fees_config(self) -> None:
-        fees_file_path = Path(__file__).parent / "configs" / "fees.json"
-
-        if fees_file_path.exists():
-            try:
-                with fees_file_path.open("r") as f:
-                    self._cached_fees = json.load(f)
-                    self._log.info(f"Loaded trading fees from {fees_file_path}")
-                    return
-
-            except json.JSONDecodeError as e:
-                self._log.error(f"Error decoding JSON from {fees_file_path}: {e}")
-                self._cached_fees = {}
+        for stream in streams:
+            if not any(stream.endswith(suffix) for suffix in ["bookTicker"]):
+                self._log.error(f"Unsupported stream: {stream}")
                 return
 
-            except Exception as e:
-                self._log.error(f"Error reading or parsing {fees_file_path}: {e}")
-                self._cached_fees = {}
-                return
+        async with websockets.connect(url) as websocket:
+            self._log.info(f"Connected to stream: {stream_path}")
 
-        self._log.warning(f"Trading fees configuration file not found at {fees_file_path}")
-        self._cached_fees = {}
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+                except Exception as e:
+                    self._log.error(f"Error processing message: {e}")
+                    continue
+
+                if data and data.get("e") == "bookTicker":
+                    tick = self._adapter.adapt_tick_from_stream(data)
+                    await callback(tick)
+                else:
+                    self._log.error(f"Unsupported event: {data.get('e')}")
+                    continue
