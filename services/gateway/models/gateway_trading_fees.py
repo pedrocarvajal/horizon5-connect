@@ -1,6 +1,9 @@
+# Last coding review: 2025-11-17 16:47:10
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from services.gateway.helpers.parse_percentage import parse_percentage as parse_percentage_helper
 
 
 class GatewayTradingFeesModel(BaseModel):
@@ -27,7 +30,7 @@ class GatewayTradingFeesModel(BaseModel):
     )
 
     # ───────────────────────────────────────────────────────────
-    # VALIDATORS
+    # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     @field_validator(
         "maker_commission",
@@ -36,18 +39,4 @@ class GatewayTradingFeesModel(BaseModel):
     )
     @classmethod
     def parse_percentage(cls, value: Any) -> Optional[float]:
-        if value is None or value == "":
-            return None
-
-        parsed_value = None
-
-        if isinstance(value, float):
-            parsed_value = value
-
-        elif isinstance(value, (str, int)):
-            parsed_value = float(value)
-
-        if parsed_value is not None and parsed_value > 1:
-            return parsed_value / 100
-
-        return parsed_value
+        return parse_percentage_helper(value=value)

@@ -1,6 +1,11 @@
+# Last coding review: 2025-11-17 16:47:10
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from services.gateway.helpers.parse_int import parse_int as parse_int_helper
+from services.gateway.helpers.parse_optional_float import parse_optional_float as parse_optional_float_helper
+from services.gateway.helpers.parse_percentage import parse_percentage as parse_percentage_helper
 
 
 class GatewaySymbolInfoModel(BaseModel):
@@ -71,7 +76,7 @@ class GatewaySymbolInfoModel(BaseModel):
     )
 
     # ───────────────────────────────────────────────────────────
-    # VALIDATORS
+    # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     @field_validator(
         "price_precision",
@@ -80,16 +85,7 @@ class GatewaySymbolInfoModel(BaseModel):
     )
     @classmethod
     def parse_int(cls, value: Any) -> int:
-        if value is None:
-            return 0
-
-        if isinstance(value, int):
-            return value
-
-        if isinstance(value, str):
-            return int(float(value))
-
-        return int(value)
+        return parse_int_helper(value=value)
 
     @field_validator(
         "min_price",
@@ -103,16 +99,7 @@ class GatewaySymbolInfoModel(BaseModel):
     )
     @classmethod
     def parse_float(cls, value: Any) -> Optional[float]:
-        if value is None or value == "":
-            return None
-
-        if isinstance(value, float):
-            return value
-
-        if isinstance(value, (str, int)):
-            return float(value)
-
-        return None
+        return parse_optional_float_helper(value=value)
 
     @field_validator(
         "margin_percent",
@@ -120,18 +107,4 @@ class GatewaySymbolInfoModel(BaseModel):
     )
     @classmethod
     def parse_percentage(cls, value: Any) -> Optional[float]:
-        parsed_value = None
-
-        if value is None or value == "":
-            return None
-
-        if isinstance(value, float):
-            parsed_value = value
-
-        elif isinstance(value, (str, int)):
-            parsed_value = float(value)
-
-        if parsed_value is not None and parsed_value > 1:
-            return parsed_value / 100
-
-        return parsed_value
+        return parse_percentage_helper(value=value)

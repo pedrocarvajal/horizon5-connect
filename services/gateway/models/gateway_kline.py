@@ -1,6 +1,10 @@
+# Last coding review: 2025-11-17 16:47:10
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from services.gateway.helpers.parse_float import parse_float as parse_float_helper
+from services.gateway.helpers.parse_int import parse_int as parse_int_helper
 
 
 class GatewayKlineModel(BaseModel):
@@ -68,7 +72,7 @@ class GatewayKlineModel(BaseModel):
     )
 
     # ───────────────────────────────────────────────────────────
-    # VALIDATORS
+    # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     @field_validator(
         "open_time",
@@ -78,16 +82,7 @@ class GatewayKlineModel(BaseModel):
     )
     @classmethod
     def parse_int(cls, value: Any) -> int:
-        if value is None:
-            return 0
-
-        if isinstance(value, int):
-            return value
-
-        if isinstance(value, str):
-            return int(float(value))
-
-        return int(value)
+        return parse_int_helper(value=value)
 
     @field_validator(
         "open_price",
@@ -102,13 +97,4 @@ class GatewayKlineModel(BaseModel):
     )
     @classmethod
     def parse_float(cls, value: Any) -> float:
-        if value is None:
-            return 0.0
-
-        if isinstance(value, float):
-            return value
-
-        if isinstance(value, (str, int)):
-            return float(value)
-
-        return 0.0
+        return parse_float_helper(value=value)

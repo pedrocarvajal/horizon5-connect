@@ -1,9 +1,13 @@
+# Last coding review: 2025-11-17 16:47:10
 from typing import Any, List
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class GatewayAccountBalanceModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     asset: str = Field(
@@ -25,6 +29,9 @@ class GatewayAccountBalanceModel(BaseModel):
 
 
 class GatewayAccountModel(BaseModel):
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     balances: List[GatewayAccountBalanceModel] = Field(
