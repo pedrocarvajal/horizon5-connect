@@ -1,3 +1,4 @@
+# Last coding review: 2025-11-17 17:00:40
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -15,7 +16,7 @@ class BaseGatewayAdapter(ABC):
     @abstractmethod
     def adapt_klines_batch(
         self,
-        raw_data: List[Any],
+        response: List[Any],
         symbol: str,
     ) -> List[GatewayKlineModel]:
         pass
@@ -23,14 +24,14 @@ class BaseGatewayAdapter(ABC):
     @abstractmethod
     def adapt_symbol_info(
         self,
-        raw_data: Dict[str, Any],
+        response: Dict[str, Any],
     ) -> Optional[GatewaySymbolInfoModel]:
         pass
 
     @abstractmethod
     def adapt_trading_fees(
         self,
-        raw_data: Dict[str, Any],
+        response: Dict[str, Any],
         futures: bool,
     ) -> Optional[GatewayTradingFeesModel]:
         pass
@@ -54,9 +55,6 @@ class BaseGatewayAdapter(ABC):
     @abstractmethod
     def validate_response(
         self,
-        raw_data: Any,
+        response: Any,
     ) -> bool:
         pass
-
-
-# coding review: 2025-11-17T12:52:12Z

@@ -1,3 +1,4 @@
+# Last coding review: 2025-11-17 16:59:28
 import datetime
 import json
 from pathlib import Path
@@ -37,7 +38,7 @@ class BinanceAdapter(BaseGatewayAdapter):
         source_name: str = "binance",
     ) -> None:
         self._log = LoggingService()
-        self._log.setup("binance_adapter")
+        self._log.setup(name="binance_adapter")
 
         self._source = source_name
 
@@ -389,6 +390,3 @@ class BinanceAdapter(BaseGatewayAdapter):
             return data[0]
 
         return data
-
-
-# coding review: 2025-11-17T12:52:12Z
