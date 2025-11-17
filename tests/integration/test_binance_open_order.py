@@ -55,8 +55,8 @@ class TestBinanceOpenOrder(unittest.TestCase):
         self._verify_account_clean()
 
     def test_open_limit_order_and_cancel(self) -> None:
-        volume = 0.005
         limit_price = self._calculate_safe_limit_price()
+        volume = self._calculate_min_volume_for_notional(price=limit_price, min_notional=100.0)
 
         order = self._open_order(
             symbol=self._SYMBOL,
@@ -103,7 +103,10 @@ class TestBinanceOpenOrder(unittest.TestCase):
         )
 
         if order is None:
-            self.skipTest("Order not available for testing. Check account balance and margin requirements.")
+            if order_type == OrderType.LIMIT:
+                self.fail("LIMIT order should be created. Check order parameters and API connection.")
+            else:
+                self.skipTest("Order not available for testing. Check account balance and margin requirements.")
 
         self._assert_order_valid(order=order, side=side, order_type=order_type, volume=volume, price=price)
         return order
@@ -212,6 +215,16 @@ class TestBinanceOpenOrder(unittest.TestCase):
             limit_price = max_price * 0.9
 
         return limit_price
+
+    def _calculate_min_volume_for_notional(
+        self,
+        price: float,
+        min_notional: float = 100.0,
+    ) -> float:
+        min_volume = min_notional / price
+        min_volume = max(min_volume, 0.001)
+
+        return round(min_volume, 3)
 
     def _verify_account_clean(self) -> None:
         account_after = self._gateway.account()
