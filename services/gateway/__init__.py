@@ -1,3 +1,5 @@
+# Last coding review: 2025-11-17 17:02:38
+
 from collections.abc import Callable
 from typing import Any, Dict, List, Optional
 
@@ -17,10 +19,14 @@ class GatewayService(GatewayInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+
     _name: str
-    _gateway: GatewayInterface
     _futures: bool
     _sandbox: bool
+    _gateways: Dict[str, Any]
+
+    _gateway: GatewayInterface
+    _log: LoggingService
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -31,7 +37,7 @@ class GatewayService(GatewayInterface):
         **kwargs: Any,
     ) -> None:
         self._log = LoggingService()
-        self._log.setup("gateway_service")
+        self._log.setup(name="gateway_service")
 
         self._gateways = GATEWAYS
         self._name = gateway
@@ -160,6 +166,3 @@ class GatewayService(GatewayInterface):
     @property
     def name(self) -> str:
         return self._name
-
-
-# coding review: 2025-11-17T12:52:12Z
