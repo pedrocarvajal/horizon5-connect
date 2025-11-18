@@ -1,19 +1,20 @@
-# Last coding review: 2025-11-17 19:36:27
+# Last coding review: 2025-01-XX XX:XX:XX
 import unittest
-from time import sleep
+from datetime import datetime, timedelta
 
+from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
-from enums.order_type import OrderType
 from services.gateway import GatewayService
+from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.logging import LoggingService
 
 
-class TestBinanceOpenOrder(unittest.TestCase):
+class TestBinanceOrders(unittest.TestCase):
     # ───────────────────────────────────────────────────────────
     # CONSTANTS
     # ───────────────────────────────────────────────────────────
     _SYMBOL: str = "btcusdt"
-    _DEFAULT_LEVERAGE: int = 10
 
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
@@ -26,34 +27,43 @@ class TestBinanceOpenOrder(unittest.TestCase):
     # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         self._log = LoggingService()
-        self._log.setup(name="test_binance_open_order")
+        self._log.setup(name="test_binance_orders")
         self._gateway = self._create_gateway()
-        self._setup_leverage()
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
-    def test_open_market_order_and_close(self) -> None:
-        # Open a market order
-        order = self._gateway.place_order(
+    def test_get_orders_last_3_months(self) -> None:
+        end_time = datetime.now(tz=TIMEZONE)
+        start_time = end_time - timedelta(days=90)
+
+        orders = self._gateway.get_orders(
             symbol=self._SYMBOL,
-            side=OrderSide.BUY,
-            order_type=OrderType.MARKET,
-            volume=0.002,
+            start_time=start_time,
+            end_time=end_time,
         )
 
-        assert order, "Order should be created successfully"
-        self._log.info(f"Order created: {order.id}")
-        sleep(3)
+        assert isinstance(orders, list), "Orders should be a list"
 
-        # Update the order
-        order = self._gateway.get_order(
-            symbol=self._SYMBOL,
-            order_id=order.id,
-        )
-
-        assert order, "Order should be updated successfully"
-        self._log.debug(order)
+        for order in orders:
+            assert isinstance(order, GatewayOrderModel), "Each order should be a GatewayOrderModel"
+            assert order.id, "Order ID should be set"
+            assert order.symbol, "Order symbol should be set"
+            assert order.symbol == order.symbol.upper(), "Order symbol should be uppercase"
+            assert order.side in [OrderSide.BUY, OrderSide.SELL], "Order side should be BUY or SELL"
+            assert order.order_type is not None, "Order type should be set"
+            assert order.status is not None, "Order status should be set"
+            assert order.status in [
+                GatewayOrderStatus.PENDING,
+                GatewayOrderStatus.EXECUTED,
+                GatewayOrderStatus.CANCELLED,
+            ], f"Order status should be valid GatewayOrderStatus, got {order.status}"
+            assert order.volume >= 0, "Order volume should be non-negative"
+            assert order.executed_volume >= 0, "Order executed volume should be non-negative"
+            assert order.executed_volume <= order.volume, "Executed volume should not exceed order volume"
+            assert order.price >= 0, "Order price should be non-negative"
+            assert order.response is not None, "Order response should be set"
+            assert isinstance(order.response, dict), "Order response should be a dictionary"
 
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
@@ -63,12 +73,3 @@ class TestBinanceOpenOrder(unittest.TestCase):
             gateway="binance",
             futures=True,
         )
-
-    def _setup_leverage(self) -> None:
-        leverage_set = self._gateway.set_leverage(
-            symbol=self._SYMBOL,
-            leverage=self._DEFAULT_LEVERAGE,
-        )
-
-        assert leverage_set, "Leverage should be set successfully"
-        self._log.info(f"Leverage set to {self._DEFAULT_LEVERAGE}x for {self._SYMBOL}")

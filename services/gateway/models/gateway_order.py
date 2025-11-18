@@ -4,8 +4,8 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from enums.order_side import OrderSide
-from enums.order_status import OrderStatus
 from enums.order_type import OrderType
+from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 
 
 class GatewayOrderModel(BaseModel):
@@ -30,9 +30,9 @@ class GatewayOrderModel(BaseModel):
         default=OrderType.MARKET,
         description="Order type: MARKET, LIMIT, etc.",
     )
-    status: Optional[OrderStatus] = Field(
-        default=OrderStatus.OPENING,
-        description="Order status: OPENING, OPENED, CLOSED, etc.",
+    status: Optional[GatewayOrderStatus] = Field(
+        default=GatewayOrderStatus.PENDING,
+        description="Order status: PENDING, EXECUTED, CANCELLED",
     )
     volume: float = Field(
         default=0.0,

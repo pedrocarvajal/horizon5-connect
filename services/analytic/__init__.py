@@ -106,7 +106,7 @@ class AnalyticService(AnalyticInterface):
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def on_transaction(self, order: OrderModel) -> None:
-        if order.status is OrderStatus.OPENED:
+        if order.status is OrderStatus.OPEN:
             pass
 
         elif order.status is OrderStatus.CLOSED:

@@ -78,7 +78,7 @@ class EMA5BreakoutStrategy(StrategyService):
     def on_transaction(self, order: OrderModel) -> None:
         super().on_transaction(order)
 
-        if order.status is OrderStatus.OPENED:
+        if order.status is OrderStatus.OPEN:
             self._log.info(f"Order: {order.id}, was opened.")
 
         if order.status is OrderStatus.CLOSED:
@@ -86,10 +86,7 @@ class EMA5BreakoutStrategy(StrategyService):
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
-            self._log.info(
-                f"Order: {order.id}, was closed, "
-                f"with profit: {profit:.2f} ({profit_percentage:.2f}%). "
-            )
+            self._log.info(f"Order: {order.id}, was closed, with profit: {profit:.2f} ({profit_percentage:.2f}%). ")
 
             if profit_percentage < 0 and max_layers > 0:
                 self._open_recovery_order(closed_order=order)
@@ -133,7 +130,7 @@ class EMA5BreakoutStrategy(StrategyService):
         if not self._previous_day_ema5_max:
             return
 
-        if len(self.orderbook.where(side=OrderSide.BUY, status=OrderStatus.OPENED)) > 0:
+        if len(self.orderbook.where(side=OrderSide.BUY, status=OrderStatus.OPEN)) > 0:
             return
 
         current_price = self._tick.price
@@ -141,10 +138,7 @@ class EMA5BreakoutStrategy(StrategyService):
         current_ema5 = candles[-1]["i"]["ema5"]["value"]
         previous_ema5 = candles[-2]["i"]["ema5"]["value"]
 
-        if (
-            previous_ema5 < self._previous_day_ema5_max
-            and current_ema5 > self._previous_day_ema5_max
-        ):
+        if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
             self._log.info(
                 f"Breakout: {self._tick.date} | "
                 f"Opening price: {self._tick.price} | "
@@ -179,9 +173,7 @@ class EMA5BreakoutStrategy(StrategyService):
         yesterday = today - datetime.timedelta(days=1)
         candles = self._candles[Timeframe.ONE_HOUR].candles
         ema5s = [
-            candle["i"]["ema5"]
-            for candle in candles[-min_candles_required:]
-            if "i" in candle and "ema5" in candle["i"]
+            candle["i"]["ema5"] for candle in candles[-min_candles_required:] if "i" in candle and "ema5" in candle["i"]
         ]
 
         if len(ema5s) < min_candles_required:
@@ -189,11 +181,7 @@ class EMA5BreakoutStrategy(StrategyService):
             return
 
         self._previous_day_ema5_max = max(
-            [
-                ema5.get("value")
-                for ema5 in ema5s
-                if ema5.get("date") >= yesterday and ema5.get("date") < today
-            ]
+            [ema5.get("value") for ema5 in ema5s if ema5.get("date") >= yesterday and ema5.get("date") < today]
         )
 
     def _calculate_volume_based_on_target_price(

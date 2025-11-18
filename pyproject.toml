@@ -13,6 +13,7 @@ dependencies = [
     "pymongo>=4.15.3",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
+    "rich>=13.0.0",
     "scikit-learn>=1.7.2",
     "websockets>=15.0.1",
 ]
@@ -48,6 +49,7 @@ ignore = [
     "UP006",   # list vs List, dict vs Dict
     "UP035",   # typing.List/Dict deprecated
     "UP007",   # Union[X, Y] vs X | Y
+    "PLR0913", # Too many arguments in function definition
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -1,8 +1,11 @@
 import logging
+from io import StringIO
 from pathlib import Path
 from typing import Any, ClassVar
 
 from colorama import Fore, Style, just_fix_windows_console
+from rich.console import Console
+from rich.json import JSON
 
 from helpers.get_slug import get_slug
 
@@ -35,8 +38,17 @@ class LoggingService:
     # PUBLIC METHODS
     # ───────────────────────────────────────────────────────────
     def debug(self, message: Any) -> None:
-        formatted_message = f"{self._prefix} {message}" if self._prefix else message
-        self.logger.debug(formatted_message)
+        if isinstance(message, (dict, list)):
+            console = Console(file=StringIO(), force_terminal=True, width=120)
+            console.print(JSON.from_data(message))
+            output = console.file.getvalue().rstrip()
+        else:
+            output = str(message)
+
+        if self._prefix:
+            output = f"{self._prefix} {output}"
+
+        self.logger.debug(output)
 
     def info(self, message: str) -> None:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message

@@ -65,20 +65,17 @@ class OrderbookHandler:
         if self.used_margin > 0 and self.margin_level < margin_liquidation_ratio:
             if not self._margin_call_active:
                 self._margin_call_active = True
-                self._log.critical(
-                    "Margin call triggered: closing all orders and blocking new operations."
-                )
+                self._log.critical("Margin call triggered: closing all orders and blocking new operations.")
 
             for order in list(self._orders.values()):
-                if order.status is OrderStatus.OPENED:
+                if order.status is OrderStatus.OPEN:
                     self._log.warning(f"Closing order {order.id}.")
                     self.close(order)
 
         if self._margin_call_active and self.margin_level > margin_recovery_ratio:
             self._margin_call_active = False
             self._log.info(
-                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. "
-                f"New operations allowed."
+                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. New operations allowed."
             )
 
         for order in list(self._orders.values()):
@@ -104,9 +101,7 @@ class OrderbookHandler:
         margin_liquidation_ratio = 0.001
 
         if self._margin_call_active:
-            self._log.error(
-                "Margin call active: cannot open new orders until margin level recovers."
-            )
+            self._log.error("Margin call active: cannot open new orders until margin level recovers.")
             order.status = OrderStatus.CANCELLED
             order.executed_volume = 0
 
@@ -141,11 +136,7 @@ class OrderbookHandler:
         projected_used_margin = self.used_margin + required_margin
         projected_balance = self._balance - required_margin
         projected_equity = projected_balance + self.pnl
-        projected_margin_level = (
-            projected_equity / projected_used_margin
-            if projected_used_margin > 0
-            else float("inf")
-        )
+        projected_margin_level = projected_equity / projected_used_margin if projected_used_margin > 0 else float("inf")
 
         if projected_margin_level < margin_liquidation_ratio:
             self._log.error(
@@ -160,7 +151,7 @@ class OrderbookHandler:
             self._on_transaction(order)
             return
 
-        order.status = OrderStatus.OPENED
+        order.status = OrderStatus.OPEN
         order.executed_volume = order.volume
         order.close_price = order.price
         order.updated_at = self._tick.date
@@ -194,8 +185,7 @@ class OrderbookHandler:
         return [
             order
             for order in self._orders.values()
-            if (side is None or order.side == side)
-            and (status is None or order.status == status)
+            if (side is None or order.side == side) and (status is None or order.status == status)
         ]
 
     # ───────────────────────────────────────────────────────────
@@ -231,19 +221,11 @@ class OrderbookHandler:
 
     @property
     def exposure(self) -> float:
-        return sum(
-            (order.volume * order.price)
-            for order in self._orders.values()
-            if order.status == OrderStatus.OPENED
-        )
+        return sum((order.volume * order.price) for order in self._orders.values() if order.status == OrderStatus.OPEN)
 
     @property
     def pnl(self) -> float:
-        return sum(
-            order.profit
-            for order in self._orders.values()
-            if order.status == OrderStatus.OPENED
-        )
+        return sum(order.profit for order in self._orders.values() if order.status == OrderStatus.OPEN)
 
     @property
     def free_margin(self) -> float:
@@ -254,7 +236,7 @@ class OrderbookHandler:
         return sum(
             (order.volume * order.price) / self._leverage
             for order in self._orders.values()
-            if order.status == OrderStatus.OPENED
+            if order.status == OrderStatus.OPEN
         )
 
     @property

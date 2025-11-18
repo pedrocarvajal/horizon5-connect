@@ -12,6 +12,7 @@
     "Backtest",
     "binance",
     "BTCUSDT",
+    "fstream",
     "kline",
     "levelname"
   ]
