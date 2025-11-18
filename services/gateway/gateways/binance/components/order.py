@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from services.gateway.gateways.binance.components.base import BaseComponent
+from services.gateway.gateways.binance.components.symbol import SymbolComponent
 from services.gateway.gateways.binance.enums.binance_order_status import BinanceOrderStatus
 from services.gateway.helpers import has_api_error, parse_optional_float, parse_timestamp_ms
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
@@ -12,6 +13,17 @@ from services.gateway.models.gateway_order import GatewayOrderModel
 
 class OrderComponent(BaseComponent):
     _MAX_ORDERS_QUERY_DAYS = 7
+    _symbol_component: SymbolComponent
+
+    def __init__(
+        self,
+        config: Any,
+    ) -> None:
+        super().__init__(config)
+
+        self._symbol_component = SymbolComponent(
+            config=config,
+        )
 
     def place_order(
         self,
@@ -58,12 +70,21 @@ class OrderComponent(BaseComponent):
             self._log.error("volume must be greater than 0")
             return None
 
+        quantity = self._get_volume(
+            symbol=symbol,
+            volume=volume,
+            price=price,
+        )
+
+        if quantity is None:
+            return None
+
         url = f"{self._config.fapi_url}/order"
         params = {
             "symbol": symbol,
             "side": side.value.upper(),
             "type": order_type.value.upper(),
-            "quantity": volume,
+            "quantity": quantity,
         }
 
         if order_type == OrderType.LIMIT and not price:
@@ -226,20 +247,36 @@ class OrderComponent(BaseComponent):
             return []
 
         orders: List[GatewayOrderModel] = []
-        _start_time = start_time
+        url = f"{self._config.fapi_url}/allOrders"
+        params: Dict[str, Any] = {
+            "symbol": symbol.upper(),
+            "pair": pair.upper(),
+            "limit": min(limit, 1000),
+        }
 
-        while _start_time < end_time:
-            _end_time = min(_start_time + timedelta(days=self._MAX_ORDERS_QUERY_DAYS - 1), end_time)
-            url = f"{self._config.fapi_url}/allOrders"
-            params = {
-                "symbol": symbol.upper(),
-                "pair": pair.upper(),
-                "orderId": order_id,
-                "startTime": parse_timestamp_ms(_start_time),
-                "endTime": parse_timestamp_ms(_end_time),
-                "limit": min(limit, 1000),
-            }
+        if order_id:
+            params["orderId"] = order_id
 
+        if start_time and end_time and not order_id:
+            _start_time = start_time
+
+            while _start_time < end_time:
+                _end_time = min(_start_time + timedelta(days=self._MAX_ORDERS_QUERY_DAYS - 1), end_time)
+                params_with_time = params.copy()
+                params_with_time["startTime"] = parse_timestamp_ms(_start_time)
+                params_with_time["endTime"] = parse_timestamp_ms(_end_time)
+
+                response = self._execute(
+                    method="GET",
+                    url=url,
+                    params=params_with_time,
+                )
+
+                if response and isinstance(response, list):
+                    orders.extend(self._adapt_orders_batch(response=response))
+
+                _start_time = _end_time + timedelta(seconds=1)
+        else:
             response = self._execute(
                 method="GET",
                 url=url,
@@ -248,8 +285,6 @@ class OrderComponent(BaseComponent):
 
             if response and isinstance(response, list):
                 orders.extend(self._adapt_orders_batch(response=response))
-
-            _start_time = _end_time + timedelta(seconds=1)
 
         return orders
 
@@ -310,6 +345,45 @@ class OrderComponent(BaseComponent):
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
+    def _get_volume(
+        self,
+        symbol: str,
+        volume: float,
+        price: Optional[float] = None,
+    ) -> Optional[float]:
+        symbol_info = self._symbol_component.get_symbol_info(symbol=symbol)
+
+        if not symbol_info:
+            self._log.warning(f"Could not get symbol info for {symbol}, using volume as-is")
+            return volume
+
+        if symbol_info.step_size is None:
+            self._log.warning(f"No step_size for {symbol}, using volume as-is")
+            return volume
+
+        step_size = symbol_info.step_size
+        quantity_precision = symbol_info.quantity_precision
+
+        volume_rounded_to_step = round(volume / step_size) * step_size
+        volume_formatted = round(volume_rounded_to_step, quantity_precision)
+
+        if symbol_info.min_quantity is not None and volume_formatted < symbol_info.min_quantity:
+            self._log.error(f"Volume below minimum for {symbol}")
+            return None
+
+        if symbol_info.max_quantity is not None and volume_formatted > symbol_info.max_quantity:
+            self._log.error(f"Volume exceeds maximum for {symbol}")
+            return None
+
+        if price and symbol_info.min_notional is not None:
+            notional = price * volume_formatted
+
+            if notional < symbol_info.min_notional:
+                self._log.error(f"Notional below minimum for {symbol}")
+                return None
+
+        return volume_formatted
+
     def _adapt_order_response(
         self,
         response: Dict[str, Any],
