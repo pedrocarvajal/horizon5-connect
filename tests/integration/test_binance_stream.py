@@ -34,6 +34,7 @@ class TestBinanceStream(BinanceWrapper):
             stream_task = asyncio.create_task(run_stream())
             await asyncio.sleep(5)
             stream_task.cancel()
+
             try:
                 await stream_task
             except asyncio.CancelledError:

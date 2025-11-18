@@ -1,6 +1,7 @@
 # Last coding review: 2025-11-17 17:49:49
 
-
+from enums.order_side import OrderSide
+from enums.order_type import OrderType
 from services.gateway.models.gateway_account import GatewayAccountModel
 from tests.integration.wrappers.binance import BinanceWrapper
 
@@ -30,9 +31,23 @@ class TestBinanceAccount(BinanceWrapper):
         self._log.debug(account_info.model_dump())
 
     def test_get_verification(self) -> None:
-        self._log.info("Verifying account configuration")
+        self._log.info("Opening position to verify account configuration")
 
-        verification = self._gateway.get_verification()
+        symbol = "BTCUSDT"
+        volume = 0.002
+
+        order = self._gateway.place_order(
+            symbol=symbol,
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            volume=volume,
+        )
+
+        assert order is not None, "Order should not be None"
+        assert order.id != "", "Order ID should not be empty"
+        self._log.info(f"Position opened with order {order.id}")
+
+        verification = self._gateway.get_verification(symbol=symbol)
 
         assert verification is not None, "Verification should not be None"
         assert isinstance(verification, dict), "Verification should be a dict"
@@ -47,3 +62,6 @@ class TestBinanceAccount(BinanceWrapper):
         assert verification["cross_margin"] is True, "Should be in cross margin mode"
         assert verification["one_way_mode"] is True, "Should be in one-way mode"
         assert verification["trading_permissions"] is True, "Trading permissions should be enabled"
+
+        self._log.info(f"Closing position for order {order.id}")
+        self._close_position(symbol=symbol, order=order)

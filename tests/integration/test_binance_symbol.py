@@ -1,5 +1,7 @@
 # Last coding review: 2025-11-18 12:30:00
 
+from enums.order_side import OrderSide
+from enums.order_type import OrderType
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
@@ -43,9 +45,23 @@ class TestBinanceSymbol(BinanceWrapper):
         assert trading_fees.response is not None, "Response should not be None"
 
     def test_get_leverage_info(self) -> None:
-        self._log.info("Getting leverage info for BTCUSDT")
+        self._log.info("Opening position to get leverage info for BTCUSDT")
 
-        leverage_info = self._gateway.get_leverage_info(symbol="BTCUSDT")
+        symbol = "BTCUSDT"
+        volume = 0.002
+
+        order = self._gateway.place_order(
+            symbol=symbol,
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            volume=volume,
+        )
+
+        assert order is not None, "Order should not be None"
+        assert order.id != "", "Order ID should not be empty"
+        self._log.info(f"Position opened with order {order.id}")
+
+        leverage_info = self._gateway.get_leverage_info(symbol=symbol)
 
         assert leverage_info is not None, "Leverage info should not be None"
         assert isinstance(leverage_info, GatewayLeverageInfoModel), "Leverage info should be a GatewayLeverageInfoModel"
@@ -54,6 +70,9 @@ class TestBinanceSymbol(BinanceWrapper):
         assert leverage_info.response is not None, "Response should not be None"
 
         self._log.debug(leverage_info.model_dump())
+
+        self._log.info(f"Closing position for order {order.id}")
+        self._close_position(symbol=symbol, order=order)
 
     def test_set_leverage(self) -> None:
         self._log.info("Setting leverage to 20x for BTCUSDT")
