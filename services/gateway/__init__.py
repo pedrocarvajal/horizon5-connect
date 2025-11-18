@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from configs.gateways import GATEWAYS
 from interfaces.gateway import GatewayInterface
 from services.gateway.models.gateway_account import GatewayAccountModel
+from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_position import GatewayPositionModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
@@ -65,7 +66,7 @@ class GatewayService(GatewayInterface):
     def get_leverage_info(
         self,
         **kwargs: Any,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[GatewayLeverageInfoModel]:
         return self._gateway.get_leverage_info(**kwargs)
 
     def get_order(
@@ -111,6 +112,12 @@ class GatewayService(GatewayInterface):
         return self._gateway.get_account(
             **kwargs,
         )
+
+    def get_verification(
+        self,
+        **kwargs: Any,
+    ) -> Dict[str, bool]:
+        return self._gateway.get_verification(**kwargs)
 
     def get_orders(
         self,

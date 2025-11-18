@@ -26,3 +26,24 @@ class TestBinanceAccount(BinanceWrapper):
         assert account_info.exposure >= 0, f"Exposure should be greater than or equal to 0, got {account_info.exposure}"
         assert len(account_info.balances) >= 1, f"Balances, got {len(account_info.balances)}"
         assert account_info.response is not None, "Response should not be None"
+
+        self._log.debug(account_info.model_dump())
+
+    def test_get_verification(self) -> None:
+        self._log.info("Verifying account configuration")
+
+        verification = self._gateway.get_verification()
+
+        assert verification is not None, "Verification should not be None"
+        assert isinstance(verification, dict), "Verification should be a dict"
+        assert "required_leverage" in verification, "Verification should check required_leverage"
+        assert "usdt_balance" in verification, "Verification should check usdt_balance"
+        assert "cross_margin" in verification, "Verification should check cross_margin"
+        assert "one_way_mode" in verification, "Verification should check one_way_mode"
+        assert "trading_permissions" in verification, "Verification should check trading_permissions"
+
+        assert verification["required_leverage"] is True, "Leverage should be >= 1"
+        assert verification["usdt_balance"] is True, "USDT balance should be > 0"
+        assert verification["cross_margin"] is True, "Should be in cross margin mode"
+        assert verification["one_way_mode"] is True, "Should be in one-way mode"
+        assert verification["trading_permissions"] is True, "Trading permissions should be enabled"

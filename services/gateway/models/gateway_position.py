@@ -16,42 +16,18 @@ class GatewayPositionModel(BaseModel):
         default=None,
         description="Position side: LONG or SHORT",
     )
-    quantity: float = Field(
+    volume: float = Field(
         default=0.0,
-        description="Position quantity (positive for LONG, negative for SHORT)",
+        description="Position volume (positive for LONG, negative for SHORT)",
     )
-    entry_price: float = Field(
+    open_price: float = Field(
         default=0.0,
         ge=0,
         description="Average entry price",
     )
-    mark_price: float = Field(
-        default=0.0,
-        ge=0,
-        description="Current mark price",
-    )
-    liquidation_price: float = Field(
-        default=0.0,
-        ge=0,
-        description="Liquidation price",
-    )
-    leverage: int = Field(
-        default=1,
-        ge=1,
-        description="Leverage used",
-    )
-    margin: float = Field(
-        default=0.0,
-        ge=0,
-        description="Position margin",
-    )
     unrealized_pnl: float = Field(
         default=0.0,
         description="Unrealized profit and loss",
-    )
-    percentage: float = Field(
-        default=0.0,
-        description="Position percentage of account",
     )
     response: Any = Field(
         default=None,

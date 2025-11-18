@@ -1,6 +1,8 @@
 # Last coding review: 2025-11-18 12:30:00
 
+from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 from tests.integration.wrappers.binance import BinanceWrapper
 
 
@@ -26,4 +28,36 @@ class TestBinanceSymbol(BinanceWrapper):
         assert symbol_info.quantity_precision >= 0, f"Quantity precision, got {symbol_info.quantity_precision}"
         assert symbol_info.response is not None, "Response should not be None"
 
-        self._log.debug(symbol_info.model_dump())
+    def test_get_trading_fees(self) -> None:
+        self._log.info("Getting trading fees for BTCUSDT")
+
+        trading_fees = self._gateway.get_trading_fees(symbol="BTCUSDT")
+
+        assert trading_fees is not None, "Trading fees should not be None"
+        assert isinstance(trading_fees, GatewayTradingFeesModel), "Trading fees should be a GatewayTradingFeesModel"
+        assert trading_fees.symbol != "", f"Symbol should not be empty, got {trading_fees.symbol}"
+        assert trading_fees.maker_commission is not None, "Maker commission should not be None"
+        assert trading_fees.maker_commission >= 0, f"Maker commission, got {trading_fees.maker_commission}"
+        assert trading_fees.taker_commission is not None, "Taker commission should not be None"
+        assert trading_fees.taker_commission >= 0, f"Taker commission, got {trading_fees.taker_commission}"
+        assert trading_fees.response is not None, "Response should not be None"
+
+    def test_get_leverage_info(self) -> None:
+        self._log.info("Getting leverage info for BTCUSDT")
+
+        leverage_info = self._gateway.get_leverage_info(symbol="BTCUSDT")
+
+        assert leverage_info is not None, "Leverage info should not be None"
+        assert isinstance(leverage_info, GatewayLeverageInfoModel), "Leverage info should be a GatewayLeverageInfoModel"
+        assert leverage_info.symbol != "", f"Symbol should not be empty, got {leverage_info.symbol}"
+        assert leverage_info.leverage >= 1, f"Leverage, got {leverage_info.leverage}"
+        assert leverage_info.response is not None, "Response should not be None"
+
+        self._log.debug(leverage_info.model_dump())
+
+    def test_set_leverage(self) -> None:
+        self._log.info("Setting leverage to 20x for BTCUSDT")
+
+        result = self._gateway.set_leverage(symbol="BTCUSDT", leverage=20)
+
+        assert result is True, f"Set leverage should return True, got {result}"

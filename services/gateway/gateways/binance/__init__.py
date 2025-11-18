@@ -10,6 +10,7 @@ from services.gateway.gateways.binance.components.symbol import SymbolComponent
 from services.gateway.gateways.binance.components.trade import TradeComponent
 from services.gateway.gateways.binance.models.config import BinanceConfigModel
 from services.gateway.models.gateway_account import GatewayAccountModel
+from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_position import GatewayPositionModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
@@ -115,7 +116,7 @@ class Binance(GatewayInterface):
     def get_leverage_info(
         self,
         **kwargs: Any,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[GatewayLeverageInfoModel]:
         return self._symbol_component.get_leverage_info(**kwargs)
 
     async def stream(
@@ -177,3 +178,9 @@ class Binance(GatewayInterface):
         **kwargs: Any,
     ) -> List[GatewayPositionModel]:
         return self._position_component.get_positions(**kwargs)
+
+    def get_verification(
+        self,
+        **kwargs: Any,
+    ) -> Dict[str, bool]:
+        return self._account_component.get_verification(**kwargs)

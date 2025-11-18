@@ -20,7 +20,7 @@ class PositionComponent(BaseComponent):
             self._log.error("pair must be a string")
             return []
 
-        url = f"{self._config.fapi_url}/positionRisk"
+        url = f"{self._config.fapi_v2_url}/positionRisk"
 
         params = {}
 
@@ -51,6 +51,29 @@ class PositionComponent(BaseComponent):
 
         return self._adapt_positions_batch(response=response)
 
+    def get_position_mode(
+        self,
+    ) -> Optional[bool]:
+        url = f"{self._config.fapi_url}/positionSide/dual"
+
+        response = self._execute(
+            method="GET",
+            url=url,
+            params=None,
+        )
+
+        if not response:
+            return None
+
+        has_error, error_msg, error_code = has_api_error(response=response)
+
+        if has_error:
+            self._log.error(f"Failed to get position mode: {error_msg} (code: {error_code})")
+            return None
+
+        dual_side_position = response.get("dualSidePosition", False)
+        return bool(dual_side_position)
+
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
@@ -64,12 +87,7 @@ class PositionComponent(BaseComponent):
         symbol = response.get("symbol", "").upper()
         position_amt = parse_optional_float(value=response.get("positionAmt", 0))
         entry_price = parse_optional_float(value=response.get("entryPrice", 0))
-        mark_price = parse_optional_float(value=response.get("markPrice", 0))
-        liquidation_price = parse_optional_float(value=response.get("liquidationPrice", 0))
-        leverage = int(response.get("leverage", 1))
-        margin = parse_optional_float(value=response.get("isolatedMargin", 0))
         unrealized_pnl = parse_optional_float(value=response.get("unRealizedProfit", 0))
-        percentage = parse_optional_float(value=response.get("percentage", 0))
         side = None
 
         if position_amt and position_amt > 0:
@@ -81,14 +99,9 @@ class PositionComponent(BaseComponent):
         return GatewayPositionModel(
             symbol=symbol,
             side=side,
-            quantity=position_amt or 0.0,
-            entry_price=entry_price or 0.0,
-            mark_price=mark_price or 0.0,
-            liquidation_price=liquidation_price or 0.0,
-            leverage=leverage,
-            margin=margin or 0.0,
+            volume=position_amt or 0.0,
+            open_price=entry_price or 0.0,
             unrealized_pnl=unrealized_pnl or 0.0,
-            percentage=percentage or 0.0,
             response=response,
         )
 

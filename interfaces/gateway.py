@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from services.gateway.models.gateway_account import GatewayAccountModel
+from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
@@ -33,7 +34,7 @@ class GatewayInterface(ABC):
     def get_leverage_info(
         self,
         **kwargs: Any,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[GatewayLeverageInfoModel]:
         pass
 
     @abstractmethod
@@ -90,4 +91,11 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> List[GatewayOrderModel]:
+        pass
+
+    @abstractmethod
+    def get_verification(
+        self,
+        **kwargs: Any,
+    ) -> Dict[str, bool]:
         pass

@@ -5,6 +5,7 @@ import requests
 from enums.http_status import HttpStatus
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.helpers import has_api_error, parse_optional_float
+from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
@@ -73,7 +74,7 @@ class SymbolComponent(BaseComponent):
     def get_leverage_info(
         self,
         symbol: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[GatewayLeverageInfoModel]:
         if not symbol:
             self._log.error("symbol is required")
             return None
@@ -82,15 +83,28 @@ class SymbolComponent(BaseComponent):
             self._log.error("symbol must be a string")
             return None
 
-        response = self._get_leverage_info(symbol=symbol)
+        url = f"{self._config.fapi_v2_url}/positionRisk"
+        params = {"symbol": symbol.upper()}
+
+        response = self._execute(
+            method="GET",
+            url=url,
+            params=params,
+        )
 
         if not response:
             return None
 
-        if isinstance(response, list) and len(response) > 0:
-            return response[0]
+        has_error, error_msg, error_code = has_api_error(response=response)
 
-        return response
+        if has_error:
+            self._log.error(f"Failed to get leverage info: {error_msg} (code: {error_code})")
+            return None
+
+        return self._adapt_leverage_info(
+            symbol=symbol,
+            response=response,
+        )
 
     def set_leverage(
         self,
@@ -150,19 +164,6 @@ class SymbolComponent(BaseComponent):
             params={
                 "symbol": symbol.upper(),
             },
-        )
-
-    def _get_leverage_info(
-        self,
-        symbol: str,
-    ) -> Optional[Dict[str, Any]]:
-        url = f"{self._config.fapi_url}/leverageBracket"
-        params = {"symbol": symbol.upper()}
-
-        return self._execute(
-            method="GET",
-            url=url,
-            params=params,
         )
 
     # ───────────────────────────────────────────────────────────
@@ -260,6 +261,34 @@ class SymbolComponent(BaseComponent):
             return parse_optional_float(
                 value=symbol_info.get("maintMarginPercent"),
             )
+
+        return None
+
+    def _adapt_leverage_info(
+        self,
+        symbol: str,
+        response: Any,
+    ) -> Optional[GatewayLeverageInfoModel]:
+        if not response:
+            return None
+
+        if not isinstance(response, list) or len(response) == 0:
+            return None
+
+        for position_data in response:
+            if not isinstance(position_data, dict):
+                continue
+
+            position_amt = parse_optional_float(value=position_data.get("positionAmt", 0))
+
+            if position_amt and position_amt != 0:
+                leverage = int(position_data.get("leverage", 1))
+
+                return GatewayLeverageInfoModel(
+                    symbol=symbol.upper(),
+                    leverage=leverage,
+                    response=position_data,
+                )
 
         return None
 

@@ -123,7 +123,7 @@ class TradeComponent(BaseComponent):
         side_str = response.get("side", "").upper()
         side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
         price = parse_optional_float(value=response.get("price", 0))
-        quantity = parse_optional_float(value=response.get("qty", 0))
+        volume = parse_optional_float(value=response.get("qty", 0))
         commission = parse_optional_float(value=response.get("commission", 0))
         commission_asset = response.get("commissionAsset", "")
         timestamp = response.get("time")
@@ -134,7 +134,7 @@ class TradeComponent(BaseComponent):
             symbol=symbol,
             side=side,
             price=price or 0.0,
-            quantity=quantity or 0.0,
+            volume=volume or 0.0,
             commission=commission or 0.0,
             commission_asset=commission_asset,
             timestamp=timestamp,

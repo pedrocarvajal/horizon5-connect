@@ -29,10 +29,10 @@ class GatewayTradeModel(BaseModel):
         ge=0,
         description="Trade execution price",
     )
-    quantity: float = Field(
+    volume: float = Field(
         default=0.0,
         ge=0,
-        description="Trade quantity",
+        description="Trade volume",
     )
     commission: float = Field(
         default=0.0,
