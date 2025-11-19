@@ -2,4 +2,53 @@
 alwaysApply: true
 ---
 
-Hi.
+## Available Helpers (`helpers/`)
+
+Generic reusable helpers in `helpers/`:
+
+**Parsing (`helpers/parse.py`):**
+
+- `parse_int(value: Any) -> int` - Converts to int, returns 0 on failure
+- `parse_float(value: Any) -> float` - Converts to float, returns 0.0 on failure
+- `parse_optional_float(value: Any) -> Optional[float]` - Converts to float, returns None on failure
+- `parse_percentage(value: Any) -> Optional[float]` - Parses percentages, normalizes values > 1 by dividing by 100
+- `parse_timestamp_ms(value: datetime) -> int` - Converts datetime to timestamp in milliseconds
+
+**Utilities:**
+
+- `get_env(key: str, default: Optional[str] = None) -> str` - Gets environment variable
+- `get_slug(title: str, separator: str = "-", dictionary: Optional[Dict] = None) -> str` - Generates URL-friendly slug
+- `get_progress_between_dates(start_ts: int, end_ts: int, current_ts: int) -> float` - Calculates percentage progress between dates
+- `get_duration(start_at: datetime, end_at: datetime) -> str` - Formats duration (seconds/minutes/hours/days)
+- `get_portfolio_by_path(path: str) -> PortfolioInterface` - Loads portfolio from Python file
+
+**Note:** Domain-specific helpers are in their respective folders (`services/*/helpers/`).
+
+## Available Services (`services/`)
+
+- `AnalyticService` (`services/analytic/__init__.py`) - Calculates financial metrics during backtests
+- `AssetService` (`services/asset/__init__.py`) - Manages trading assets and strategies
+- `BacktestService` (`services/backtest/__init__.py`) - Executes historical backtests
+- `CandleService` (`services/candle/__init__.py`) - Builds candlesticks from ticks
+- `CommandsService` (`services/commands/__init__.py`) - Processes commands from queue
+- `GatewayService` (`services/gateway/__init__.py`) - Facade for trading gateways
+- `LoggingService` (`services/logging/__init__.py`) - Provides logging functionality
+- `PortfolioService` (`services/portfolio/__init__.py`) - Container for multiple assets
+- `ProductionService` (`services/production/__init__.py`) - Runs live trading
+- `StrategyService` (`services/strategy/__init__.py`) - Implements trading strategies
+- `TicksService` (`services/ticks/__init__.py`) - Downloads and manages historical tick data
+
+## Available Enums (`enums/`)
+
+Core enums used throughout the application:
+
+- `BacktestStatus` - Backtest execution status
+- `BacktestCommand` - (Empty enum, reserved for future use)
+- `Command` - System commands (KILL, EXECUTE)
+- `HttpStatus` - HTTP status codes
+- `OrderSide` - Order direction (BUY, SELL)
+- `OrderStatus` - Order lifecycle states
+- `OrderType` - Order types (MARKET, LIMIT, STOP_LOSS, etc.)
+- `OrderEvent` - Order events (OPEN_ORDER, CLOSE_ORDER)
+- `SnapshotEvent` - Analytics snapshot events
+- `Timeframe` - Trading timeframes (includes `to_seconds()` method)

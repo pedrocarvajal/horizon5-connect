@@ -3,7 +3,8 @@ from typing import Any, Dict, List, Optional
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.gateways.binance.components.position import PositionComponent
 from services.gateway.gateways.binance.components.symbol import SymbolComponent
-from services.gateway.helpers import has_api_error, parse_optional_float
+from helpers.parse import parse_optional_float
+from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_account import (
     GatewayAccountBalanceModel,
     GatewayAccountModel,

@@ -3,9 +3,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from services.gateway.helpers.parse_int import parse_int as parse_int_helper
-from services.gateway.helpers.parse_optional_float import parse_optional_float as parse_optional_float_helper
-from services.gateway.helpers.parse_percentage import parse_percentage as parse_percentage_helper
+from helpers.parse import (
+    parse_int as parse_int_helper,
+    parse_optional_float as parse_optional_float_helper,
+    parse_percentage as parse_percentage_helper,
+)
 
 
 class GatewaySymbolInfoModel(BaseModel):

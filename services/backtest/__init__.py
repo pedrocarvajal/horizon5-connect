@@ -7,7 +7,7 @@ from configs.timezone import TIMEZONE
 from enums.command import Command
 from interfaces.asset import AssetInterface
 from providers.horizon_router import HorizonRouterProvider
-from services.backtest.helpers.get_duration import get_duration
+from helpers.get_duration import get_duration
 from services.logging import LoggingService
 from services.ticks import TicksService
 

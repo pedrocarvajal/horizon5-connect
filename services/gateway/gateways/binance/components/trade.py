@@ -3,7 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from enums.order_side import OrderSide
 from services.gateway.gateways.binance.components.base import BaseComponent
-from services.gateway.helpers import has_api_error, parse_optional_float, parse_timestamp_ms
+from helpers.parse import parse_optional_float, parse_timestamp_ms
+from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_trade import GatewayTradeModel
 
 

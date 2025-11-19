@@ -3,8 +3,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from services.gateway.helpers.parse_float import parse_float as parse_float_helper
-from services.gateway.helpers.parse_int import parse_int as parse_int_helper
+from helpers.parse import (
+    parse_float as parse_float_helper,
+    parse_int as parse_int_helper,
+)
 
 
 class GatewayKlineModel(BaseModel):

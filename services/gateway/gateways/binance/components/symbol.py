@@ -4,7 +4,8 @@ import requests
 
 from enums.http_status import HttpStatus
 from services.gateway.gateways.binance.components.base import BaseComponent
-from services.gateway.helpers import has_api_error, parse_optional_float
+from helpers.parse import parse_optional_float
+from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel

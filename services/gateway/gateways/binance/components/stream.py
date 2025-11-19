@@ -8,7 +8,7 @@ import websockets
 from configs.timezone import TIMEZONE
 from models.tick import TickModel
 from services.gateway.gateways.binance.components.base import BaseComponent
-from services.gateway.helpers import parse_optional_float
+from helpers.parse import parse_optional_float
 
 
 class StreamComponent(BaseComponent):

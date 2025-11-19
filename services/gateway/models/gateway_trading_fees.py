@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from services.gateway.helpers.parse_percentage import parse_percentage as parse_percentage_helper
+from helpers.parse import parse_percentage as parse_percentage_helper
 
 
 class GatewayTradingFeesModel(BaseModel):
