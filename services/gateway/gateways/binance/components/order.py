@@ -88,14 +88,14 @@ class OrderComponent(BaseComponent):
             "quantity": quantity,
         }
 
-        if order_type == OrderType.LIMIT and not price:
+        if order_type.requires_price() and not price:
             self._log.error("Price is required for LIMIT orders")
             return None
 
-        if order_type == OrderType.MARKET and price:
+        if order_type.is_market() and price:
             self._log.warning("Price parameter is ignored for MARKET orders")
 
-        if order_type == OrderType.LIMIT:
+        if order_type.is_limit():
             if price is None or price <= 0:
                 self._log.error("Valid price is required for LIMIT orders")
                 return None

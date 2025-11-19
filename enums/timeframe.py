@@ -1,7 +1,12 @@
-from enum import Enum
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
+from enum import Enum, unique
 
 
+@unique
 class Timeframe(Enum):
+    """Represents trading timeframes with their duration in seconds."""
+
     ONE_MINUTE = "1m"
     THREE_MINUTES = "3m"
     FIVE_MINUTES = "5m"
@@ -19,7 +24,17 @@ class Timeframe(Enum):
     ONE_MONTH = "1M"
 
     def to_seconds(self) -> int:
-        return {
+        """
+        Convert timeframe to seconds.
+
+        Returns:
+            int: Number of seconds for the timeframe.
+
+        Example:
+            >>> Timeframe.ONE_HOUR.to_seconds()
+            3600
+        """
+        mapping = {
             "1m": 60,
             "3m": 180,
             "5m": 300,
@@ -35,4 +50,6 @@ class Timeframe(Enum):
             "3d": 259200,
             "1w": 604800,
             "1M": 2592000,
-        }[self.value]
+        }
+
+        return mapping[self.value]

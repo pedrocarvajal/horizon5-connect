@@ -189,7 +189,7 @@ class TestBinanceOrder(BinanceWrapper):
         assert order.volume > 0, "Volume should be > 0"
         assert order.executed_volume >= 0, "Executed volume should be >= 0"
 
-        if expected_type == OrderType.MARKET:
+        if expected_type.is_market():
             assert order.status in [
                 GatewayOrderStatus.PENDING,
                 GatewayOrderStatus.EXECUTED,
