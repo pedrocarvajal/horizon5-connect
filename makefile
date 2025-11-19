@@ -1,5 +1,5 @@
 .ONESHELL:
-.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit help
+.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-submodules-synchronization help
 
 run-tests:
 	uv run python -m unittest discover -s tests -p "test_*.py" -v
@@ -12,3 +12,6 @@ run-tests-integration:
 
 run-tests-unit:
 	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v
+
+run-submodules-synchronization:
+	git submodule update --remote --recursive
