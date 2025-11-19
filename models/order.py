@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import datetime
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -13,9 +15,6 @@ from models.tick import TickModel
 from models.trade import TradeModel
 from services.logging import LoggingService
 
-if TYPE_CHECKING:
-    from services.gateway import GatewayService
-
 
 class OrderModel(BaseModel):
     # ───────────────────────────────────────────────────────────
@@ -27,7 +26,7 @@ class OrderModel(BaseModel):
     backtest_id: Optional[str] = None
     strategy_id: Optional[str] = None
     symbol: str = ""
-    gateway: Optional["GatewayService"] = None
+    gateway: Any = None
     side: Optional[OrderSide] = None
     order_type: Optional[OrderType] = Field(default=OrderType.MARKET)
     status: Optional[OrderStatus] = Field(default=OrderStatus.OPENING)

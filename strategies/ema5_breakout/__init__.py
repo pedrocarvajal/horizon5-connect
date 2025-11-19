@@ -64,7 +64,7 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_tick(tick)
         self._tick = tick
 
-        if not self.production:
+        if self.production:
             self._log.info(f"Production mode: tick: {tick.price}")
 
     def on_new_hour(self) -> None:
