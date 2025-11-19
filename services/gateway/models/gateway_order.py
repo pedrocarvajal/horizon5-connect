@@ -1,4 +1,5 @@
-# Last coding review: 2025-11-17 16:47:10
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -9,10 +10,34 @@ from services.gateway.models.enums.gateway_order_status import GatewayOrderStatu
 
 
 class GatewayOrderModel(BaseModel):
+    """
+    Model representing an order from a gateway/exchange.
+
+    This model stores order information including identification, symbol, side,
+    type, status, volume, execution details, and price. It captures both
+    standardized order data and raw gateway-specific response data for
+    additional information.
+
+    Attributes:
+        id: Order ID from the gateway/exchange.
+        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        side: Order side: BUY or SELL. None if side is not specified.
+        order_type: Order type: MARKET, LIMIT, etc. Defaults to MARKET.
+        status: Order status: PENDING, EXECUTED, CANCELLED. Defaults to PENDING.
+        volume: Original order quantity. Must be >= 0.
+        executed_volume: Executed order quantity. Must be >= 0.
+        price: Order price. Must be >= 0. For MARKET orders, this may be 0
+            until execution.
+        response: Raw gateway-specific response data for additional information.
+    """
+
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    model_config = ConfigDict(arbitrary_types_allowed=True, str_strip_whitespace=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        str_strip_whitespace=True,
+    )
 
     id: str = Field(
         default="",

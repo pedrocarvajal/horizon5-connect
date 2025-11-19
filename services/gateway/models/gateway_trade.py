@@ -1,3 +1,5 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -6,7 +8,33 @@ from enums.order_side import OrderSide
 
 
 class GatewayTradeModel(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, str_strip_whitespace=True)
+    """
+    Model representing a trade execution from a gateway/exchange.
+
+    This model stores trade execution details including price, volume, commission,
+    and associated order information. It captures both standardized trade data
+    and raw gateway-specific response data for additional information.
+
+    Attributes:
+        id: Trade ID from the gateway/exchange.
+        order_id: Order ID that this trade belongs to.
+        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        side: Trade side: BUY or SELL.
+        price: Trade execution price.
+        volume: Trade volume.
+        commission: Commission paid for this trade.
+        commission_asset: Asset used for commission.
+        timestamp: Trade execution timestamp in milliseconds.
+        response: Raw gateway-specific response data.
+    """
+
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        str_strip_whitespace=True,
+    )
 
     id: str = Field(
         default="",
