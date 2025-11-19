@@ -1,3 +1,5 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 import datetime
 
 from enums.timeframe import Timeframe
@@ -6,6 +8,17 @@ from enums.timeframe import Timeframe
 def get_truncated_timeframe(
     date: datetime.datetime, timeframe: Timeframe
 ) -> datetime.datetime:
+    """
+    Truncate datetime to the start of the specified timeframe period.
+
+    Args:
+        date: Datetime to truncate
+        timeframe: Timeframe enum (ONE_MINUTE, ONE_HOUR, ONE_DAY, ONE_WEEK, ONE_MONTH)
+
+    Returns:
+        Truncated datetime at the start of the timeframe period
+        Returns original date if timeframe is not recognized
+    """
     if timeframe == Timeframe.ONE_MINUTE:
         return date.replace(second=0, microsecond=0)
 

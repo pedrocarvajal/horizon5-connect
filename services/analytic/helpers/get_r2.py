@@ -1,3 +1,5 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from typing import List
 
 

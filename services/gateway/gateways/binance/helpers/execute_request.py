@@ -1,3 +1,5 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from time import time
 from typing import Any, Callable, Dict, Optional
 
@@ -15,6 +17,23 @@ def execute_request(
     params: Optional[Dict[str, Any]] = None,
     log_error: Optional[Callable[[str], None]] = None,
 ) -> Optional[Dict[str, Any]]:
+    """
+    Execute authenticated HTTP request to Binance API.
+
+    Args:
+        method: HTTP method (GET, POST, PUT, DELETE)
+        url: Request URL
+        api_key: Binance API key
+        api_secret: Binance API secret
+        params: Optional query parameters
+        log_error: Optional callback function for error logging
+
+    Returns:
+        JSON response as dict, or None if request fails
+
+    Raises:
+        ValueError: If api_key, api_secret, or url is missing/invalid, or method is unsupported
+    """
     if not api_key:
         raise ValueError("API key is required for authenticated request")
 

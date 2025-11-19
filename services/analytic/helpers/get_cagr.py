@@ -1,3 +1,6 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
+
 def get_cagr(
     initial_nav: float,
     final_nav: float,
