@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional
 
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
+from helpers.parse import parse_optional_float, parse_timestamp_ms
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.gateways.binance.components.symbol import SymbolComponent
 from services.gateway.gateways.binance.enums.binance_order_status import BinanceOrderStatus
-from helpers.parse import parse_optional_float, parse_timestamp_ms
 from services.gateway.helpers import has_api_error
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_order import GatewayOrderModel
@@ -408,10 +408,6 @@ class OrderComponent(BaseComponent):
         order_type = {
             "MARKET": OrderType.MARKET,
             "LIMIT": OrderType.LIMIT,
-            "STOP": OrderType.STOP_LOSS,
-            "STOP_MARKET": OrderType.STOP_LOSS,
-            "TAKE_PROFIT": OrderType.TAKE_PROFIT,
-            "TAKE_PROFIT_MARKET": OrderType.TAKE_PROFIT,
         }.get(type_str.upper(), OrderType.MARKET)
 
         status = self._adapt_order_status(status_str=status_str)

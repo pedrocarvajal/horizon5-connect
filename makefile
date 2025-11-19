@@ -2,16 +2,22 @@
 .PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-submodules-synchronization run-submodules-push help
 
 run-tests:
-	uv run python -m unittest discover -s tests -p "test_*.py" -v
+	@echo "Running all tests..."
+	$(MAKE) run-tests-e2e
+	$(MAKE) run-tests-integration
+	$(MAKE) run-tests-unit
 
 run-tests-e2e:
-	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v
+	@echo "Running E2E tests..."
+	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v -b --locals
 
 run-tests-integration:
-	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v
+	@echo "Running integration tests..."
+	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v -b --locals
 
 run-tests-unit:
-	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v
+	@echo "Running unit tests..."
+	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v -b --locals
 
 run-submodules-synchronization:
 	git submodule update --remote --recursive

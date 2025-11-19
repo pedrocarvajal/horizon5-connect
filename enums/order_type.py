@@ -33,6 +33,6 @@ class OrderType(Enum):
         Check if the order type requires a price.
 
         Returns:
-            bool: True if order type requires price (LIMIT, STOP_LOSS_LIMIT, TAKE_PROFIT_LIMIT), False otherwise.
+            bool: True if order type requires price (LIMIT), False otherwise.
         """
-        return self in (OrderType.LIMIT, OrderType.STOP_LOSS_LIMIT, OrderType.TAKE_PROFIT_LIMIT)
+        return self == OrderType.LIMIT
