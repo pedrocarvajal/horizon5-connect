@@ -48,4 +48,3 @@ class TestBinanceTrade(BinanceWrapper):
             assert trade.symbol == "BTCUSDT", "Symbol should be BTCUSDT"
 
         self._log.info(f"Total trades found for BTCUSDT: {len(trades)}")
-

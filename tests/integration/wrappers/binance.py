@@ -1,5 +1,5 @@
 import unittest
-from typing import Optional
+from typing import Dict, Optional
 
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
@@ -12,6 +12,7 @@ from services.logging import LoggingService
 class BinanceWrapper(unittest.TestCase):
     _gateway: GatewayService
     _log: LoggingService
+    _verification: Dict[str, bool]
 
     def setUp(self) -> None:
         self._log = LoggingService()
@@ -19,8 +20,13 @@ class BinanceWrapper(unittest.TestCase):
 
         self._gateway = GatewayService(
             gateway="binance",
-            futures=True,
         )
+
+        self._verification = self._gateway.get_verification()
+
+        assert self._gateway.sandbox is True, "Sandbox must be enabled for tests"
+        assert self._verification is not None, "Verification should not be None"
+        assert self._verification["credentials_configured"] is True, "Credentials should be configured"
 
     def _open_test_order(
         self,

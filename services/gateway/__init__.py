@@ -48,7 +48,6 @@ class GatewayService(GatewayInterface):
     def __init__(
         self,
         gateway: str,
-        logging_service: Optional[LoggingService] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -57,8 +56,6 @@ class GatewayService(GatewayInterface):
         Args:
             gateway: Name of the gateway to use (e.g., "binance").
                 Must be a key in the GATEWAYS configuration.
-            logging_service: Optional logging service instance. If not provided,
-                a new LoggingService instance will be created.
             **kwargs: Additional keyword arguments. Supported keys:
                 - sandbox: Whether to use sandbox/testnet mode (default: False).
 
@@ -66,7 +63,7 @@ class GatewayService(GatewayInterface):
             ValueError: If the specified gateway name is not found in
                 the GATEWAYS configuration.
         """
-        self._log = logging_service or LoggingService()
+        self._log = LoggingService()
         self._log.setup(name="gateway_service")
 
         self._gateways = GATEWAYS
@@ -293,16 +290,18 @@ class GatewayService(GatewayInterface):
         """
         Get verification status from the gateway.
 
-        This method typically checks API key validity, account verification
-        status, and other authentication-related information.
+        This method checks API credentials validity, account configuration,
+        and trading requirements.
 
         Args:
             **kwargs: Keyword arguments passed to the gateway's get_verification method.
-                Typically no arguments are required.
+                Common arguments include:
+                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
 
         Returns:
-            Dictionary containing verification status information.
-            Keys and values depend on the gateway implementation.
+            Dictionary containing verification status information with boolean values.
+            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
+            'cross_margin', 'one_way_mode', and 'trading_permissions'.
         """
         return self._gateway.get_verification(**kwargs)
 
@@ -407,3 +406,13 @@ class GatewayService(GatewayInterface):
             Name of the gateway being used (e.g., "binance").
         """
         return self._name
+
+    @property
+    def sandbox(self) -> bool:
+        """
+        Get the sandbox mode.
+
+        Returns:
+            True if the gateway is in sandbox mode, False otherwise.
+        """
+        return self._sandbox

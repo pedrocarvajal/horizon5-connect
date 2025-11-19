@@ -71,15 +71,15 @@ class Binance(GatewayInterface):
         Args:
             **kwargs: Keyword arguments for gateway configuration. Supported keys:
                 - sandbox: Whether to use sandbox/testnet mode (default: False).
-                - api_key: Binance API key (required).
-                - api_secret: Binance API secret (required).
+                - api_key: Binance API key (optional, None for backtest mode).
+                - api_secret: Binance API secret (optional, None for backtest mode).
         """
         self._log = LoggingService()
         self._log.setup("gateway_binance")
 
         sandbox = kwargs.get("sandbox", False)
-        api_key = kwargs.get("api_key", "")
-        api_secret = kwargs.get("api_secret", "")
+        api_key = kwargs.get("api_key")
+        api_secret = kwargs.get("api_secret")
         urls = self._build_urls(sandbox=sandbox)
 
         self._config = BinanceConfigModel(
@@ -395,12 +395,13 @@ class Binance(GatewayInterface):
         Get account verification status from Binance.
 
         Args:
-            **kwargs: Keyword arguments for verification retrieval. Typically empty,
-                but may include additional parameters.
+            **kwargs: Keyword arguments for verification retrieval. Common arguments include:
+                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
 
         Returns:
             Dictionary containing verification status information with boolean values.
-            Common keys include 'futures_enabled', 'deposit_enabled', 'withdraw_enabled'.
+            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
+            'cross_margin', 'one_way_mode', and 'trading_permissions'.
         """
         return self._account_component.get_verification(**kwargs)
 

@@ -3,19 +3,19 @@
 
 run-tests:
 	@echo "Running all tests..."
-	uv run python -m unittest discover -s tests -p "test_*.py" -v -b --locals
+	uv run python -m unittest discover -s tests -p "test_*.py" -v -b --locals -f
 
 run-tests-e2e:
 	@echo "Running E2E tests..."
-	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v -b --locals
+	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v -b --locals -f
 
 run-tests-integration:
 	@echo "Running integration tests..."
-	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v -b --locals
+	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v -b --locals -f
 
 run-tests-unit:
 	@echo "Running unit tests..."
-	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v -b --locals
+	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v -b --locals -f
 
 run-submodules-synchronization:
 	git submodule update --remote --recursive

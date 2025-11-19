@@ -18,7 +18,7 @@ class Asset(AssetService):
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
-        super().__init__(futures=True)
+        super().__init__()
 
         self._log = LoggingService()
         self._log.setup("asset_btcusdt")

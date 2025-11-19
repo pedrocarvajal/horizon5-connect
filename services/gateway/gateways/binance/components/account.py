@@ -111,14 +111,15 @@ class AccountComponent(BaseComponent):
         Verify account configuration for trading.
 
         Performs multiple checks to ensure the account is properly configured
-        for trading, including leverage settings, balance, margin mode, position
-        mode, and trading permissions.
+        for trading, including credentials, leverage settings, balance, margin mode,
+        position mode, and trading permissions.
 
         Args:
             symbol: Trading pair symbol to check leverage for (default: "BTCUSDT").
 
         Returns:
             Dictionary containing verification results with keys:
+                - credentials_configured: Whether API key and secret are set
                 - required_leverage: Whether leverage is >= 1
                 - usdt_balance: Whether USDT balance > 0
                 - cross_margin: Whether account is in cross margin mode
@@ -128,10 +129,21 @@ class AccountComponent(BaseComponent):
         Example:
             >>> component = AccountComponent(config)
             >>> verification = component.get_verification(symbol="BTCUSDT")
-            >>> if verification["required_leverage"]:
-            ...     print("Leverage is configured correctly")
+            >>> if verification["credentials_configured"]:
+            ...     print("Credentials are configured correctly")
         """
+        if not self._check_credentials():
+            return {
+                "credentials_configured": False,
+                "required_leverage": False,
+                "usdt_balance": False,
+                "cross_margin": False,
+                "one_way_mode": False,
+                "trading_permissions": False,
+            }
+
         return {
+            "credentials_configured": True,
             "required_leverage": self._check_leverage(symbol=symbol),
             "usdt_balance": self._check_usdt_balance(),
             "cross_margin": self._check_cross_margin(),
@@ -210,6 +222,19 @@ class AccountComponent(BaseComponent):
             )
 
         return balances
+
+    def _check_credentials(
+        self,
+    ) -> bool:
+        """
+        Check if API credentials are configured.
+
+        Verifies that both API key and secret are set in the configuration.
+
+        Returns:
+            True if both credentials are configured, False otherwise.
+        """
+        return bool(self._config.api_key and self._config.api_secret)
 
     def _check_leverage(
         self,

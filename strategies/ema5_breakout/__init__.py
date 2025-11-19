@@ -64,7 +64,7 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_tick(tick)
         self._tick = tick
 
-        if self.production:
+        if self._is_running_in_live_mode():
             self._log.info(f"Production mode: tick: {tick.price}")
 
     def on_new_hour(self) -> None:
@@ -78,10 +78,10 @@ class EMA5BreakoutStrategy(StrategyService):
     def on_transaction(self, order: OrderModel) -> None:
         super().on_transaction(order)
 
-        if order.status is OrderStatus.OPEN:
+        if order.status.is_open():
             self._log.info(f"Order: {order.id}, was opened.")
 
-        if order.status is OrderStatus.CLOSED:
+        if order.status.is_closed():
             max_layers = self._settings.get("recovery_maximum_number_of_openings")
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
@@ -139,11 +139,12 @@ class EMA5BreakoutStrategy(StrategyService):
         previous_ema5 = candles[-2]["i"]["ema5"]["value"]
 
         if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
-            self._log.info(
-                f"Breakout: {self._tick.date} | "
-                f"Opening price: {self._tick.price} | "
-                f"Previous day EMA5 max: {self._previous_day_ema5_max}"
-            )
+            if self._is_running_in_live_mode():
+                self._log.info(
+                    f"Breakout: {self._tick.date} | "
+                    f"Opening price: {self._tick.price} | "
+                    f"Previous day EMA5 max: {self._previous_day_ema5_max}"
+                )
 
             take_profit_percentage = self._settings.get("main_take_profit_percentage")
             stop_loss_percentage = self._settings.get("main_stop_loss_percentage")
@@ -194,3 +195,6 @@ class EMA5BreakoutStrategy(StrategyService):
             return 0.0
 
         return losses / (take_profit_price - entry_price)
+
+    def _is_running_in_live_mode(self) -> bool:
+        return self.production and self._tick and not self._tick.sandbox

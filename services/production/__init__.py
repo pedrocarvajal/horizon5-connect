@@ -79,7 +79,7 @@ class ProductionService:
         self._log.info("Collecting historical data")
         self._collect_historical()
 
-        self._log.info("Connecting to assets")
+        self._log.info("Connecting to the streams")
         asyncio.run(self._run_tasks())
 
     # ───────────────────────────────────────────────────────────
@@ -100,8 +100,7 @@ class ProductionService:
 
             if stream_time_diff > datetime.timedelta(seconds=10):
                 self._log.error(
-                    f"Stream has not been updated in the last 10 seconds: "
-                    f"{stream_time_diff}. Restarting stream..."
+                    f"Stream has not been updated in the last 10 seconds: {stream_time_diff}. Restarting stream..."
                 )
 
                 for task in self._stream_tasks:
@@ -120,10 +119,7 @@ class ProductionService:
             to_date = datetime.datetime.now(tz=TIMEZONE)
             from_date = to_date - datetime.timedelta(days=365)
 
-            self._log.info(
-                f"Collecting historical data for {asset.symbol} "
-                f"from {from_date} to {to_date}"
-            )
+            self._log.info(f"Collecting historical data for {asset.symbol} from {from_date} to {to_date}")
 
             ticks = tick_service.ticks(
                 from_date=from_date,
@@ -176,7 +172,5 @@ class ProductionService:
             )
         except Exception as e:
             self._log.error(
-                f"Error connecting to gateway stream: {e} | "
-                f"Asset: {asset.symbol} | "
-                f"Gateway: {gateway.name}"
+                f"Error connecting to gateway stream: {e} | Asset: {asset.symbol} | Gateway: {gateway.name}"
             )

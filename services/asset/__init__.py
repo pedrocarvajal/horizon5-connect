@@ -25,7 +25,7 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self, futures: bool = True) -> None:
+    def __init__(self) -> None:
         self._log = LoggingService()
         self._log.setup("asset_service")
 
@@ -37,7 +37,6 @@ class AssetService(AssetInterface):
         self._gateway = GatewayService(
             gateway=self._gateway_name,
             sandbox=self._backtest,
-            futures=futures,
         )
 
     # ───────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 # Code reviewed on 2025-11-19 by pedrocarvajal
 
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -12,8 +14,8 @@ class BinanceConfigModel(BaseModel):
     to ensure proper configuration before gateway initialization.
 
     Attributes:
-        api_key: Binance API key for authentication (required, non-empty).
-        api_secret: Binance API secret for authentication (required, non-empty).
+        api_key: Binance API key for authentication (optional, None for backtest mode).
+        api_secret: Binance API secret for authentication (optional, None for backtest mode).
         fapi_url: Binance Futures API base URL (required, must start with http:// or https://).
         fapi_v2_url: Binance Futures API v2 base URL (required, must start with http:// or https://).
         fapi_ws_url: Binance Futures WebSocket URL (required, must start with ws:// or wss://).
@@ -27,12 +29,12 @@ class BinanceConfigModel(BaseModel):
         frozen=True,
         validate_assignment=True,
     )
-    api_key: str = Field(
-        min_length=1,
+    api_key: Optional[str] = Field(
+        default=None,
         description="Binance API key",
     )
-    api_secret: str = Field(
-        min_length=1,
+    api_secret: Optional[str] = Field(
+        default=None,
         description="Binance API secret",
     )
     fapi_url: str = Field(
@@ -57,29 +59,34 @@ class BinanceConfigModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     @field_validator("api_key", "api_secret")
     @classmethod
-    def validate_credentials(cls, v: str) -> str:
+    def validate_credentials(cls, v: Optional[str]) -> Optional[str]:
         """
         Validate and normalize API credentials.
 
-        Ensures that API key and secret are not empty or whitespace-only strings.
-        Strips leading and trailing whitespace from the values.
+        Allows None for backtest mode. If a value is provided, ensures it's not
+        empty or whitespace-only and strips leading and trailing whitespace.
 
         Args:
-            v: The credential value to validate (API key or secret).
+            v: The credential value to validate (API key or secret), or None.
 
         Returns:
-            str: The validated and stripped credential value.
+            Optional[str]: The validated and stripped credential value, or None.
 
         Raises:
-            ValueError: If the credential is empty or contains only whitespace.
+            ValueError: If the credential is empty string or contains only whitespace.
 
         Example:
             >>> BinanceConfigModel.validate_credentials("  my_api_key  ")
             "my_api_key"
+            >>> BinanceConfigModel.validate_credentials(None)
+            None
             >>> BinanceConfigModel.validate_credentials("")
             ValueError: Credentials cannot be empty or whitespace
         """
-        if not v or v.strip() == "":
+        if v is None:
+            return None
+
+        if v.strip() == "":
             raise ValueError("Credentials cannot be empty or whitespace")
 
         return v.strip()

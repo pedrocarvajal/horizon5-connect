@@ -7,8 +7,10 @@ from models.tick import TickModel
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
+from .gateway import GatewayHandler
 
-class OrderbookHandler:
+
+class OrderbookHandler(GatewayHandler):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
@@ -17,7 +19,6 @@ class OrderbookHandler:
     _allocation: float
     _balance: float
     _leverage: int
-    _gateway: GatewayService
     _nav: float
     _exposure: float
     _orders: Dict[str, OrderModel]
@@ -38,6 +39,8 @@ class OrderbookHandler:
         gateway: GatewayService,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
+        super().__init__(gateway=gateway)
+
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
@@ -48,7 +51,6 @@ class OrderbookHandler:
         self._orders = {}
         self._leverage = leverage if leverage > 0 else 1
         self._tick = None
-        self._gateway = gateway
         self._nav = 0.0
         self._exposure = 0.0
         self._on_transaction = on_transaction
@@ -68,7 +70,7 @@ class OrderbookHandler:
                 self._log.critical("Margin call triggered: closing all orders and blocking new operations.")
 
             for order in list(self._orders.values()):
-                if order.status is OrderStatus.OPEN:
+                if order.status.is_open():
                     self._log.warning(f"Closing order {order.id}.")
                     self.close(order)
 
@@ -165,13 +167,13 @@ class OrderbookHandler:
         order.close_price = self._tick.price
         order.updated_at = self._tick.date
 
-        if order.status is OrderStatus.CLOSED:
+        if order.status.is_closed():
             margin_used = (order.volume * order.price) / self._leverage
 
             self._balance += margin_used
             self._balance += order.profit
 
-        if order.status is OrderStatus.CANCELLED:
+        if order.status.is_cancelled():
             self._log.error(f"Order {order.id} was cancelled trying to close.")
 
         self._orders[order.id] = order
@@ -221,11 +223,11 @@ class OrderbookHandler:
 
     @property
     def exposure(self) -> float:
-        return sum((order.volume * order.price) for order in self._orders.values() if order.status == OrderStatus.OPEN)
+        return sum((order.volume * order.price) for order in self._orders.values() if order.status.is_open())
 
     @property
     def pnl(self) -> float:
-        return sum(order.profit for order in self._orders.values() if order.status == OrderStatus.OPEN)
+        return sum(order.profit for order in self._orders.values() if order.status.is_open())
 
     @property
     def free_margin(self) -> float:
@@ -234,9 +236,7 @@ class OrderbookHandler:
     @property
     def used_margin(self) -> float:
         return sum(
-            (order.volume * order.price) / self._leverage
-            for order in self._orders.values()
-            if order.status == OrderStatus.OPEN
+            (order.volume * order.price) / self._leverage for order in self._orders.values() if order.status.is_open()
         )
 
     @property
