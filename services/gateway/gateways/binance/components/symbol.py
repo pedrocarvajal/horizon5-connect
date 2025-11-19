@@ -34,7 +34,7 @@ class SymbolComponent(BaseComponent):
                 params=params,
             )
 
-            if response.status_code != HttpStatus.OK.value:
+            if not HttpStatus.is_success_code(response.status_code):
                 self._log.error(f"HTTP Error {response.status_code}: {response.text}")
                 return None
 

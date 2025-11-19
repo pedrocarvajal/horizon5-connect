@@ -137,7 +137,7 @@ class OrderModel(BaseModel):
     @computed_field
     @property
     def profit(self) -> float:
-        if self.side is OrderSide.SELL:
+        if self.side is not None and self.side.is_sell():
             return (self.price - self.close_price) * self.volume
 
         return (self.close_price - self.price) * self.volume
@@ -148,7 +148,7 @@ class OrderModel(BaseModel):
         if self.price == 0:
             return 0.0
 
-        if self.side is OrderSide.SELL:
+        if self.side is not None and self.side.is_sell():
             return (self.price - self.close_price) / self.price
 
         return (self.close_price - self.price) / self.price

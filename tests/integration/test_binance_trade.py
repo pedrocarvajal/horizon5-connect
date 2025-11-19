@@ -35,9 +35,6 @@ class TestBinanceTrade(BinanceWrapper):
 
         self._log.info(f"Total trades found: {len(trades)}")
 
-        if len(trades) > 0:
-            self._log.debug(trades[0].model_dump(mode="json"))
-
     def test_get_trades_by_symbol(self) -> None:
         self._log.info("Getting trades for BTCUSDT")
 
@@ -52,5 +49,3 @@ class TestBinanceTrade(BinanceWrapper):
 
         self._log.info(f"Total trades found for BTCUSDT: {len(trades)}")
 
-        if len(trades) > 0:
-            self._log.debug(trades[0].model_dump(mode="json"))

@@ -64,11 +64,11 @@ class CommandsService:
             self._log.error(f"Command {command_type} not found")
             return False, False
 
-        if command_type is Command.KILL:
+        if command_type.is_kill():
             self._log.info("Shutting down commands handler")
             return True, True
 
-        if command_type is Command.EXECUTE:
+        if command_type.is_execute():
             function = command.get("function")
             args = command.get("args")
 

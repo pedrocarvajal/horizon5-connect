@@ -69,8 +69,6 @@ class TestBinanceSymbol(BinanceWrapper):
         assert leverage_info.leverage >= 1, f"Leverage, got {leverage_info.leverage}"
         assert leverage_info.response is not None, "Response should not be None"
 
-        self._log.debug(leverage_info.model_dump())
-
         self._log.info(f"Closing position for order {order.id}")
         self._close_position(symbol=symbol, order=order)
 

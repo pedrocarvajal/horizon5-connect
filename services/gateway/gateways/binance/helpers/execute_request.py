@@ -47,7 +47,7 @@ def execute_request(
     try:
         response = handler(url, params=request_params, headers=headers)
 
-        if response.status_code != HttpStatus.OK.value:
+        if not HttpStatus.is_success_code(response.status_code):
             error_msg = f"HTTP Error {response.status_code}: {response.text}"
 
             if log_error:

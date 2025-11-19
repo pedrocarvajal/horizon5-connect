@@ -87,7 +87,7 @@ class BinanceWrapper(unittest.TestCase):
             self._log.info(f"No position to close for order {order.id}")
             return
 
-        close_side = OrderSide.SELL if order.side == OrderSide.BUY else OrderSide.BUY
+        close_side = OrderSide.SELL if order.side and order.side.is_buy() else OrderSide.BUY
         close_volume = abs(position.volume)
 
         close_order = self._gateway.place_order(
@@ -128,7 +128,7 @@ class BinanceWrapper(unittest.TestCase):
 
         assert position.volume != 0, f"No position to close for order {order_id}"
 
-        close_side = OrderSide.SELL if order.side == OrderSide.BUY else OrderSide.BUY
+        close_side = OrderSide.SELL if order.side and order.side.is_buy() else OrderSide.BUY
         close_volume = abs(position.volume)
 
         close_order = self._gateway.place_order(
