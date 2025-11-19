@@ -34,9 +34,6 @@ class TestBinancePositions(BinanceWrapper):
 
         self._log.info(f"Total positions found: {len(positions)}")
 
-        if len(positions) > 0:
-            self._log.debug(positions[0].model_dump(mode="json"))
-
     def test_get_positions_by_symbol(self) -> None:
         self._log.info("Getting positions for BTCUSDT")
 
@@ -50,6 +47,3 @@ class TestBinancePositions(BinanceWrapper):
             assert position.symbol == "BTCUSDT", "Symbol should be BTCUSDT"
 
         self._log.info(f"Total positions found for BTCUSDT: {len(positions)}")
-
-        if len(positions) > 0:
-            self._log.debug(positions[0].model_dump(mode="json"))

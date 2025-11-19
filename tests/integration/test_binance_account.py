@@ -28,8 +28,6 @@ class TestBinanceAccount(BinanceWrapper):
         assert len(account_info.balances) >= 1, f"Balances, got {len(account_info.balances)}"
         assert account_info.response is not None, "Response should not be None"
 
-        self._log.debug(account_info.model_dump())
-
     def test_get_verification(self) -> None:
         self._log.info("Opening position to verify account configuration")
 
