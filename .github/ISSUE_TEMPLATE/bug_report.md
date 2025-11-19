@@ -1,38 +1,82 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
-
+about: Report a bug to help us improve Horizon Connect
+title: "[BUG] "
+labels: "bug"
+assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Bug Description
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+A clear and concise description of the bug.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Affected Component
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+Please select the component(s) affected:
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+- [ ] Backtest Service
+- [ ] Production Service
+- [ ] Gateway (Binance/other)
+- [ ] Strategy Service
+- [ ] Analytic Service
+- [ ] Order Management
+- [ ] Candle/Tick Service
+- [ ] Portfolio Service
+- [ ] Indicators
+- [ ] Other
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+## Steps to Reproduce
 
-**Additional context**
-Add any other context about the problem here.
+Provide detailed steps to reproduce the behavior:
+
+```python
+# Minimal reproducible code example
+```
+
+1. Configuration used (portfolio, strategy, gateway settings)
+2. Commands executed
+3. Specific actions that trigger the bug
+
+## Expected Behavior
+
+What did you expect to happen?
+
+## Actual Behavior
+
+What actually happened? Include:
+
+- Error messages
+- Stack traces
+- Log output (from `logs/` directory)
+- Unexpected results
+
+## Environment
+
+- **OS**: [e.g. macOS 13.0, Ubuntu 22.04, Windows 11]
+- **Python Version**: [e.g. 3.11.5]
+- **Horizon Connect Version**: [e.g. 0.1.0]
+- **Gateway**: [e.g. Binance Futures]
+- **Dependencies**: Run `uv pip list` and paste relevant versions
+
+## Logs
+
+Please attach relevant log files from the `logs/` directory:
+
+- `backtest.log`
+- `gateway-binance.log`
+- Other relevant logs
+
+## Additional Context
+
+- Does this occur consistently or intermittently?
+- Did this work in a previous version?
+- Any recent changes to configuration or environment?
+- Related issues:
+
+## Potential Impact
+
+- [ ] Data loss or corruption
+- [ ] Trading execution affected
+- [ ] Performance degradation
+- [ ] Documentation issue
+- [ ] Minor inconvenience
