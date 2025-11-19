@@ -1,10 +1,12 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from typing import Any, Dict, List, Optional
 
 import requests
 
 from enums.http_status import HttpStatus
-from services.gateway.gateways.binance.components.base import BaseComponent
 from helpers.parse import parse_optional_float
+from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
@@ -12,16 +14,43 @@ from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
 
 class SymbolComponent(BaseComponent):
+    """
+    Component for handling Binance symbol-related operations.
+
+    Provides methods to retrieve symbol information, trading fees, leverage info,
+    and manage leverage settings for trading pairs on Binance Futures.
+
+    Attributes:
+        _config: Binance configuration model containing API credentials and URLs.
+        _log: Logging service instance for logging operations.
+    """
+
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def get_symbol_info(
         self,
         symbol: str,
     ) -> Optional[GatewaySymbolInfoModel]:
-        if not symbol:
-            self._log.error("symbol is required")
-            return None
+        """
+        Retrieve symbol information for a given trading pair.
 
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
+        Fetches symbol details including base/quote assets, precision settings,
+        price/quantity filters, and margin requirements from Binance exchange info.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewaySymbolInfoModel if successful, None otherwise.
+
+        Example:
+            >>> component = SymbolComponent(config)
+            >>> info = component.get_symbol_info("BTCUSDT")
+            >>> if info:
+            ...     print(f"Base asset: {info.base_asset}")
+        """
+        if not self._validate_symbol(symbol=symbol):
             return None
 
         params = {
@@ -38,13 +67,13 @@ class SymbolComponent(BaseComponent):
                 self._log.error(f"HTTP Error {response.status_code}: {response.text}")
                 return None
 
-            response = response.json()
+            response_data = response.json()
 
-            if not response:
+            if not response_data:
                 return None
 
             return self._adapt_symbol_info(
-                response=response,
+                response=response_data,
             )
 
         except requests.exceptions.RequestException as e:
@@ -55,12 +84,23 @@ class SymbolComponent(BaseComponent):
         self,
         symbol: str,
     ) -> Optional[GatewayTradingFeesModel]:
-        if not symbol:
-            self._log.error("symbol is required")
-            return None
+        """
+        Retrieve trading fees (maker and taker commission rates) for a symbol.
 
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewayTradingFeesModel containing maker and taker commission rates,
+            or None if the request fails.
+
+        Example:
+            >>> component = SymbolComponent(config)
+            >>> fees = component.get_trading_fees("BTCUSDT")
+            >>> if fees:
+            ...     print(f"Maker: {fees.maker_commission}, Taker: {fees.taker_commission}")
+        """
+        if not self._validate_symbol(symbol=symbol):
             return None
 
         response = self._get_trading_fees(
@@ -76,12 +116,26 @@ class SymbolComponent(BaseComponent):
         self,
         symbol: str,
     ) -> Optional[GatewayLeverageInfoModel]:
-        if not symbol:
-            self._log.error("symbol is required")
-            return None
+        """
+        Retrieve leverage information for a symbol with an open position.
 
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
+        Returns leverage details for the symbol if there is an active position.
+        If no position exists, returns None.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewayLeverageInfoModel containing leverage and symbol information,
+            or None if no position exists or request fails.
+
+        Example:
+            >>> component = SymbolComponent(config)
+            >>> leverage_info = component.get_leverage_info("BTCUSDT")
+            >>> if leverage_info:
+            ...     print(f"Current leverage: {leverage_info.leverage}x")
+        """
+        if not self._validate_symbol(symbol=symbol):
             return None
 
         url = f"{self._config.fapi_v2_url}/positionRisk"
@@ -112,24 +166,29 @@ class SymbolComponent(BaseComponent):
         symbol: str,
         leverage: int,
     ) -> bool:
-        if not symbol:
-            self._log.error("symbol is required")
-            return False
+        """
+        Set leverage for a trading symbol.
 
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
-            return False
+        Updates the leverage multiplier for a specific trading pair.
+        Leverage must be a positive integer.
 
-        if leverage is None:
-            self._log.error("leverage is required")
-            return False
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+            leverage: Leverage multiplier (must be > 0).
 
-        if not isinstance(leverage, int):
-            self._log.error("leverage must be an integer")
-            return False
+        Returns:
+            True if leverage was set successfully, False otherwise.
 
-        if leverage <= 0:
-            self._log.error("leverage must be greater than 0")
+        Raises:
+            Logs errors but does not raise exceptions.
+
+        Example:
+            >>> component = SymbolComponent(config)
+            >>> success = component.set_leverage("BTCUSDT", 20)
+            >>> if success:
+            ...     print("Leverage set to 20x")
+        """
+        if not self._validate_leverage_params(symbol=symbol, leverage=leverage):
             return False
 
         url = f"{self._config.fapi_url}/leverage"
@@ -155,10 +214,77 @@ class SymbolComponent(BaseComponent):
 
         return True
 
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
+    def _validate_symbol(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        Validate that symbol parameter is a non-empty string.
+
+        Args:
+            symbol: Symbol to validate.
+
+        Returns:
+            True if symbol is valid, False otherwise.
+        """
+        if not symbol:
+            self._log.error("symbol is required")
+            return False
+
+        if not isinstance(symbol, str):
+            self._log.error("symbol must be a string")
+            return False
+
+        return True
+
+    def _validate_leverage_params(
+        self,
+        symbol: str,
+        leverage: int,
+    ) -> bool:
+        """
+        Validate symbol and leverage parameters for set_leverage method.
+
+        Args:
+            symbol: Trading pair symbol to validate.
+            leverage: Leverage value to validate.
+
+        Returns:
+            True if both parameters are valid, False otherwise.
+        """
+        if not self._validate_symbol(symbol=symbol):
+            return False
+
+        if leverage is None:
+            self._log.error("leverage is required")
+            return False
+
+        if not isinstance(leverage, int):
+            self._log.error("leverage must be an integer")
+            return False
+
+        if leverage <= 0:
+            self._log.error("leverage must be greater than 0")
+            return False
+
+        return True
+
     def _get_trading_fees(
         self,
         symbol: str,
     ) -> Optional[Dict[str, Any]]:
+        """
+        Execute API request to retrieve trading fees.
+
+        Args:
+            symbol: Trading pair symbol.
+
+        Returns:
+            API response dictionary or None if request fails.
+        """
         return self._execute(
             method="GET",
             url=f"{self._config.fapi_url}/commissionRate",
@@ -167,13 +293,22 @@ class SymbolComponent(BaseComponent):
             },
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _adapt_symbol_info(
         self,
         response: Dict[str, Any],
     ) -> Optional[GatewaySymbolInfoModel]:
+        """
+        Adapt Binance API response to GatewaySymbolInfoModel.
+
+        Parses symbol information from Binance exchange info response,
+        including filters, precision settings, and margin requirements.
+
+        Args:
+            response: Raw API response dictionary from Binance.
+
+        Returns:
+            GatewaySymbolInfoModel instance or None if response is invalid.
+        """
         if not response or "symbols" not in response or len(response["symbols"]) == 0:
             return None
 
@@ -203,6 +338,21 @@ class SymbolComponent(BaseComponent):
         self,
         filters: List[Dict[str, Any]],
     ) -> Dict[str, Optional[float]]:
+        """
+        Parse filter information from Binance symbol filters.
+
+        Extracts price filters, lot size filters, and min notional values
+        from the filters array in Binance symbol info.
+
+        Args:
+            filters: List of filter dictionaries from Binance API.
+
+        Returns:
+            Dictionary containing parsed filter values:
+            - min_price, max_price, tick_size (from PRICE_FILTER)
+            - min_quantity, max_quantity, step_size (from LOT_SIZE)
+            - min_notional (from MIN_NOTIONAL)
+        """
         result = {
             "min_price": None,
             "max_price": None,
@@ -253,6 +403,18 @@ class SymbolComponent(BaseComponent):
         self,
         symbol_info: Dict[str, Any],
     ) -> Optional[float]:
+        """
+        Parse margin percentage from symbol info.
+
+        Checks for requiredMarginPercent or maintMarginPercent fields
+        in the symbol information dictionary.
+
+        Args:
+            symbol_info: Symbol information dictionary from Binance API.
+
+        Returns:
+            Margin percentage as float, or None if not found.
+        """
         if "requiredMarginPercent" in symbol_info:
             return parse_optional_float(
                 value=symbol_info.get("requiredMarginPercent"),
@@ -270,6 +432,18 @@ class SymbolComponent(BaseComponent):
         symbol: str,
         response: Any,
     ) -> Optional[GatewayLeverageInfoModel]:
+        """
+        Adapt Binance position risk response to GatewayLeverageInfoModel.
+
+        Finds the first position with non-zero amount and extracts leverage info.
+
+        Args:
+            symbol: Trading pair symbol.
+            response: API response list containing position data.
+
+        Returns:
+            GatewayLeverageInfoModel if position found, None otherwise.
+        """
         if not response:
             return None
 
@@ -297,6 +471,17 @@ class SymbolComponent(BaseComponent):
         self,
         response: Dict[str, Any],
     ) -> Optional[GatewayTradingFeesModel]:
+        """
+        Adapt Binance commission rate response to GatewayTradingFeesModel.
+
+        Handles both list and dictionary response formats from the API.
+
+        Args:
+            response: API response (can be list or dict) containing fee information.
+
+        Returns:
+            GatewayTradingFeesModel instance or None if response is invalid.
+        """
         if not response:
             return None
 

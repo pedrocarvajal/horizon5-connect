@@ -91,10 +91,6 @@ class Binance(GatewayInterface):
             sandbox=sandbox,
         )
 
-        self._account_component = AccountComponent(
-            config=self._config,
-        )
-
         self._order_component = OrderComponent(
             config=self._config,
         )
@@ -116,6 +112,10 @@ class Binance(GatewayInterface):
         )
 
         self._symbol_component = SymbolComponent(
+            config=self._config,
+        )
+
+        self._account_component = AccountComponent(
             config=self._config,
         )
 

@@ -1,9 +1,12 @@
+# Code reviewed on 2025-11-19 by pedrocarvajal
+
 from typing import Any, Dict, List, Optional
 
+from helpers.parse import parse_optional_float
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.gateways.binance.components.position import PositionComponent
 from services.gateway.gateways.binance.components.symbol import SymbolComponent
-from helpers.parse import parse_optional_float
+from services.gateway.gateways.binance.models.config import BinanceConfigModel
 from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_account import (
     GatewayAccountBalanceModel,
@@ -12,13 +15,37 @@ from services.gateway.models.gateway_account import (
 
 
 class AccountComponent(BaseComponent):
+    """
+    Component for handling Binance account-related operations.
+
+    Provides methods to retrieve account information, balances, and verification
+    checks for trading configuration. Handles account data retrieval, validation,
+    and adaptation to internal models.
+
+    Attributes:
+        _position_component: Component for position-related operations.
+        _symbol_component: Component for symbol-related operations.
+    """
+
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _position_component: PositionComponent
     _symbol_component: SymbolComponent
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
-        config: Any,
+        config: BinanceConfigModel,
     ) -> None:
+        """
+        Initialize the account component.
+
+        Args:
+            config: Binance configuration model containing API credentials and URLs.
+        """
         super().__init__(config)
 
         self._position_component = PositionComponent(
@@ -29,10 +56,32 @@ class AccountComponent(BaseComponent):
             config=config,
         )
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
     def get_account(
         self,
         **kwargs: Any,  # noqa: ARG002
     ) -> Optional[GatewayAccountModel]:
+        """
+        Retrieve account information from Binance.
+
+        Fetches account details including balances, margin, exposure, and PnL
+        from Binance Futures API. Returns None if the request fails or API
+        returns an error.
+
+        Args:
+            **kwargs: Additional keyword arguments (currently unused).
+
+        Returns:
+            GatewayAccountModel if successful, None otherwise.
+
+        Example:
+            >>> component = AccountComponent(config)
+            >>> account = component.get_account()
+            >>> if account:
+            ...     print(f"Balance: {account.balance}")
+        """
         url = f"{self._config.fapi_v2_url}/account"
 
         response = self._execute(
@@ -58,6 +107,30 @@ class AccountComponent(BaseComponent):
         self,
         symbol: str = "BTCUSDT",
     ) -> Dict[str, bool]:
+        """
+        Verify account configuration for trading.
+
+        Performs multiple checks to ensure the account is properly configured
+        for trading, including leverage settings, balance, margin mode, position
+        mode, and trading permissions.
+
+        Args:
+            symbol: Trading pair symbol to check leverage for (default: "BTCUSDT").
+
+        Returns:
+            Dictionary containing verification results with keys:
+                - required_leverage: Whether leverage is >= 1
+                - usdt_balance: Whether USDT balance > 0
+                - cross_margin: Whether account is in cross margin mode
+                - one_way_mode: Whether account is in one-way position mode
+                - trading_permissions: Whether trading is enabled
+
+        Example:
+            >>> component = AccountComponent(config)
+            >>> verification = component.get_verification(symbol="BTCUSDT")
+            >>> if verification["required_leverage"]:
+            ...     print("Leverage is configured correctly")
+        """
         return {
             "required_leverage": self._check_leverage(symbol=symbol),
             "usdt_balance": self._check_usdt_balance(),
@@ -73,33 +146,19 @@ class AccountComponent(BaseComponent):
         self,
         response: Dict[str, Any],
     ) -> Optional[GatewayAccountModel]:
-        balances: List[GatewayAccountBalanceModel] = []
+        """
+        Adapt Binance API response to GatewayAccountModel.
 
-        if not response:
-            return None
+        Transforms the raw API response into the internal account model format,
+        extracting balances, totals, and account metrics.
 
-        has_error, error_msg, error_code = has_api_error(
-            response=response,
-        )
+        Args:
+            response: Raw API response dictionary from Binance.
 
-        if has_error:
-            self._log.error(f"API Error: {error_msg} (code: {error_code})")
-            return None
-
-        assets = response.get("assets", [])
-
-        for asset_data in assets:
-            wallet_balance = parse_optional_float(value=asset_data.get("walletBalance", 0))
-            locked_balance = parse_optional_float(value=asset_data.get("locked", 0))
-
-            balances.append(
-                GatewayAccountBalanceModel(
-                    asset=asset_data.get("asset", ""),
-                    balance=wallet_balance,
-                    locked=locked_balance,
-                    response=asset_data,
-                )
-            )
+        Returns:
+            GatewayAccountModel instance with adapted data.
+        """
+        balances = self._build_balances(response=response)
 
         total_wallet_balance = parse_optional_float(value=response.get("totalWalletBalance", 0))
         total_margin_balance = parse_optional_float(value=response.get("totalMarginBalance", 0))
@@ -118,10 +177,55 @@ class AccountComponent(BaseComponent):
             response=response,
         )
 
+    def _build_balances(
+        self,
+        response: Dict[str, Any],
+    ) -> List[GatewayAccountBalanceModel]:
+        """
+        Build list of balance models from API response.
+
+        Extracts asset balances from the API response and creates
+        GatewayAccountBalanceModel instances for each asset.
+
+        Args:
+            response: Raw API response dictionary containing assets data.
+
+        Returns:
+            List of GatewayAccountBalanceModel instances.
+        """
+        balances: List[GatewayAccountBalanceModel] = []
+        assets = response.get("assets", [])
+
+        for asset_data in assets:
+            wallet_balance = parse_optional_float(value=asset_data.get("walletBalance", 0))
+            locked_balance = parse_optional_float(value=asset_data.get("locked", 0))
+
+            balances.append(
+                GatewayAccountBalanceModel(
+                    asset=asset_data.get("asset", ""),
+                    balance=wallet_balance,
+                    locked=locked_balance,
+                    response=asset_data,
+                )
+            )
+
+        return balances
+
     def _check_leverage(
         self,
         symbol: str,
     ) -> bool:
+        """
+        Check if leverage is configured correctly for the symbol.
+
+        Verifies that the leverage setting for the given symbol is >= 1.
+
+        Args:
+            symbol: Trading pair symbol to check.
+
+        Returns:
+            True if leverage >= 1, False otherwise.
+        """
         leverage_info = self._symbol_component.get_leverage_info(
             symbol=symbol,
         )
@@ -134,6 +238,12 @@ class AccountComponent(BaseComponent):
     def _check_usdt_balance(
         self,
     ) -> bool:
+        """
+        Check if account has USDT balance > 0.
+
+        Returns:
+            True if USDT balance exists and is > 0, False otherwise.
+        """
         account = self.get_account()
 
         if account:
@@ -146,6 +256,16 @@ class AccountComponent(BaseComponent):
     def _check_cross_margin(
         self,
     ) -> bool:
+        """
+        Check if account is configured for cross margin mode.
+
+        Verifies that all positions use cross margin mode. Returns True
+        if no positions exist (default state).
+
+        Returns:
+            True if all positions use cross margin or no positions exist,
+            False otherwise.
+        """
         positions = self._position_component.get_positions()
 
         if positions:
@@ -163,6 +283,15 @@ class AccountComponent(BaseComponent):
     def _check_one_way_mode(
         self,
     ) -> bool:
+        """
+        Check if account is in one-way position mode.
+
+        One-way mode means dualSidePosition is False. Returns False
+        if position mode cannot be determined.
+
+        Returns:
+            True if in one-way mode, False otherwise.
+        """
         position_mode = self._position_component.get_position_mode()
         if position_mode is not None:
             return not position_mode
@@ -171,6 +300,12 @@ class AccountComponent(BaseComponent):
     def _check_trading_permissions(
         self,
     ) -> bool:
+        """
+        Check if trading is enabled for the account.
+
+        Returns:
+            True if trading is enabled (canTrade is True), False otherwise.
+        """
         account = self.get_account()
 
         if account and account.response:
