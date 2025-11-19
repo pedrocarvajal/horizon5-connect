@@ -3,9 +3,7 @@
 
 run-tests:
 	@echo "Running all tests..."
-	$(MAKE) run-tests-e2e
-	$(MAKE) run-tests-integration
-	$(MAKE) run-tests-unit
+	uv run python -m unittest discover -s tests -p "test_*.py" -v -b --locals
 
 run-tests-e2e:
 	@echo "Running E2E tests..."
