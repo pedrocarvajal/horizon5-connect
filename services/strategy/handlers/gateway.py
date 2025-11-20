@@ -1,15 +1,15 @@
-# Code reviewed on 2025-01-27 by Pedro Carvajal
+# Code reviewed on 2025-11-20 by Pedro Carvajal
 
 import asyncio
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from configs.timezone import TIMEZONE
 from enums.order_status import OrderStatus
 from models.order import OrderModel
 from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
-from services.gateway.models.gateway_trade import GatewayTradeModel
+from services.gateway.models.gateway_order import GatewayOrderModel
 from services.logging import LoggingService
 
 
@@ -33,7 +33,15 @@ class GatewayHandler:
         _backtest: Whether running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _verification: Dictionary containing gateway verification status.
+        _polling_tasks: Dictionary mapping order IDs to async polling tasks.
     """
+
+    # ───────────────────────────────────────────────────────────
+    # CONSTANTS
+    # ───────────────────────────────────────────────────────────
+    MAX_POLLING_RETRIES: int = 5
+    MAX_POLLING_ITERATIONS: int = 60
+    POLLING_INTERVAL_SECONDS: int = 1
 
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
@@ -43,7 +51,7 @@ class GatewayHandler:
     _backtest: bool
     _backtest_id: Optional[str]
     _verification: Optional[Dict[str, bool]]
-    _polling_tasks: Dict[str, Any]
+    _polling_tasks: Dict[str, asyncio.Task]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -244,27 +252,36 @@ class GatewayHandler:
         if order.backtest or not order.gateway_order_id:
             return
 
+        self._create_polling_task(order)
+
+    def _create_polling_task(self, order: OrderModel) -> None:
+        """
+        Create and register an async polling task for order status.
+
+        Handles both running and non-running event loops, creating appropriate
+        async tasks or running synchronously when needed.
+
+        Args:
+            order: OrderModel instance to poll status for.
+        """
         try:
             loop = asyncio.get_event_loop()
 
             if loop.is_running():
                 task = asyncio.create_task(self._get_order_status_from_gateway(order))
-                self._polling_tasks = getattr(self, "_polling_tasks", {})
                 self._polling_tasks[order.id] = task
-
             else:
                 loop.run_until_complete(self._get_order_status_from_gateway(order))
 
         except RuntimeError:
             task = asyncio.create_task(self._get_order_status_from_gateway(order))
-            self._polling_tasks = getattr(self, "_polling_tasks", {})
             self._polling_tasks[order.id] = task
 
     async def _get_order_status_from_gateway(self, order: OrderModel) -> None:
         """
         Poll gateway for order status until it reaches a final state.
 
-        Continuously checks the order status on the gateway at 1-second intervals
+        Continuously checks the order status on the gateway at configured intervals
         until the order is EXECUTED or CANCELLED. Updates the OrderModel with
         final execution data including trades and commissions.
 
@@ -274,13 +291,11 @@ class GatewayHandler:
         if order.backtest or not order.gateway_order_id:
             return
 
-        max_retries = 5
-        max_iterations = 60
         retry_count = 0
         iteration_count = 0
 
-        while iteration_count < max_iterations:
-            await asyncio.sleep(1)
+        while iteration_count < self.MAX_POLLING_ITERATIONS:
+            await asyncio.sleep(self.POLLING_INTERVAL_SECONDS)
             iteration_count += 1
 
             gateway_order = self._gateway.get_order(
@@ -291,78 +306,79 @@ class GatewayHandler:
             if gateway_order is None:
                 retry_count += 1
 
-                if retry_count >= max_retries:
-                    self._log.warning(f"Order {order.id} not found after {max_retries} attempts, stopping polling")
+                if retry_count >= self.MAX_POLLING_RETRIES:
+                    self._log.warning(
+                        f"Order {order.id} not found after {self.MAX_POLLING_RETRIES} attempts, stopping polling",
+                    )
                     return
 
                 continue
 
             retry_count = 0
 
-            if gateway_order.status == GatewayOrderStatus.PENDING:
-                continue
+            if not self._should_continue_polling(gateway_order.status):
+                if gateway_order.status == GatewayOrderStatus.EXECUTED:
+                    self._handle_executed_order(order, gateway_order)
+                elif gateway_order.status == GatewayOrderStatus.CANCELLED:
+                    self._handle_cancelled_order(order)
 
-            if gateway_order.status == GatewayOrderStatus.EXECUTED:
-                gateway_trades = self._gateway.get_trades(
-                    symbol=order.symbol,
-                    order_id=order.gateway_order_id,
-                )
-
-                if gateway_trades:
-                    self._update_order(
-                        order=order,
-                        gateway_trades=gateway_trades,
-                    )
-
-                order.executed_volume = gateway_order.executed_volume
-                order.price = gateway_order.price
-                order.status = OrderStatus.OPEN
-                order.updated_at = datetime.datetime.now(tz=TIMEZONE)
-
-                self._log.success(f"Order {order.id} executed successfully")
                 return
 
-            if gateway_order.status == GatewayOrderStatus.CANCELLED:
-                order.status = OrderStatus.CANCELLED
-                order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+        self._log.warning(
+            f"Order {order.id} polling stopped after {self.MAX_POLLING_ITERATIONS} iterations without final status",
+        )
 
-                self._log.error(f"Order {order.id} was cancelled")
-                return
+    def _should_continue_polling(self, status: Optional[GatewayOrderStatus]) -> bool:
+        """
+        Check if polling should continue based on order status.
 
-        self._log.warning(f"Order {order.id} polling stopped after {max_iterations} iterations without final status")
+        Args:
+            status: Current gateway order status.
 
-    def _update_order(
+        Returns:
+            bool: True if polling should continue, False if order reached final state.
+        """
+        return status == GatewayOrderStatus.PENDING
+
+    def _handle_executed_order(
         self,
         order: OrderModel,
-        gateway_trades: List[GatewayTradeModel],
+        gateway_order: GatewayOrderModel,
     ) -> None:
         """
-        Update OrderModel with execution data from gateway trades.
+        Handle order execution completion.
 
-        Calculates and sets execution price (average), executed volume,
-        total commission, commission percentage, and maps trades to order.
+        Updates the order with execution data and final execution details.
 
         Args:
             order: OrderModel instance to update.
-            gateway_trades: List of GatewayTradeModel instances from gateway.
+            gateway_order: Gateway order model with execution details.
         """
-        if not gateway_trades:
-            return
+        gateway_trades = self._gateway.get_trades(
+            symbol=order.symbol,
+            order_id=order.gateway_order_id,
+        )
 
-        total_volume = sum(trade.volume for trade in gateway_trades)
-        total_commission = sum(trade.commission for trade in gateway_trades)
+        if gateway_trades:
+            order.trades = gateway_trades
 
-        total_price_volume = sum(trade.price * trade.volume for trade in gateway_trades)
-        average_price = total_price_volume / total_volume if total_volume > 0 else 0.0
-
-        order.executed_volume = total_volume
-        order.commission = total_commission
-
-        if average_price > 0 and total_volume > 0:
-            order.price = average_price
-            order.commission_percentage = (total_commission / (average_price * total_volume)) * 100
-        else:
-            order.commission_percentage = 0.0
-
-        order.trades = gateway_trades
+        order.executed_volume = gateway_order.executed_volume
+        order.price = gateway_order.price
+        order.status = OrderStatus.OPEN
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+        self._log.success(f"Order {order.id} executed successfully")
+
+    def _handle_cancelled_order(self, order: OrderModel) -> None:
+        """
+        Handle order cancellation.
+
+        Updates the order status to CANCELLED and logs the cancellation.
+
+        Args:
+            order: OrderModel instance to update.
+        """
+        order.status = OrderStatus.CANCELLED
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+        self._log.error(f"Order {order.id} was cancelled")
