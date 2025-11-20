@@ -1,4 +1,4 @@
-# Last coding review: 2025-11-17 17:49:49
+# Code reviewed on 2025-01-27 by Pedro Carvajal
 
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
@@ -31,21 +31,18 @@ class TestBinanceAccount(BinanceWrapper):
     def test_get_verification(self) -> None:
         self._log.info("Opening position to verify account configuration")
 
-        symbol = "BTCUSDT"
-        volume = 0.002
-
         order = self._gateway.place_order(
-            symbol=symbol,
+            symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
-            volume=volume,
+            volume=self._DEFAULT_ORDER_VOLUME,
         )
 
         assert order is not None, "Order should not be None"
         assert order.id != "", "Order ID should not be empty"
         self._log.info(f"Position opened with order {order.id}")
 
-        verification = self._gateway.get_verification(symbol=symbol)
+        verification = self._gateway.get_verification(symbol=self._SYMBOL)
 
         assert verification is not None, "Verification should not be None"
         assert isinstance(verification, dict), "Verification should be a dict"
@@ -62,4 +59,4 @@ class TestBinanceAccount(BinanceWrapper):
         assert verification["trading_permissions"] is True, "Trading permissions should be enabled"
 
         self._log.info(f"Closing position for order {order.id}")
-        self._close_position(symbol=symbol, order=order)
+        self._close_position(symbol=self._SYMBOL, order=order)

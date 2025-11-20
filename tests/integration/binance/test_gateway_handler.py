@@ -1,16 +1,10 @@
 # Code reviewed on 2025-11-20 by Pedro Carvajal
 
-import time
-from typing import TYPE_CHECKING
-
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from services.strategy.handlers.gateway import GatewayHandler
 from tests.integration.binance.wrappers.binance import BinanceWrapper
-
-if TYPE_CHECKING:
-    from models.order import OrderModel
 
 
 class TestGatewayHandler(BinanceWrapper):
@@ -53,7 +47,7 @@ class TestGatewayHandler(BinanceWrapper):
     def test_open_order_market_with_polling(self) -> None:
         self._log.info("Testing open_order with market order and polling")
 
-        order = self._create_test_order(
+        order = self._build_order_model(
             symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
@@ -71,7 +65,12 @@ class TestGatewayHandler(BinanceWrapper):
 
         self._log.info(f"Order placed successfully: {order.gateway_order_id}")
 
-        self._wait_for_order_execution(order)
+        self._wait_for_order_status(
+            order=order,
+            target_status=OrderStatus.OPEN,
+            timeout_seconds=self._POLLING_TIMEOUT_SECONDS,
+            handler=self._handler,
+        )
 
         assert order.status == OrderStatus.OPEN, f"Order should be OPEN after polling, got {order.status}"
         assert order.executed_volume > 0, "Order should have executed volume"
@@ -103,7 +102,7 @@ class TestGatewayHandler(BinanceWrapper):
         log_msg += f"trades={trades_count}"
         self._log.info(log_msg)
 
-        self._close_order_by_id(symbol=self._SYMBOL, order_id=order.gateway_order_id)
+        self._delete_order_by_id(symbol=self._SYMBOL, order_id=order.gateway_order_id)
 
     def test_open_order_backtest_mode(self) -> None:
         self._log.info("Testing open_order in backtest mode")
@@ -114,7 +113,7 @@ class TestGatewayHandler(BinanceWrapper):
             backtest_id=self._DEFAULT_ORDER_BACKTEST_ID,
         )
 
-        order = self._create_test_order(
+        order = self._build_order_model(
             symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
@@ -135,7 +134,7 @@ class TestGatewayHandler(BinanceWrapper):
     def test_open_order_with_invalid_gateway_response(self) -> None:
         self._log.info("Testing open_order with invalid parameters")
 
-        order = self._create_test_order(
+        order = self._build_order_model(
             symbol=self._DEFAULT_ORDER_INVALID_SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
@@ -147,43 +146,3 @@ class TestGatewayHandler(BinanceWrapper):
         assert result is False, "open_order should return False with invalid parameters"
 
         self._log.info("Invalid order correctly rejected")
-
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
-    def _wait_for_order_execution(self, order: "OrderModel") -> None:
-        """Wait for order to reach OPEN status with polling timeout.
-
-        Polls the order status until it reaches OPEN status or the polling
-        timeout is reached. Checks both the order status directly and the
-        polling task completion status.
-
-        Args:
-            order: OrderModel instance to wait for execution.
-
-        Raises:
-            TimeoutError: If order does not reach OPEN status within
-                _POLLING_TIMEOUT_SECONDS.
-        """
-        self._log.info(f"Waiting for order {order.id} to be executed (max {self._POLLING_TIMEOUT_SECONDS}s)")
-
-        start_time = time.time()
-        polling_tasks = getattr(self._handler, "_polling_tasks", {})
-
-        while time.time() - start_time < self._POLLING_TIMEOUT_SECONDS:
-            if order.status == OrderStatus.OPEN:
-                elapsed = time.time() - start_time
-                self._log.info(f"Order executed after {elapsed:.1f}s")
-                return
-
-            if order.id in polling_tasks:
-                task = polling_tasks[order.id]
-                if task.done():
-                    self._log.info("Polling task completed")
-                    return
-
-            time.sleep(1)
-
-        raise TimeoutError(
-            f"Order {order.id} did not reach OPEN status within {self._POLLING_TIMEOUT_SECONDS} seconds",
-        )
