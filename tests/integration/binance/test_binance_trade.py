@@ -2,7 +2,7 @@
 
 from enums.order_side import OrderSide
 from services.gateway.models.gateway_trade import GatewayTradeModel
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 
 class TestBinanceTrade(BinanceWrapper):

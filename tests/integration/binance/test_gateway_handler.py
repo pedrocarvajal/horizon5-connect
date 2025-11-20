@@ -7,7 +7,7 @@ from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from services.strategy.handlers.gateway import GatewayHandler
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 if TYPE_CHECKING:
     from models.order import OrderModel

@@ -3,7 +3,7 @@
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from services.gateway.models.gateway_account import GatewayAccountModel
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 
 class TestBinanceAccount(BinanceWrapper):

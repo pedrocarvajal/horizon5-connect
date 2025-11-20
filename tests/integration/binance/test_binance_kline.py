@@ -5,7 +5,7 @@ from typing import List
 
 from configs.timezone import TIMEZONE
 from services.gateway.models.gateway_kline import GatewayKlineModel
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 
 class TestBinanceKline(BinanceWrapper):

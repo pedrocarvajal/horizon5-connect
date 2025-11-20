@@ -8,7 +8,7 @@ from enums.order_type import OrderType
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.gateway.models.gateway_order import GatewayOrderModel
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 
 class TestBinanceOrder(BinanceWrapper):

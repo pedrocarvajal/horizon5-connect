@@ -4,7 +4,7 @@ import asyncio
 from typing import List
 
 from models.tick import TickModel
-from tests.integration.wrappers.binance import BinanceWrapper
+from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 
 class TestBinanceStream(BinanceWrapper):
