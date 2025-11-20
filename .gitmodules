@@ -1,3 +1,3 @@
-[submodule "docs/automations-for-ai-for-programmers"]
-	path = docs/automations-for-ai-for-programmers
-	url = git@github.com:pedrocarvajal/automations-for-ai-for-programmers.git
+[submodule ".cursor/commands/ai-refactoring-workflows"]
+	path = .cursor/commands/ai-refactoring-workflows
+	url = git@github.com:pedrocarvajal/ai-refactoring-workflows.git
