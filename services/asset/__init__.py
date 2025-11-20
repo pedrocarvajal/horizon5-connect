@@ -4,8 +4,8 @@ from typing import Any, List, Optional
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from interfaces.strategy import StrategyInterface
+from models.order import OrderModel
 from models.tick import TickModel
-from models.trade import TradeModel
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
@@ -94,9 +94,9 @@ class AssetService(AssetInterface):
         for strategy in self._strategies:
             strategy.on_tick(tick)
 
-    def on_transaction(self, trade: TradeModel) -> None:
+    def on_transaction(self, order: OrderModel) -> None:
         for strategy in self._strategies:
-            strategy.on_transaction(trade)
+            strategy.on_transaction(order)
 
     def on_end(self) -> None:
         for strategy in self._strategies:

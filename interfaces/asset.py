@@ -5,8 +5,8 @@ if TYPE_CHECKING:
     from interfaces.strategy import StrategyInterface
     from services.gateway import GatewayService
 
+from models.order import OrderModel
 from models.tick import TickModel
-from models.trade import TradeModel
 
 
 class AssetInterface(ABC):
@@ -17,7 +17,7 @@ class AssetInterface(ABC):
     def on_tick(self, tick: TickModel) -> None:  # noqa: B027
         pass
 
-    def on_transaction(self, trade: TradeModel) -> None:  # noqa: B027
+    def on_transaction(self, order: OrderModel) -> None:  # noqa: B027
         pass
 
     def on_end(self) -> None:  # noqa: B027

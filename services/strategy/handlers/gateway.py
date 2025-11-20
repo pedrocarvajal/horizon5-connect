@@ -1,11 +1,15 @@
 # Code reviewed on 2025-01-27 by Pedro Carvajal
 
-from typing import Any, Dict, Optional
+import asyncio
+import datetime
+from typing import Any, Dict, List, Optional
 
+from configs.timezone import TIMEZONE
 from enums.order_status import OrderStatus
 from models.order import OrderModel
 from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
+from services.gateway.models.gateway_trade import GatewayTradeModel
 from services.logging import LoggingService
 
 
@@ -39,6 +43,7 @@ class GatewayHandler:
     _backtest: bool
     _backtest_id: Optional[str]
     _verification: Optional[Dict[str, bool]]
+    _polling_tasks: Dict[str, Any]
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -68,6 +73,7 @@ class GatewayHandler:
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
         self._verification = None
+        self._polling_tasks = {}
 
         if not self._backtest:
             self._verification = self._gateway.get_verification()
@@ -113,6 +119,7 @@ class GatewayHandler:
 
         order.executed_volume = gateway_order.executed_volume
         order.status = self._map_gateway_status_to_order_status(gateway_order.status)
+        self._pull_order_status(order)
 
         return True
 
@@ -223,3 +230,139 @@ class GatewayHandler:
             return OrderStatus.OPENING
 
         return self._get_gateway_status_map().get(gateway_status, OrderStatus.OPENING)
+
+    def _pull_order_status(self, order: OrderModel) -> None:
+        """
+        Start asynchronous polling task to verify order status.
+
+        Creates an async task that polls the gateway for order status updates
+        until the order reaches a final state (EXECUTED or CANCELLED).
+
+        Args:
+            order: OrderModel instance to poll status for.
+        """
+        if order.backtest or not order.gateway_order_id:
+            return
+
+        try:
+            loop = asyncio.get_event_loop()
+
+            if loop.is_running():
+                task = asyncio.create_task(self._get_order_status_from_gateway(order))
+                self._polling_tasks = getattr(self, "_polling_tasks", {})
+                self._polling_tasks[order.id] = task
+
+            else:
+                loop.run_until_complete(self._get_order_status_from_gateway(order))
+
+        except RuntimeError:
+            task = asyncio.create_task(self._get_order_status_from_gateway(order))
+            self._polling_tasks = getattr(self, "_polling_tasks", {})
+            self._polling_tasks[order.id] = task
+
+    async def _get_order_status_from_gateway(self, order: OrderModel) -> None:
+        """
+        Poll gateway for order status until it reaches a final state.
+
+        Continuously checks the order status on the gateway at 1-second intervals
+        until the order is EXECUTED or CANCELLED. Updates the OrderModel with
+        final execution data including trades and commissions.
+
+        Args:
+            order: OrderModel instance to poll status for.
+        """
+        if order.backtest or not order.gateway_order_id:
+            return
+
+        max_retries = 5
+        max_iterations = 60
+        retry_count = 0
+        iteration_count = 0
+
+        while iteration_count < max_iterations:
+            await asyncio.sleep(1)
+            iteration_count += 1
+
+            gateway_order = self._gateway.get_order(
+                symbol=order.symbol,
+                order_id=order.gateway_order_id,
+            )
+
+            if gateway_order is None:
+                retry_count += 1
+
+                if retry_count >= max_retries:
+                    self._log.warning(f"Order {order.id} not found after {max_retries} attempts, stopping polling")
+                    return
+
+                continue
+
+            retry_count = 0
+
+            if gateway_order.status == GatewayOrderStatus.PENDING:
+                continue
+
+            if gateway_order.status == GatewayOrderStatus.EXECUTED:
+                gateway_trades = self._gateway.get_trades(
+                    symbol=order.symbol,
+                    order_id=order.gateway_order_id,
+                )
+
+                if gateway_trades:
+                    self._update_order(
+                        order=order,
+                        gateway_trades=gateway_trades,
+                    )
+
+                order.executed_volume = gateway_order.executed_volume
+                order.price = gateway_order.price
+                order.status = OrderStatus.OPEN
+                order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+                self._log.success(f"Order {order.id} executed successfully")
+                return
+
+            if gateway_order.status == GatewayOrderStatus.CANCELLED:
+                order.status = OrderStatus.CANCELLED
+                order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+                self._log.error(f"Order {order.id} was cancelled")
+                return
+
+        self._log.warning(f"Order {order.id} polling stopped after {max_iterations} iterations without final status")
+
+    def _update_order(
+        self,
+        order: OrderModel,
+        gateway_trades: List[GatewayTradeModel],
+    ) -> None:
+        """
+        Update OrderModel with execution data from gateway trades.
+
+        Calculates and sets execution price (average), executed volume,
+        total commission, commission percentage, and maps trades to order.
+
+        Args:
+            order: OrderModel instance to update.
+            gateway_trades: List of GatewayTradeModel instances from gateway.
+        """
+        if not gateway_trades:
+            return
+
+        total_volume = sum(trade.volume for trade in gateway_trades)
+        total_commission = sum(trade.commission for trade in gateway_trades)
+
+        total_price_volume = sum(trade.price * trade.volume for trade in gateway_trades)
+        average_price = total_price_volume / total_volume if total_volume > 0 else 0.0
+
+        order.executed_volume = total_volume
+        order.commission = total_commission
+
+        if average_price > 0 and total_volume > 0:
+            order.price = average_price
+            order.commission_percentage = (total_commission / (average_price * total_volume)) * 100
+        else:
+            order.commission_percentage = 0.0
+
+        order.trades = gateway_trades
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)

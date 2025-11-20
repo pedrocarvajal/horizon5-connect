@@ -14,7 +14,7 @@ from helpers.get_slug import get_slug
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from models.tick import TickModel
-from models.trade import TradeModel
+from services.gateway.models.gateway_trade import GatewayTradeModel
 from services.logging import LoggingService
 
 
@@ -45,7 +45,7 @@ class OrderModel(BaseModel):
     commission: float = Field(default=0.0, ge=0)
     commission_percentage: float = Field(default=0.0, ge=0)
 
-    trades: List[TradeModel] = Field(default_factory=list)
+    trades: List[GatewayTradeModel] = Field(default_factory=list)
     logs: List[str] = Field(default_factory=list)
     variables: Dict[str, Any] = Field(default_factory=dict)
 
