@@ -265,17 +265,19 @@ class GatewayHandler:
             order: OrderModel instance to poll status for.
         """
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
+            task = asyncio.create_task(self._get_order_status_from_gateway(order))
 
-            if loop.is_running():
-                task = asyncio.create_task(self._get_order_status_from_gateway(order))
-                self._polling_tasks[order.id] = task
-            else:
-                loop.run_until_complete(self._get_order_status_from_gateway(order))
+            self._polling_tasks[order.id] = task
 
         except RuntimeError:
-            task = asyncio.create_task(self._get_order_status_from_gateway(order))
-            self._polling_tasks[order.id] = task
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            try:
+                loop.run_until_complete(self._get_order_status_from_gateway(order))
+            finally:
+                loop.close()
 
     async def _get_order_status_from_gateway(self, order: OrderModel) -> None:
         """

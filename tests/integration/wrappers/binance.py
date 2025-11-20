@@ -1,8 +1,11 @@
+import datetime
 import unittest
 from typing import Dict, Optional
 
+from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
+from models.order import OrderModel
 from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_order import GatewayOrderModel
@@ -43,6 +46,40 @@ class BinanceWrapper(unittest.TestCase):
             order_type=order_type,
             volume=volume,
             price=price,
+        )
+
+    def _create_test_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: float = 0.0,
+        backtest: bool = False,
+    ) -> OrderModel:
+        """Create a test OrderModel instance for testing.
+
+        Args:
+            symbol: Trading symbol (e.g., "BTCUSDT").
+            side: Order side (BUY or SELL).
+            order_type: Order type (MARKET, LIMIT, etc.).
+            volume: Order volume.
+            price: Order price (default: 0.0).
+            backtest: Whether order is for backtest mode (default: False).
+
+        Returns:
+            OrderModel instance configured with provided parameters.
+        """
+        return OrderModel(
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            volume=volume,
+            price=price,
+            backtest=backtest,
+            gateway=self._gateway,
+            created_at=datetime.datetime.now(tz=TIMEZONE),
+            updated_at=datetime.datetime.now(tz=TIMEZONE),
         )
 
     def _close_order_by_id(

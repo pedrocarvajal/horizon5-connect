@@ -1,10 +1,8 @@
 # Code reviewed on 2025-11-20 by Pedro Carvajal
 
-import datetime
 import time
 from typing import TYPE_CHECKING
 
-from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
@@ -22,6 +20,9 @@ class TestGatewayHandler(BinanceWrapper):
     _SYMBOL: str = "BTCUSDT"
     _DEFAULT_VOLUME: float = 0.002
     _POLLING_TIMEOUT_SECONDS: int = 70
+    _DEFAULT_ORDER_BACKTEST_ID: str = "test-123"
+    _DEFAULT_ORDER_INVALID_SYMBOL: str = "INVALID_SYMBOL"
+    _DEFAULT_ORDER_INVALID_VOLUME: float = 0.0
 
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
@@ -79,10 +80,12 @@ class TestGatewayHandler(BinanceWrapper):
 
         if order.price == 0:
             self._log.warning("Order price is 0, attempting to get from gateway")
+
             gateway_order = self._gateway.get_order(
                 symbol=self._SYMBOL,
                 order_id=order.gateway_order_id,
             )
+
             if gateway_order and gateway_order.price > 0:
                 self._log.info(f"Retrieved price from gateway: {gateway_order.price}")
             else:
@@ -90,6 +93,7 @@ class TestGatewayHandler(BinanceWrapper):
 
         if order.trades:
             self._log.info(f"Order has {len(order.trades)} trades")
+
             for trade in order.trades:
                 assert trade.price > 0, "Trade price should be > 0"
                 assert trade.volume > 0, "Trade volume should be > 0"
@@ -107,7 +111,7 @@ class TestGatewayHandler(BinanceWrapper):
         handler_backtest = GatewayHandler(
             gateway=self._gateway,
             backtest=True,
-            backtest_id="test-123",
+            backtest_id=self._DEFAULT_ORDER_BACKTEST_ID,
         )
 
         order = self._create_test_order(
@@ -122,6 +126,7 @@ class TestGatewayHandler(BinanceWrapper):
 
         expected_result = False
         message = "open_order should return False in backtest mode"
+
         assert result is expected_result, message
         assert order.gateway_order_id is None, "Order should not have gateway_order_id"
 
@@ -131,10 +136,10 @@ class TestGatewayHandler(BinanceWrapper):
         self._log.info("Testing open_order with invalid parameters")
 
         order = self._create_test_order(
-            symbol="INVALID_SYMBOL",
+            symbol=self._DEFAULT_ORDER_INVALID_SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
-            volume=0.0,
+            volume=self._DEFAULT_ORDER_INVALID_VOLUME,
         )
 
         result = self._handler.open_order(order)
@@ -146,30 +151,20 @@ class TestGatewayHandler(BinanceWrapper):
     # ───────────────────────────────────────────────────────────
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
-    def _create_test_order(
-        self,
-        symbol: str,
-        side: OrderSide,
-        order_type: OrderType,
-        volume: float,
-        price: float = 0.0,
-        backtest: bool = False,
-    ) -> "OrderModel":
-        from models.order import OrderModel  # noqa: PLC0415
-
-        return OrderModel(
-            symbol=symbol,
-            side=side,
-            order_type=order_type,
-            volume=volume,
-            price=price,
-            backtest=backtest,
-            gateway=self._gateway,
-            created_at=datetime.datetime.now(tz=TIMEZONE),
-            updated_at=datetime.datetime.now(tz=TIMEZONE),
-        )
-
     def _wait_for_order_execution(self, order: "OrderModel") -> None:
+        """Wait for order to reach OPEN status with polling timeout.
+
+        Polls the order status until it reaches OPEN status or the polling
+        timeout is reached. Checks both the order status directly and the
+        polling task completion status.
+
+        Args:
+            order: OrderModel instance to wait for execution.
+
+        Raises:
+            TimeoutError: If order does not reach OPEN status within
+                _POLLING_TIMEOUT_SECONDS.
+        """
         self._log.info(f"Waiting for order {order.id} to be executed (max {self._POLLING_TIMEOUT_SECONDS}s)")
 
         start_time = time.time()
