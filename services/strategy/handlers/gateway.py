@@ -1,31 +1,137 @@
-from typing import Any, Dict
+# Code reviewed on 2025-01-27 by Pedro Carvajal
 
+from typing import Any, Dict, Optional
+
+from enums.order_status import OrderStatus
+from models.order import OrderModel
 from services.gateway import GatewayService
+from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.logging import LoggingService
 
 
 class GatewayHandler:
+    """
+    Handler for gateway operations and configuration validation.
+
+    This handler manages gateway service interactions, validates gateway
+    configuration for production trading, and executes real orders on the
+    exchange when in production mode. It provides a base class for gateway
+    operations that can be extended by specific handlers.
+
+    The handler performs:
+    - Gateway configuration validation (credentials, leverage, balance, etc.)
+    - Trading requirements verification (margin mode, position mode, permissions)
+    - Real order execution on exchange gateways (production mode only)
+
+    Attributes:
+        _gateway: Gateway service instance for trading operations.
+        _log: Logging service instance for logging operations.
+        _backtest: Whether running in backtest mode.
+        _backtest_id: Optional backtest identifier.
+        _verification: Dictionary containing gateway verification status.
+    """
+
+    # ───────────────────────────────────────────────────────────
+    # PROPERTIES
+    # ───────────────────────────────────────────────────────────
     _gateway: GatewayService
     _log: LoggingService
-    _verification: Dict[str, bool]
+    _backtest: bool
+    _backtest_id: Optional[str]
+    _verification: Optional[Dict[str, bool]]
 
+    # ───────────────────────────────────────────────────────────
+    # CONSTRUCTOR
+    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         gateway: GatewayService,
         **kwargs: Any,
     ) -> None:
+        """
+        Initialize the gateway handler.
+
+        Args:
+            gateway: Gateway service instance for trading operations.
+            **kwargs: Additional keyword arguments:
+                backtest: Whether running in backtest mode (default: False).
+                backtest_id: Optional backtest identifier.
+
+        Raises:
+            ValueError: If gateway configuration is invalid for production trading.
+        """
         self._log = LoggingService()
         self._log.setup("gateway_handler")
 
         self._gateway = gateway
+
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
+        self._verification = None
 
         if not self._backtest:
             self._verification = self._gateway.get_verification()
             self._validate_gateway_configuration()
 
+    # ───────────────────────────────────────────────────────────
+    # PUBLIC METHODS
+    # ───────────────────────────────────────────────────────────
+    def open_order(self, order: OrderModel) -> bool:
+        """
+        Execute a real order on the exchange gateway.
+
+        Places an order on the exchange when in production mode. In backtest mode,
+        this method returns False without executing. Updates the OrderModel with
+        gateway order information upon successful placement.
+
+        Args:
+            order: OrderModel instance containing order details to execute.
+
+        Returns:
+            True if the order was placed successfully, False otherwise.
+        """
+        if order.backtest:
+            return False
+
+        gateway_order = self._gateway.place_order(
+            symbol=order.symbol,
+            side=order.side,
+            order_type=order.order_type,
+            volume=order.volume,
+            price=order.price if order.price > 0 else None,
+            client_order_id=order.client_order_id,
+        )
+
+        if gateway_order is None:
+            self._log.error(f"Failed to place order {order.id} on gateway")
+            return False
+
+        order.gateway_order_id = gateway_order.id
+
+        if gateway_order.price > 0:
+            order.price = gateway_order.price
+
+        order.executed_volume = gateway_order.executed_volume
+        order.status = self._map_gateway_status_to_order_status(gateway_order.status)
+
+        return True
+
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE METHODS
+    # ───────────────────────────────────────────────────────────
     def _validate_gateway_configuration(self) -> None:
+        """
+        Validate gateway configuration for production trading.
+
+        Checks if API credentials are configured. If not configured, logs
+        warnings and returns early. If configured, proceeds to check trading
+        requirements.
+
+        This method is only called when not in backtest mode.
+        """
+        if self._verification is None:
+            return
+
         credentials_configured = self._verification.get("credentials_configured", False)
 
         if not credentials_configured:
@@ -36,6 +142,23 @@ class GatewayHandler:
         self._check_trading_requirements()
 
     def _check_trading_requirements(self) -> None:
+        """
+        Check all trading requirements for production trading.
+
+        Validates that the gateway configuration meets all requirements:
+        - API credentials are configured
+        - Leverage is set to 1x or higher
+        - USDT balance is available
+        - Account is in cross margin mode
+        - Account is in one-way position mode
+        - Trading permissions are enabled
+
+        Raises:
+            ValueError: If any trading requirement is not met.
+        """
+        if self._verification is None:
+            return
+
         credentials_configured = self._verification.get("credentials_configured", False)
         required_leverage = self._verification.get("required_leverage", False)
         usdt_balance = self._verification.get("usdt_balance", False)
@@ -63,3 +186,40 @@ class GatewayHandler:
 
         self._log.success("Gateway configuration validated successfully")
         self._log.success(f"Running sandbox: {self._gateway.sandbox}")
+
+    def _get_gateway_status_map(self) -> Dict[GatewayOrderStatus, OrderStatus]:
+        """
+        Get the mapping dictionary from GatewayOrderStatus to OrderStatus.
+
+        Returns:
+            Dictionary mapping gateway order statuses to internal order statuses.
+        """
+        return {
+            GatewayOrderStatus.PENDING: OrderStatus.OPENING,
+            GatewayOrderStatus.EXECUTED: OrderStatus.OPEN,
+            GatewayOrderStatus.CANCELLED: OrderStatus.CANCELLED,
+        }
+
+    def _map_gateway_status_to_order_status(
+        self,
+        gateway_status: Optional[GatewayOrderStatus],
+    ) -> OrderStatus:
+        """
+        Map GatewayOrderStatus to OrderStatus.
+
+        Converts gateway-specific order status to internal order status:
+        - PENDING → OPENING
+        - EXECUTED → OPEN
+        - CANCELLED → CANCELLED
+
+        Args:
+            gateway_status: Gateway order status to map.
+
+        Returns:
+            OrderStatus: Mapped order status. Defaults to OPENING if status is None
+                or unrecognized.
+        """
+        if gateway_status is None:
+            return OrderStatus.OPENING
+
+        return self._get_gateway_status_map().get(gateway_status, OrderStatus.OPENING)

@@ -38,7 +38,6 @@ class GatewayOrderModel(BaseModel):
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
     )
-
     id: str = Field(
         default="",
         description="Order ID from the gateway/exchange",
