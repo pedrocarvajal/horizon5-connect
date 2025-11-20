@@ -4,6 +4,7 @@ from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
 from strategies.ema5_breakout import EMA5BreakoutStrategy
+from strategies.test import TestStrategy
 
 
 class Asset(AssetService):
@@ -26,7 +27,13 @@ class Asset(AssetService):
         self._strategies = [
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
-                allocation=100_000,
+                allocation=1000,
+                leverage=3,
+                enabled=True,
+            ),
+            TestStrategy(
+                id="test",
+                allocation=1000,
                 leverage=3,
                 enabled=True,
             ),

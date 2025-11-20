@@ -68,6 +68,7 @@ class TicksService:
             tick = TickModel()
             tick.date = date
             tick.price = price
+            tick.is_simulated = True
             response.append(tick)
 
         return response

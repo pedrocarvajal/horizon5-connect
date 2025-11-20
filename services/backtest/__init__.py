@@ -5,9 +5,10 @@ from typing import Any, Dict, Optional
 
 from configs.timezone import TIMEZONE
 from enums.command import Command
+from helpers.get_duration import get_duration
+from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
 from providers.horizon_router import HorizonRouterProvider
-from helpers.get_duration import get_duration
 from services.logging import LoggingService
 from services.ticks import TicksService
 
@@ -32,6 +33,7 @@ class BacktestService:
         to_date: datetime.datetime,
         commands_queue: Optional[Queue] = None,
         events_queue: Optional[Queue] = None,
+        portfolio_path: Optional[str] = None,
         args: Optional[argparse.Namespace] = None,
     ) -> None:
         restore_ticks = args.restore_ticks == "true"
@@ -73,9 +75,15 @@ class BacktestService:
             **tick_setup,
         )
 
+        portfolio = None
+
+        if portfolio_path:
+            portfolio = get_portfolio_by_path(portfolio_path)
+
         self._asset.setup(
             backtest=True,
             backtest_id=self._id,
+            portfolio=portfolio,
             **instances,
             **queues,
         )
@@ -124,9 +132,7 @@ class BacktestService:
         response = self._horizon_router.backtest_create(
             body={
                 "asset": self._asset.symbol,
-                "strategies": ",".join(
-                    [strategy.id for strategy in self._asset.strategies]
-                ),
+                "strategies": ",".join([strategy.id for strategy in self._asset.strategies]),
                 "from_date": int(self._from_date.timestamp()),
                 "to_date": int(self._to_date.timestamp()),
             }

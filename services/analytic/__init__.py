@@ -193,7 +193,7 @@ class AnalyticService(AnalyticInterface):
         """
         Handle a new month event.
 
-        Logs monthly performance metrics if running in live (non-sandbox) mode.
+        Logs monthly performance metrics if running in live (non-simulated) mode.
         Performance and drawdown percentages are displayed.
         """
         performance = self._snapshot.performance
@@ -376,12 +376,12 @@ class AnalyticService(AnalyticInterface):
 
     def _is_running_in_live_mode(self) -> bool:
         """
-        Check if the service is running in live (non-sandbox) mode.
+        Check if the service is running in live (non-simulated) mode.
 
         Returns:
-            True if tick exists and is not in sandbox mode, False otherwise.
+            True if tick exists and is not simulated, False otherwise.
         """
-        return self._tick is not None and not self._tick.sandbox
+        return self._tick is not None and not self._tick.is_simulated
 
     @property
     def _elapsed_days(self) -> int:

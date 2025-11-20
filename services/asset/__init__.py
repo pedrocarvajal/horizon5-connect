@@ -2,6 +2,7 @@ from multiprocessing import Queue
 from typing import Any, List, Optional
 
 from interfaces.asset import AssetInterface
+from interfaces.portfolio import PortfolioInterface
 from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from models.trade import TradeModel
@@ -15,12 +16,14 @@ class AssetService(AssetInterface):
     # ───────────────────────────────────────────────────────────
     _backtest: bool
     _backtest_id: Optional[str]
+    _portfolio: Optional[PortfolioInterface]
     _strategies: List[StrategyInterface]
     _commands_queue: Optional[Queue]
     _events_queue: Optional[Queue]
     _gateway: GatewayService
     _gateway_name: str
     _log: LoggingService
+    _is_historical_filling: bool
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -34,9 +37,11 @@ class AssetService(AssetInterface):
         self._events_queue = None
         self._backtest = False
         self._backtest_id = None
+        self._portfolio = None
+        self._is_historical_filling = False
         self._gateway = GatewayService(
             gateway=self._gateway_name,
-            sandbox=self._backtest,
+            sandbox=False,
         )
 
     # ───────────────────────────────────────────────────────────
@@ -45,6 +50,7 @@ class AssetService(AssetInterface):
     def setup(self, **kwargs: Any) -> None:
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
+        self._portfolio = kwargs.get("portfolio")
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
 
@@ -56,6 +62,20 @@ class AssetService(AssetInterface):
 
         if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required")
+
+        if not self._backtest:
+            sandbox = None
+
+            self._gateway = GatewayService(
+                gateway=self._gateway_name,
+                backtest=self._backtest,
+                sandbox=sandbox,
+            )
+        else:
+            self._gateway = GatewayService(
+                gateway=self._gateway_name,
+                sandbox=False,
+            )
 
         enabled_strategies = [s for s in self._strategies if s.enabled]
 
@@ -81,3 +101,13 @@ class AssetService(AssetInterface):
     def on_end(self) -> None:
         for strategy in self._strategies:
             strategy.on_end()
+
+    def start_historical_filling(self) -> None:
+        self._is_historical_filling = True
+
+    def stop_historical_filling(self) -> None:
+        self._is_historical_filling = False
+
+    @property
+    def is_historical_filling(self) -> bool:
+        return self._is_historical_filling

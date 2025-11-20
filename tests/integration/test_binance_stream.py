@@ -48,6 +48,6 @@ class TestBinanceStream(BinanceWrapper):
         assert all_ticks[0].bid_price > 0, f"Bid price should be > 0, got {all_ticks[0].bid_price}"
         assert all_ticks[0].ask_price > 0, f"Ask price should be > 0, got {all_ticks[0].ask_price}"
         assert all_ticks[0].date is not None, "Date should not be None"
-        assert all_ticks[0].sandbox is False, f"Sandbox should be False, got {all_ticks[0].sandbox}"
+        assert all_ticks[0].is_simulated is False, f"is_simulated should be False, got {all_ticks[0].is_simulated}"
 
         self._log.info(f"Total ticks received: {len(all_ticks)}")

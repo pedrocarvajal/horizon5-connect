@@ -16,7 +16,7 @@ class EMA5BreakoutStrategy(StrategyService):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _enabled = True
+    _enabled = False
     _name = "EMA5Breakout"
     _settings: Dict[str, Any]
     _tick: TickModel
@@ -63,9 +63,6 @@ class EMA5BreakoutStrategy(StrategyService):
     def on_tick(self, tick: TickModel) -> None:
         super().on_tick(tick)
         self._tick = tick
-
-        if self._is_running_in_live_mode():
-            self._log.info(f"Production mode: tick: {tick.price}")
 
     def on_new_hour(self) -> None:
         super().on_new_hour()
@@ -139,7 +136,7 @@ class EMA5BreakoutStrategy(StrategyService):
         previous_ema5 = candles[-2]["i"]["ema5"]["value"]
 
         if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
-            if self._is_running_in_live_mode():
+            if self.is_live:
                 self._log.info(
                     f"Breakout: {self._tick.date} | "
                     f"Opening price: {self._tick.price} | "
@@ -195,6 +192,3 @@ class EMA5BreakoutStrategy(StrategyService):
             return 0.0
 
         return losses / (take_profit_price - entry_price)
-
-    def _is_running_in_live_mode(self) -> bool:
-        return self.production and self._tick and not self._tick.sandbox

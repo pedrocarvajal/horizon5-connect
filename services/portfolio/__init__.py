@@ -8,6 +8,7 @@ class PortfolioService(PortfolioInterface):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
+    _id: str
     _assets: List[Type[AssetInterface]]
 
     # ───────────────────────────────────────────────────────────
@@ -19,6 +20,10 @@ class PortfolioService(PortfolioInterface):
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
+    @property
+    def id(self) -> str:
+        return self._id
+
     @property
     def assets(self) -> List[AssetInterface]:
         return self._assets

@@ -72,6 +72,7 @@ class ProductionService:
                 asset=asset,
                 backtest=False,
                 backtest_id=None,
+                portfolio=self._portfolio,
                 commands_queue=self._commands_queue,
                 events_queue=self._events_queue,
             )
@@ -128,12 +129,12 @@ class ProductionService:
 
             self._log.info(f"Injecting {len(ticks)} ticks for {asset.symbol}")
 
-            asset.is_production_filling_ticks = True
+            asset.start_historical_filling()
 
             for tick in ticks:
                 asset.on_tick(tick)
 
-            asset.is_production_filling_ticks = False
+            asset.stop_historical_filling()
 
     async def _connect(self) -> None:
         while True:

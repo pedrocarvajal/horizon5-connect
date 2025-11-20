@@ -76,11 +76,7 @@ if __name__ == "__main__":
         "--from-date",
     )
 
-    to_date = (
-        _parse_date(args.to_date, parser, "--to-date")
-        if args.to_date
-        else datetime.datetime.now(tz=TIMEZONE)
-    )
+    to_date = _parse_date(args.to_date, parser, "--to-date") if args.to_date else datetime.datetime.now(tz=TIMEZONE)
 
     portfolio = get_portfolio_by_path(args.portfolio_path)
     assets = getattr(portfolio, "assets", None)
@@ -107,6 +103,7 @@ if __name__ == "__main__":
                 target=Backtest,
                 kwargs={
                     "asset": asset,
+                    "portfolio_path": args.portfolio_path,
                     "from_date": from_date,
                     "to_date": to_date,
                     "commands_queue": commands_queue,

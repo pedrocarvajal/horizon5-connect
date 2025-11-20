@@ -11,6 +11,8 @@ from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from helpers.get_slug import get_slug
+from interfaces.asset import AssetInterface
+from interfaces.portfolio import PortfolioInterface
 from models.tick import TickModel
 from models.trade import TradeModel
 from services.logging import LoggingService
@@ -22,8 +24,11 @@ class OrderModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    gateway_order_id: Optional[str] = None
     backtest: bool = False
     backtest_id: Optional[str] = None
+    portfolio: Optional[PortfolioInterface] = None
+    asset: Optional[AssetInterface] = None
     strategy_id: Optional[str] = None
     symbol: str = ""
     gateway: Any = None
@@ -75,8 +80,11 @@ class OrderModel(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "gateway_order_id": self.gateway_order_id,
             "backtest": self.backtest,
             "backtest_id": self.backtest_id,
+            "portfolio_id": self.portfolio_id,
+            "asset_id": self.asset_id,
             "strategy_id": self.strategy_id,
             "symbol": self.symbol,
             "gateway": self.gateway.name,
@@ -111,6 +119,16 @@ class OrderModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     # GETTERS
     # ───────────────────────────────────────────────────────────
+    @computed_field
+    @property
+    def portfolio_id(self) -> Optional[str]:
+        return self.portfolio.id if self.portfolio else None
+
+    @computed_field
+    @property
+    def asset_id(self) -> Optional[str]:
+        return self.asset.symbol if self.asset else None
+
     @computed_field
     @property
     def client_order_id(self) -> str:

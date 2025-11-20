@@ -454,16 +454,13 @@ class SymbolComponent(BaseComponent):
             if not isinstance(position_data, dict):
                 continue
 
-            position_amt = parse_optional_float(value=position_data.get("positionAmt", 0))
+            leverage = int(position_data.get("leverage", 1))
 
-            if position_amt and position_amt != 0:
-                leverage = int(position_data.get("leverage", 1))
-
-                return GatewayLeverageInfoModel(
-                    symbol=symbol.upper(),
-                    leverage=leverage,
-                    response=position_data,
-                )
+            return GatewayLeverageInfoModel(
+                symbol=symbol.upper(),
+                leverage=leverage,
+                response=position_data,
+            )
 
         return None
 

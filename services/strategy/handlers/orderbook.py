@@ -39,13 +39,15 @@ class OrderbookHandler(GatewayHandler):
         gateway: GatewayService,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
-        super().__init__(gateway=gateway)
+        super().__init__(
+            gateway=gateway,
+            backtest=backtest,
+            backtest_id=backtest_id,
+        )
 
         self._log = LoggingService()
         self._log.setup("orderbook_handler")
 
-        self._backtest = backtest
-        self._backtest_id = backtest_id
         self._allocation = allocation
         self._balance = balance
         self._orders = {}

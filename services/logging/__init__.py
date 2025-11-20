@@ -9,15 +9,19 @@ from rich.json import JSON
 
 from helpers.get_slug import get_slug
 
+logging.SUCCESS = 25
+logging.addLevelName(logging.SUCCESS, "SUCCESS")
+
 
 class ColoredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         level_colors = {
             logging.DEBUG: Fore.CYAN,
-            logging.INFO: Fore.GREEN,
+            logging.INFO: Fore.WHITE,
             logging.WARNING: Fore.YELLOW,
             logging.ERROR: Fore.RED,
             logging.CRITICAL: Fore.RED + Style.BRIGHT,
+            logging.SUCCESS: Fore.GREEN,
         }
         color = level_colors.get(record.levelno, "")
         reset = Style.RESET_ALL
@@ -53,6 +57,10 @@ class LoggingService:
     def info(self, message: str) -> None:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
         self.logger.info(formatted_message)
+
+    def success(self, message: str) -> None:
+        formatted_message = f"{self._prefix} {message}" if self._prefix else message
+        self.logger.log(logging.SUCCESS, formatted_message)
 
     def title(self, message: str) -> None:
         separator = "=" * 80

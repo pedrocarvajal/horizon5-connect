@@ -213,4 +213,5 @@ storage/binance/
 *.pkl
 *.zip
 
-.plan
+*.plan
+*.todo

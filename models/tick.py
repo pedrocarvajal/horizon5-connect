@@ -8,7 +8,7 @@ class TickModel(BaseModel):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    sandbox: bool = Field(default=True)
+    is_simulated: bool = Field(default=True, description="True if tick is from backtest/simulation, False if from live production")
     price: float = Field(default=0.0, ge=0)
     bid_price: float = Field(default=0.0, ge=0)
     ask_price: float = Field(default=0.0, ge=0)

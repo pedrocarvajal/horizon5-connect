@@ -4,7 +4,8 @@ from helpers.get_env import get_env
 from interfaces.gateway import GatewayInterface
 from services.gateway.gateways.binance import Binance
 
-sandbox = get_env("BINANCE_TESTNET", default=True)
+sandbox_env = get_env("BINANCE_TESTNET", default="True")
+sandbox = sandbox_env.lower() in ("true", "1", "yes", "on", 1) if sandbox_env else True
 api_key = get_env("BINANCE_API_KEY")
 api_secret = get_env("BINANCE_API_SECRET")
 

@@ -36,6 +36,7 @@ class GatewayService(GatewayInterface):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _name: str
+    _backtest: bool
     _sandbox: bool
     _gateways: Dict[str, Any]
 
@@ -68,7 +69,7 @@ class GatewayService(GatewayInterface):
 
         self._gateways = GATEWAYS
         self._name = gateway
-        self._sandbox = kwargs.get("sandbox", False)
+        self._backtest = kwargs.get("backtest", False)
 
         self._setup()
 
@@ -388,9 +389,14 @@ class GatewayService(GatewayInterface):
 
         gateway_config = self._gateways[self._name]
         gateway_kwargs = gateway_config["kwargs"].copy()
+        self._sandbox = gateway_kwargs.get("sandbox", False)
 
-        if self._sandbox:
+        if self._backtest:
             gateway_kwargs["sandbox"] = True
+            gateway_kwargs["api_key"] = None
+            gateway_kwargs["api_secret"] = None
+        else:
+            gateway_kwargs["sandbox"] = self._sandbox
 
         self._gateway = gateway_config["class"](**gateway_kwargs)
 

@@ -230,7 +230,7 @@ class StreamComponent(BaseComponent):
         price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
         return TickModel(
-            sandbox=False,
+            is_simulated=False,
             price=price,
             bid_price=best_bid,
             ask_price=best_ask,

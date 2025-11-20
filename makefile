@@ -1,28 +1,19 @@
-.ONESHELL:
-.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-submodules-synchronization run-submodules-push help
+.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-submodules-synchronization run-submodules-push
 
 run-tests:
-	@echo "Running all tests..."
-	uv run python -m unittest discover -s tests -p "test_*.py" -v -b --locals -f
+	./scripts/make/run-tests.sh
 
 run-tests-e2e:
-	@echo "Running E2E tests..."
-	uv run python -m unittest discover -s tests/e2e -p "test_*.py" -v -b --locals -f
+	./scripts/make/run-tests-e2e.sh
 
 run-tests-integration:
-	@echo "Running integration tests..."
-	uv run python -m unittest discover -s tests/integration -p "test_*.py" -v -b --locals -f
+	./scripts/make/run-tests-integration.sh
 
 run-tests-unit:
-	@echo "Running unit tests..."
-	uv run python -m unittest discover -s tests/unit -p "test_*.py" -v -b --locals -f
+	./scripts/make/run-tests-unit.sh
 
 run-submodules-synchronization:
-	git submodule update --remote --recursive
+	./scripts/make/run-submodules-synchronization.sh
 
 run-submodules-push:
-	@if [ -z "$$(git submodule status 2>/dev/null)" ]; then \
-		echo "No submodules found"; \
-	else \
-		git submodule foreach 'if [ -n "$$(git status --porcelain)" ]; then echo "Pushing changes in $$name..."; git add . && git commit -m "Update submodule" && git push; else echo "No changes in $$name"; fi'; \
-	fi
+	./scripts/make/run-submodules-push.sh
