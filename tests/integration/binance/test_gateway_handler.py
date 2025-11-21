@@ -1,18 +1,25 @@
-# Code reviewed on 2025-11-20 by Pedro Carvajal
+# Code reviewed on 2025-11-21 by Pedro Carvajal
 
+import datetime
+import time
+from typing import TYPE_CHECKING, Optional
+
+from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
+from models.order import OrderModel
 from services.strategy.handlers.gateway import GatewayHandler
 from tests.integration.binance.wrappers.binance import BinanceWrapper
+
+if TYPE_CHECKING:
+    from services.strategy.handlers.gateway import GatewayHandler
 
 
 class TestGatewayHandler(BinanceWrapper):
     # ───────────────────────────────────────────────────────────
     # CONSTANTS
     # ───────────────────────────────────────────────────────────
-    _SYMBOL: str = "BTCUSDT"
-    _DEFAULT_VOLUME: float = 0.002
     _POLLING_TIMEOUT_SECONDS: int = 70
     _DEFAULT_ORDER_BACKTEST_ID: str = "test-123"
     _DEFAULT_ORDER_INVALID_SYMBOL: str = "INVALID_SYMBOL"
@@ -36,22 +43,18 @@ class TestGatewayHandler(BinanceWrapper):
         )
 
     def test_gateway_handler_initialization(self) -> None:
-        self._log.info("Testing GatewayHandler initialization")
-
+        """Test GatewayHandler initialization succeeds with valid gateway."""
         assert self._handler is not None, "Handler should be initialized"
         assert self._handler._gateway is not None, "Handler should have gateway"
         assert self._handler._backtest is False, "Handler should not be in backtest mode"
 
-        self._log.info("GatewayHandler initialized successfully")
-
     def test_open_order_market_with_polling(self) -> None:
-        self._log.info("Testing open_order with market order and polling")
-
+        """Test open_order executes successfully with market order and status polling."""
         order = self._build_order_model(
             symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
-            volume=self._DEFAULT_VOLUME,
+            volume=self._DEFAULT_ORDER_VOLUME,
         )
 
         result = self._handler.open_order(order)
@@ -62,8 +65,6 @@ class TestGatewayHandler(BinanceWrapper):
         valid_statuses = [OrderStatus.OPENING, OrderStatus.OPEN]
         status_message = f"Order status should be OPENING or OPEN, got {order.status}"
         assert order.status in valid_statuses, status_message
-
-        self._log.info(f"Order placed successfully: {order.gateway_order_id}")
 
         self._wait_for_order_status(
             order=order,
@@ -91,22 +92,14 @@ class TestGatewayHandler(BinanceWrapper):
                 self._log.warning("Gateway order also has price 0")
 
         if order.trades:
-            self._log.info(f"Order has {len(order.trades)} trades")
-
             for trade in order.trades:
                 assert trade.price > 0, "Trade price should be > 0"
                 assert trade.volume > 0, "Trade volume should be > 0"
 
-        trades_count = len(order.trades) if order.trades else 0
-        log_msg = f"Order executed: price={order.price}, volume={order.executed_volume}, "
-        log_msg += f"trades={trades_count}"
-        self._log.info(log_msg)
-
         self._delete_order_by_id(symbol=self._SYMBOL, order_id=order.gateway_order_id)
 
     def test_open_order_backtest_mode(self) -> None:
-        self._log.info("Testing open_order in backtest mode")
-
+        """Test open_order returns False when handler is in backtest mode."""
         handler_backtest = GatewayHandler(
             gateway=self._gateway,
             backtest=True,
@@ -117,7 +110,7 @@ class TestGatewayHandler(BinanceWrapper):
             symbol=self._SYMBOL,
             side=OrderSide.BUY,
             order_type=OrderType.MARKET,
-            volume=self._DEFAULT_VOLUME,
+            volume=self._DEFAULT_ORDER_VOLUME,
             backtest=True,
         )
 
@@ -129,11 +122,8 @@ class TestGatewayHandler(BinanceWrapper):
         assert result is expected_result, message
         assert order.gateway_order_id is None, "Order should not have gateway_order_id"
 
-        self._log.info("Backtest mode correctly prevented order placement")
-
     def test_open_order_with_invalid_gateway_response(self) -> None:
-        self._log.info("Testing open_order with invalid parameters")
-
+        """Test open_order returns False when invalid parameters cause gateway rejection."""
         order = self._build_order_model(
             symbol=self._DEFAULT_ORDER_INVALID_SYMBOL,
             side=OrderSide.BUY,
@@ -145,4 +135,59 @@ class TestGatewayHandler(BinanceWrapper):
 
         assert result is False, "open_order should return False with invalid parameters"
 
-        self._log.info("Invalid order correctly rejected")
+    # ───────────────────────────────────────────────────────────
+    # PRIVATE HELPERS
+    # ───────────────────────────────────────────────────────────
+    def _build_order_model(
+        self,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+        price: float = 0.0,
+        backtest: bool = False,
+    ) -> OrderModel:
+        return OrderModel(
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            volume=volume,
+            price=price,
+            backtest=backtest,
+            gateway=self._gateway,
+            created_at=datetime.datetime.now(tz=TIMEZONE),
+            updated_at=datetime.datetime.now(tz=TIMEZONE),
+        )
+
+    def _wait_for_order_status(
+        self,
+        order: "OrderModel",
+        target_status: OrderStatus,
+        timeout_seconds: int = 70,
+        handler: Optional["GatewayHandler"] = None,
+    ) -> None:
+        self._log.info(f"Waiting for order {order.id} to reach {target_status} (max {timeout_seconds}s)")
+
+        start_time = time.time()
+        polling_tasks = {}
+
+        if handler:
+            polling_tasks = getattr(handler, "_polling_tasks", {})
+
+        while time.time() - start_time < timeout_seconds:
+            if order.status == target_status:
+                elapsed = time.time() - start_time
+                self._log.info(f"Order reached {target_status} after {elapsed:.1f}s")
+                return
+
+            if handler and order.id in polling_tasks:
+                task = polling_tasks[order.id]
+                if task.done():
+                    self._log.info("Polling task completed")
+                    return
+
+            time.sleep(1)
+
+        raise TimeoutError(
+            f"Order {order.id} did not reach {target_status} within {timeout_seconds} seconds",
+        )

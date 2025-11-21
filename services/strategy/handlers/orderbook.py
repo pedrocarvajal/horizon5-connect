@@ -15,14 +15,14 @@ class OrderbookHandler(GatewayHandler):
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _backtest: bool
-    _backtest_id: str
+    _backtest_id: Optional[str]
     _allocation: float
     _balance: float
     _leverage: int
     _nav: float
     _exposure: float
     _orders: Dict[str, OrderModel]
-    _tick: TickModel
+    _tick: Optional[TickModel]
     _on_transaction: Callable[[OrderModel], None]
     _margin_call_active: bool
 

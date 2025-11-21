@@ -13,7 +13,7 @@ This document contains all test cases for Binance gateway integration tests orga
 | Market Data (Klines) | `test_binance_kline.py`     | 1          |
 | Trade History        | `test_binance_trade.py`     | 2          |
 | Streaming            | `test_binance_stream.py`    | 1          |
-| Gateway Handler      | `test_gateway_handler.py`   | 3          |
+| Gateway Handler      | `test_gateway_handler.py`   | 4          |
 
 ---
 
@@ -95,7 +95,8 @@ This document contains all test cases for Binance gateway integration tests orga
 
 ## Notes
 
-- All tests use `BinanceWrapper` base class for common setup and helper methods
+- All tests use `BinanceWrapper` base class for common setup and shared helper methods
+- Test-specific helper methods are defined within their respective test classes for better cohesion
 - Tests run against Binance sandbox/testnet environment (sandbox mode must be enabled)
 - All tests verify account credentials are properly configured before execution
 - Order cleanup is performed after tests that create positions/orders

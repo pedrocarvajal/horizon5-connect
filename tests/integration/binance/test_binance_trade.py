@@ -1,4 +1,4 @@
-# Last coding review: 2025-11-18 13:50:00
+# Code reviewed on 2025-11-21 by Pedro Carvajal
 
 from enums.order_side import OrderSide
 from services.gateway.models.gateway_trade import GatewayTradeModel
@@ -7,15 +7,17 @@ from tests.integration.binance.wrappers.binance import BinanceWrapper
 
 class TestBinanceTrade(BinanceWrapper):
     # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
+    # SETUP
     # ───────────────────────────────────────────────────────────
     def setUp(self) -> None:
         super().setUp()
         self._log.setup(name="test_binance_trade")
 
+    # ───────────────────────────────────────────────────────────
+    # TRADE TESTS
+    # ───────────────────────────────────────────────────────────
     def test_get_trades(self) -> None:
-        self._log.info("Getting all trades")
-
+        """Test retrieving all trades from the gateway without filtering."""
         trades = self._gateway.get_trades()
 
         assert trades is not None, "Trades should not be None"
@@ -33,18 +35,13 @@ class TestBinanceTrade(BinanceWrapper):
             assert trade.commission >= 0, "Commission should be >= 0"
             assert trade.response is not None, "Response should not be None"
 
-        self._log.info(f"Total trades found: {len(trades)}")
-
     def test_get_trades_by_symbol(self) -> None:
-        self._log.info("Getting trades for BTCUSDT")
-
-        trades = self._gateway.get_trades(symbol="BTCUSDT")
+        """Test retrieving trades filtered by a specific symbol."""
+        trades = self._gateway.get_trades(symbol=self._SYMBOL)
 
         assert trades is not None, "Trades should not be None"
         assert isinstance(trades, list), "Trades should be a list"
         assert all(isinstance(t, GatewayTradeModel) for t in trades), "Trades should be GatewayTradeModel"
 
         for trade in trades:
-            assert trade.symbol == "BTCUSDT", "Symbol should be BTCUSDT"
-
-        self._log.info(f"Total trades found for BTCUSDT: {len(trades)}")
+            assert trade.symbol == self._SYMBOL, f"Symbol should be {self._SYMBOL}"
