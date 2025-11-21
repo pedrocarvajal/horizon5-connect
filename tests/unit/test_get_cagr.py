@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_cagr",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_cagr.py",
-)
-get_cagr_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_cagr_module)
-get_cagr = get_cagr_module.get_cagr
+from services.analytic.helpers.get_cagr import get_cagr
 
 
 class TestGetCagr(unittest.TestCase):

@@ -44,7 +44,7 @@ class CandleService(CandleInterface):
                 self._attach_indicators_to_candle(self._candles[-1])
 
                 if self._on_close is not None:
-                    self._on_close(candle=self._candles[-1])
+                    self._on_close(self._candles[-1])
 
             aligned_time = self._align_time_to_timeframe(tick.date)
             candle_duration = timedelta(seconds=self._timeframe.to_seconds())

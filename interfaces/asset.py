@@ -10,6 +10,10 @@ from models.tick import TickModel
 
 
 class AssetInterface(ABC):
+    _symbol: str
+    _name: str
+    _gateway: "GatewayService"
+    _strategies: List["StrategyInterface"]
     @abstractmethod
     def setup(self, **kwargs: Any) -> None:
         pass
@@ -21,6 +25,12 @@ class AssetInterface(ABC):
         pass
 
     def on_end(self) -> None:  # noqa: B027
+        pass
+
+    def start_historical_filling(self) -> None:  # noqa: B027
+        pass
+
+    def stop_historical_filling(self) -> None:  # noqa: B027
         pass
 
     @property

@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_profit_factor",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_profit_factor.py",
-)
-get_profit_factor_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_profit_factor_module)
-get_profit_factor = get_profit_factor_module.get_profit_factor
+from services.analytic.helpers.get_profit_factor import get_profit_factor
 
 
 class TestGetProfitFactor(unittest.TestCase):

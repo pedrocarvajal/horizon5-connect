@@ -1,7 +1,7 @@
 import argparse
 import datetime
 from multiprocessing import Queue
-from typing import Any, Dict, Optional
+from typing import Optional, Type
 
 from configs.timezone import TIMEZONE
 from enums.command import Command
@@ -17,18 +17,18 @@ class BacktestService:
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _id: str
+    _id: Optional[str]
     _tick: TicksService
-    _commands_queue: Queue
-    _events_queue: Queue
-    _horizon_router: Dict[str, Any]
+    _commands_queue: Optional[Queue]
+    _events_queue: Optional[Queue]
+    _horizon_router: HorizonRouterProvider
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
     def __init__(
         self,
-        asset: AssetInterface,
+        asset: Type[AssetInterface],
         from_date: datetime.datetime,
         to_date: datetime.datetime,
         commands_queue: Optional[Queue] = None,
@@ -36,7 +36,7 @@ class BacktestService:
         portfolio_path: Optional[str] = None,
         args: Optional[argparse.Namespace] = None,
     ) -> None:
-        restore_ticks = args.restore_ticks == "true"
+        restore_ticks = args.restore_ticks == "true" if args is not None else False
 
         self._id = None
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
@@ -142,8 +142,9 @@ class BacktestService:
         self._log.info(f"Backtest created: {response}")
 
     def _kill(self) -> None:
-        self._commands_queue.put(
-            {
-                "command": Command.KILL,
-            }
-        )
+        if self._commands_queue is not None:
+            self._commands_queue.put(
+                {
+                    "command": Command.KILL,
+                }
+            )

@@ -46,7 +46,7 @@ class OrderModel(BaseModel):
     commission_percentage: float = Field(default=0.0, ge=0)
 
     trades: List[GatewayTradeModel] = Field(default_factory=list)
-    logs: List[str] = Field(default_factory=list)
+    logs: List[Dict[str, Any]] = Field(default_factory=list)
     variables: Dict[str, Any] = Field(default_factory=dict)
 
     created_at: Optional[datetime.datetime] = None
@@ -78,6 +78,10 @@ class OrderModel(BaseModel):
         return self.status.is_open() and self.stop_loss_price > 0 and tick.price <= self.stop_loss_price
 
     def to_dict(self) -> Dict[str, Any]:
+        gateway = self.gateway.name if self.gateway else None
+        side = self.side.value if self.side else None
+        order_type = self.order_type.value if self.order_type else None
+
         return {
             "id": self.id,
             "gateway_order_id": self.gateway_order_id,
@@ -87,9 +91,9 @@ class OrderModel(BaseModel):
             "asset_id": self.asset_id,
             "strategy_id": self.strategy_id,
             "symbol": self.symbol,
-            "gateway": self.gateway.name,
-            "side": self.side.value,
-            "order_type": self.order_type.value,
+            "gateway": gateway,
+            "side": side,
+            "order_type": order_type,
             "status": self.status.value,
             "volume": self.volume,
             "executed_volume": self.executed_volume,

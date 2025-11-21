@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_calmar_ratio",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_calmar_ratio.py",
-)
-get_calmar_ratio_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_calmar_ratio_module)
-get_calmar_ratio = get_calmar_ratio_module.get_calmar_ratio
+from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
 
 
 class TestGetCalmarRatio(unittest.TestCase):

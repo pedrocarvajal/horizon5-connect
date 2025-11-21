@@ -113,7 +113,7 @@ class StrategyService(StrategyInterface):
         self._last_timestamps = {}
         self._tick = None
 
-        self._id = kwargs.get("id")
+        self._id = kwargs.get("id", "")
         self._name = kwargs.get("name", "")
         self._allocation = kwargs.get("allocation", 0.0)
         self._leverage = kwargs.get("leverage", 1)
@@ -150,20 +150,25 @@ class StrategyService(StrategyInterface):
 
         self._validate_setup_parameters()
 
+        assert self._asset is not None
+        assert self._commands_queue is not None
+        assert self._events_queue is not None
+        assert not self._backtest or self._backtest_id is not None
+
         self._orderbook = OrderbookHandler(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             balance=self._allocation,
             allocation=self._allocation,
             leverage=self._leverage,
-            gateway=self.asset.gateway,
+            gateway=self._asset.gateway,
             on_transaction=self.on_transaction,
         )
 
         self._analytic = AnalyticService(
             strategy_id=self._id,
             backtest=self._backtest,
-            backtest_id=self._backtest_id,
+            backtest_id=self._backtest_id if self._backtest else None,
             orderbook=self._orderbook,
             commands_queue=self._commands_queue,
             events_queue=self._events_queue,
@@ -181,6 +186,9 @@ class StrategyService(StrategyInterface):
         Args:
             tick: The current market tick data.
         """
+        assert self._orderbook is not None
+        assert self._analytic is not None
+
         self._tick = tick
         self._check_timeframe_transitions(tick)
         self._orderbook.refresh(tick)
@@ -196,6 +204,7 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new hour timeframe.
         Updates analytics for the new hour period.
         """
+        assert self._analytic is not None
         self._analytic.on_new_hour()
 
     def on_new_day(self) -> None:
@@ -205,6 +214,8 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new day timeframe.
         Cleans up closed orders from the orderbook and updates analytics.
         """
+        assert self._orderbook is not None
+        assert self._analytic is not None
         self._orderbook.clean()
         self._analytic.on_new_day()
 
@@ -215,6 +226,7 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new week timeframe.
         Updates analytics for the new week period.
         """
+        assert self._analytic is not None
         self._analytic.on_new_week()
 
     def on_new_month(self) -> None:
@@ -224,6 +236,7 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new month timeframe.
         Updates analytics for the new month period.
         """
+        assert self._analytic is not None
         self._analytic.on_new_month()
 
     def on_transaction(self, order: OrderModel) -> None:
@@ -236,6 +249,7 @@ class StrategyService(StrategyInterface):
         Args:
             order: The order model representing the transaction.
         """
+        assert self._analytic is not None
         self._analytic.on_transaction(order)
 
     def on_end(self) -> None:
@@ -246,6 +260,9 @@ class StrategyService(StrategyInterface):
         Always calls the analytics service to finalize tracking and generate
         the final report.
         """
+        assert self._orderbook is not None
+        assert self._analytic is not None
+
         if self._backtest:
             self._log.info("Backtest mode detected, closing all orders.")
 
@@ -412,30 +429,37 @@ class StrategyService(StrategyInterface):
 
     @property
     def asset(self) -> AssetService:
+        assert self._asset is not None
         return self._asset
 
     @property
     def orderbook(self) -> OrderbookHandler:
+        assert self._orderbook is not None
         return self._orderbook
 
     @property
     def allocation(self) -> float:
+        assert self._orderbook is not None
         return self._orderbook.allocation
 
     @property
     def nav(self) -> float:
+        assert self._orderbook is not None
         return self._orderbook.nav
 
     @property
     def exposure(self) -> float:
+        assert self._orderbook is not None
         return self._orderbook.exposure
 
     @property
     def balance(self) -> float:
+        assert self._orderbook is not None
         return self._orderbook.balance
 
     @property
     def orders(self) -> List[OrderModel]:
+        assert self._orderbook is not None
         return self._orderbook.orders
 
     @property

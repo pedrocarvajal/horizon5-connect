@@ -3,7 +3,10 @@
 import datetime
 import json
 from multiprocessing import Queue
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from services.strategy.handlers.orderbook import OrderbookHandler
 
 from enums.backtest_status import BacktestStatus
 from enums.command import Command
@@ -23,7 +26,6 @@ from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
 from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
 from services.analytic.helpers.get_ulcer_index import get_ulcer_index
 from services.logging import LoggingService
-from services.strategy.handlers.orderbook import OrderbookHandler
 
 
 class AnalyticService(AnalyticInterface):
@@ -58,7 +60,7 @@ class AnalyticService(AnalyticInterface):
     _backtest: bool
     _backtest_id: Optional[str]
     _strategy_id: str
-    _orderbook: OrderbookHandler
+    _orderbook: "OrderbookHandler"
     _commands_queue: Queue
     _events_queue: Queue
     _horizon_router: HorizonRouterProvider
@@ -80,7 +82,7 @@ class AnalyticService(AnalyticInterface):
         strategy_id: str,
         backtest: bool,
         backtest_id: Optional[str],
-        orderbook: OrderbookHandler,
+        orderbook: "OrderbookHandler",
         commands_queue: Queue,
         events_queue: Queue,
     ) -> None:
@@ -309,18 +311,18 @@ class AnalyticService(AnalyticInterface):
         Args:
             order: The order model to store.
         """
-        order = order.to_dict()
-        del order["id"]
+        order_dict = order.to_dict()
+        del order_dict["id"]
 
-        order["created_at"] = int(float(order["created_at"].timestamp()))
-        order["updated_at"] = int(float(order["updated_at"].timestamp()))
+        order_dict["created_at"] = int(float(order_dict["created_at"].timestamp()))
+        order_dict["updated_at"] = int(float(order_dict["updated_at"].timestamp()))
 
         self._commands_queue.put(
             {
                 "command": Command.EXECUTE,
                 "function": self._horizon_router.order_create,
                 "args": {
-                    "body": order,
+                    "body": order_dict,
                 },
             }
         )

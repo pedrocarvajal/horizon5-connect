@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_expected_shortfall",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_expected_shortfall.py",
-)
-get_expected_shortfall_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_expected_shortfall_module)
-get_expected_shortfall = get_expected_shortfall_module.get_expected_shortfall
+from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
 
 
 class TestGetExpectedShortfall(unittest.TestCase):

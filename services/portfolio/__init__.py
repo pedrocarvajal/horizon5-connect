@@ -25,5 +25,5 @@ class PortfolioService(PortfolioInterface):
         return self._id
 
     @property
-    def assets(self) -> List[AssetInterface]:
+    def assets(self) -> List[Type[AssetInterface]]:
         return self._assets

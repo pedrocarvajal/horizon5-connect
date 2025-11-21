@@ -1,7 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
 import polars
 
@@ -18,7 +18,7 @@ class TicksService:
     # PROPERTIES
     # ───────────────────────────────────────────────────────────────
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
-    _asset: AssetInterface
+    _asset: Optional[AssetInterface]
     _restore_ticks: bool
     _disable_download: bool
     _log: LoggingService
@@ -41,6 +41,7 @@ class TicksService:
         if self._asset is None:
             raise ValueError("Asset is required")
 
+        assert self._asset is not None
         self._download()
 
     def ticks(
@@ -48,6 +49,7 @@ class TicksService:
         from_date: datetime.datetime,
         to_date: datetime.datetime,
     ) -> List[TickModel]:
+        assert self._asset is not None
         response = []
         ticks_folder = self.folder / self._asset.symbol
         ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
@@ -84,6 +86,7 @@ class TicksService:
         return self._get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
     def _get_download_start_date(self, parquet_file: Path) -> datetime.datetime:
+        assert self._asset is not None
         date = datetime.datetime.now(tz=TIMEZONE) - datetime.timedelta(days=365 * 25)
 
         if self._restore_ticks:
@@ -138,6 +141,7 @@ class TicksService:
         self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
 
     def _download(self) -> None:
+        assert self._asset is not None
         if self._disable_download:
             return
 
@@ -154,6 +158,8 @@ class TicksService:
         start_timestamp = int(download_from_date.timestamp())
         end_timestamp = int(download_to_date.timestamp())
         klines_list: List[GatewayKlineModel] = []
+        asset = self._asset
+        assert asset is not None
 
         def _process_klines(klines: List[GatewayKlineModel]) -> None:
             nonlocal current_date
@@ -179,7 +185,7 @@ class TicksService:
             start_date_formatted = self._get_formatted_timestamp(start_timestamp)
 
             self._log.info(
-                f"Downloading symbol: {self._asset.symbol}"
+                f"Downloading symbol: {asset.symbol}"
                 f" | Starting time: {start_date_formatted}"
                 f" | Current time: {current_date_formatted}"
                 f" | Ending time: {end_date_formatted}"
@@ -187,9 +193,9 @@ class TicksService:
             )
 
         try:
-            gateway = self._asset.gateway
+            gateway = asset.gateway
             gateway.get_klines(
-                symbol=self._asset.symbol,
+                symbol=asset.symbol,
                 timeframe="1m",
                 from_date=int(download_from_date.timestamp()),
                 to_date=int(download_to_date.timestamp()),

@@ -4,7 +4,9 @@ from typing import Any, Dict, List, Optional
 from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_order import GatewayOrderModel
+from services.gateway.models.gateway_position import GatewayPositionModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.gateway.models.gateway_trade import GatewayTradeModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
 
@@ -98,4 +100,18 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Dict[str, bool]:
+        pass
+
+    @abstractmethod
+    def get_trades(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayTradeModel]:
+        pass
+
+    @abstractmethod
+    def get_positions(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayPositionModel]:
         pass

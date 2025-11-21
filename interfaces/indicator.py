@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any, Dict, List
 
 from models.tick import TickModel
 
 
 class IndicatorInterface(ABC):
+    _key: str
+    _values: List[Any]
+    _candles: List[Dict[str, Any]]
+
     @abstractmethod
     def on_tick(self, tick: TickModel) -> None:
         pass

@@ -32,7 +32,7 @@ class OrderbookHandler(GatewayHandler):
     def __init__(
         self,
         backtest: bool,
-        backtest_id: str,
+        backtest_id: Optional[str],
         allocation: float,
         balance: float,
         leverage: int,

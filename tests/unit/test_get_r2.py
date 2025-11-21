@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_r2",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_r2.py",
-)
-get_r2_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_r2_module)
-get_r2 = get_r2_module.get_r2
+from services.analytic.helpers.get_r2 import get_r2
 
 
 class TestGetR2(unittest.TestCase):

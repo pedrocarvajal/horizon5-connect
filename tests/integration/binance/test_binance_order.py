@@ -36,6 +36,7 @@ class TestBinanceOrder(BinanceWrapper):
         )
 
         self._assert_order_is_valid(order=order, expected_type=OrderType.MARKET)
+        assert order is not None
         self._delete_order_by_id(symbol=self._SYMBOL, order_id=order.id)
 
     def test_cancel_order(self) -> None:
@@ -53,6 +54,7 @@ class TestBinanceOrder(BinanceWrapper):
         )
 
         self._assert_order_is_valid(order=order, expected_type=OrderType.LIMIT)
+        assert order is not None
 
         cancelled_order = self._gateway.cancel_order(
             symbol=self._SYMBOL,
@@ -69,6 +71,7 @@ class TestBinanceOrder(BinanceWrapper):
         )
 
         self._assert_order_is_valid(order=order, expected_type=OrderType.MARKET)
+        assert order is not None
 
         retrieved_order = self._gateway.get_order(
             symbol=self._SYMBOL,

@@ -13,7 +13,7 @@ This document contains all test cases for Binance gateway integration tests orga
 | Market Data (Klines) | `test_binance_kline.py`     | 1          |
 | Trade History        | `test_binance_trade.py`     | 2          |
 | Streaming            | `test_binance_stream.py`    | 1          |
-| Gateway Handler      | `test_gateway_handler.py`   | 4          |
+| Gateway Handler      | `test_gateway_handler.py`   | 7          |
 
 ---
 
@@ -90,6 +90,9 @@ This document contains all test cases for Binance gateway integration tests orga
 | `test_open_order_market_with_polling`           | Tests order opening with status polling         | Builds OrderModel for MARKET order<br>Calls handler.open_order()<br>Returns True in production mode<br>Order has gateway_order_id<br>Order status is OPENING or OPEN<br>Polls until order reaches OPEN status<br>Validates executed order:<br> - Status is OPEN<br> - Executed volume > 0<br> - Price >= 0<br> - Updated timestamp is not None<br> - Trades have valid price and volume<br>Cleans up order after test |
 | `test_open_order_backtest_mode`                 | Tests order opening prevention in backtest mode | Creates handler with backtest=True<br>Builds OrderModel with backtest=True<br>Calls handler.open_order()<br>Returns False (order not placed)<br>Order does not have gateway_order_id<br>Verifies backtest mode prevents real orders                                                                                                                                                                                   |
 | `test_open_order_with_invalid_gateway_response` | Tests error handling for invalid orders         | Builds OrderModel with invalid symbol<br>Builds OrderModel with invalid volume (0.0)<br>Calls handler.open_order()<br>Returns False (order rejected)<br>Verifies invalid orders are properly rejected                                                                                                                                                                                                                 |
+| `test_close_order_buy_position_with_polling`    | Tests closing BUY position with status polling  | Opens MARKET BUY order<br>Waits for order to reach OPEN status<br>Calls handler.close_order() to place opposite SELL order<br>Returns True<br>Gateway order ID changes (different for close)<br>Order status is CLOSING or CLOSED<br>Polls until order reaches CLOSED status<br>Validates closed order:<br> - Status is CLOSED<br> - Updated timestamp is not None<br> - Trades have valid price and volume          |
+| `test_close_order_sell_position_with_polling`   | Tests closing SELL position with status polling | Opens MARKET SELL order<br>Waits for order to reach OPEN status<br>Calls handler.close_order() to place opposite BUY order<br>Returns True<br>Gateway order ID changes (different for close)<br>Order status is CLOSING or CLOSED<br>Polls until order reaches CLOSED status<br>Validates closed order:<br> - Status is CLOSED<br> - Updated timestamp is not None<br> - Trades have valid price and volume         |
+| `test_close_order_backtest_mode`                | Tests order closing prevention in backtest mode | Creates handler with backtest=True<br>Builds OrderModel with backtest=True<br>Sets order status to OPEN manually<br>Calls handler.close_order()<br>Returns False (order not closed)<br>Verifies backtest mode prevents real order closing                                                                                                                                                                             |
 
 ---
 

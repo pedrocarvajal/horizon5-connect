@@ -353,7 +353,7 @@ class SymbolComponent(BaseComponent):
             - min_quantity, max_quantity, step_size (from LOT_SIZE)
             - min_notional (from MIN_NOTIONAL)
         """
-        result = {
+        result: Dict[str, Optional[float]] = {
             "min_price": None,
             "max_price": None,
             "tick_size": None,
@@ -466,7 +466,7 @@ class SymbolComponent(BaseComponent):
 
     def _adapt_trading_fees(
         self,
-        response: Dict[str, Any],
+        response: Any,
     ) -> Optional[GatewayTradingFeesModel]:
         """
         Adapt Binance commission rate response to GatewayTradingFeesModel.
@@ -484,7 +484,7 @@ class SymbolComponent(BaseComponent):
 
         fees_data = response[0] if isinstance(response, list) and len(response) > 0 else response
 
-        if not fees_data:
+        if not isinstance(fees_data, dict) or not fees_data:
             return None
 
         symbol_name = fees_data.get("symbol", "")

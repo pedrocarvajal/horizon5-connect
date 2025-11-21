@@ -172,11 +172,15 @@ class AccountComponent(BaseComponent):
         """
         balances = self._build_balances(response=response)
 
-        total_wallet_balance = parse_optional_float(value=response.get("totalWalletBalance", 0))
-        total_margin_balance = parse_optional_float(value=response.get("totalMarginBalance", 0))
-        total_unrealized_pnl = parse_optional_float(value=response.get("totalUnrealizedProfit", 0))
-        total_position_initial_margin = parse_optional_float(value=response.get("totalPositionInitialMargin", 0))
-        total_open_order_initial_margin = parse_optional_float(value=response.get("totalOpenOrderInitialMargin", 0))
+        total_wallet_balance = parse_optional_float(value=response.get("totalWalletBalance", 0)) or 0.0
+        total_margin_balance = parse_optional_float(value=response.get("totalMarginBalance", 0)) or 0.0
+        total_unrealized_pnl = parse_optional_float(value=response.get("totalUnrealizedProfit", 0)) or 0.0
+        total_position_initial_margin = (
+            parse_optional_float(value=response.get("totalPositionInitialMargin", 0)) or 0.0
+        )
+        total_open_order_initial_margin = (
+            parse_optional_float(value=response.get("totalOpenOrderInitialMargin", 0)) or 0.0
+        )
 
         return GatewayAccountModel(
             balances=balances,
@@ -209,8 +213,8 @@ class AccountComponent(BaseComponent):
         assets = response.get("assets", [])
 
         for asset_data in assets:
-            wallet_balance = parse_optional_float(value=asset_data.get("walletBalance", 0))
-            locked_balance = parse_optional_float(value=asset_data.get("locked", 0))
+            wallet_balance = parse_optional_float(value=asset_data.get("walletBalance", 0)) or 0.0
+            locked_balance = parse_optional_float(value=asset_data.get("locked", 0)) or 0.0
 
             balances.append(
                 GatewayAccountBalanceModel(

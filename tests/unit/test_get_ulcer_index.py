@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_ulcer_index",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_ulcer_index.py",
-)
-get_ulcer_index_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_ulcer_index_module)
-get_ulcer_index = get_ulcer_index_module.get_ulcer_index
+from services.analytic.helpers.get_ulcer_index import get_ulcer_index
 
 
 class TestGetUlcerIndex(unittest.TestCase):

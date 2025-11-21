@@ -1,6 +1,6 @@
 import datetime
 from multiprocessing import Queue
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 from enums.command import Command
 from services.logging import LoggingService
@@ -10,8 +10,8 @@ class CommandsService:
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _commands_queue: Queue
-    _events_queue: Queue
+    _commands_queue: Optional[Queue]
+    _events_queue: Optional[Queue]
     _commands: Dict[str, Any]
     _ping_made_at: datetime.datetime
 
@@ -69,21 +69,28 @@ class CommandsService:
             return True, True
 
         if command_type.is_execute():
-            function = command.get("function")
-            args = command.get("args")
+            function: Optional[Callable[..., Any]] = command.get("function")
+            args: Optional[Dict[str, Any]] = command.get("args")
+
+            if function is None:
+                self._log.error("Function is not set in command")
+                return False, False
+
+            if args is None:
+                args = {}
 
             try:
                 response = function(**args)
 
                 if response.get("success") is False:
                     self._log.error(f"Failed to execute command {function}: {response}")
-                    self._log.error(args)
+                    self._log.error(str(args))
 
                 return True, False
 
             except Exception as e:
                 self._log.error("Failed to execute command")
-                self._log.error(e)
+                self._log.error(str(e))
                 return False, False
 
         return True, False

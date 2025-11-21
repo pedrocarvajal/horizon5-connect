@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_sortino_ratio",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_sortino_ratio.py",
-)
-get_sortino_ratio_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_sortino_ratio_module)
-get_sortino_ratio = get_sortino_ratio_module.get_sortino_ratio
+from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
 
 
 class TestGetSortinoRatio(unittest.TestCase):

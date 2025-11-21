@@ -74,8 +74,9 @@ class StreamComponent(BaseComponent):
 
         async with websockets.connect(url) as websocket:
             async for message in websocket:
+                message_str = message.decode("utf-8") if isinstance(message, bytes) else str(message)
                 await self._process_websocket_message(
-                    message=message,
+                    message=message_str,
                     callback=callback,
                 )
 
@@ -225,8 +226,8 @@ class StreamComponent(BaseComponent):
         Returns:
             TickModel: Instance containing price, bid, ask, and timestamp data.
         """
-        best_bid = parse_optional_float(value=response.get("b", "0.0"))
-        best_ask = parse_optional_float(value=response.get("a", "0.0"))
+        best_bid = parse_optional_float(value=response.get("b", "0.0")) or 0.0
+        best_ask = parse_optional_float(value=response.get("a", "0.0")) or 0.0
         price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
         return TickModel(

@@ -97,7 +97,8 @@ class PriceVelocityIndicator(IndicatorInterface):
         if len(self._values) == 0:
             return True
 
-        return self._values[-1].date < candle_close_time
+        last_date = self._values[-1].date
+        return last_date is None or last_date < candle_close_time
 
     # ───────────────────────────────────────────────────────────
     # GETTERS

@@ -19,7 +19,6 @@ class EMA5BreakoutStrategy(StrategyService):
     _enabled = False
     _name = "EMA5Breakout"
     _settings: Dict[str, Any]
-    _tick: TickModel
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -70,6 +69,7 @@ class EMA5BreakoutStrategy(StrategyService):
 
     def on_new_day(self) -> None:
         super().on_new_day()
+        assert self._tick is not None
         self._calculate_previous_day_ema5_max(self._tick)
 
     def on_transaction(self, order: OrderModel) -> None:
@@ -79,7 +79,7 @@ class EMA5BreakoutStrategy(StrategyService):
             self._log.info(f"Order: {order.id}, was opened.")
 
         if order.status.is_closed():
-            max_layers = self._settings.get("recovery_maximum_number_of_openings")
+            max_layers = self._settings.get("recovery_maximum_number_of_openings", 0)
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
@@ -92,14 +92,16 @@ class EMA5BreakoutStrategy(StrategyService):
     # PRIVATE METHODS
     # ───────────────────────────────────────────────────────────
     def _open_recovery_order(self, closed_order: OrderModel) -> None:
+        assert self._tick is not None
+
         max_layers = self._settings.get("recovery_maximum_number_of_openings", 0)
         layer = closed_order.variables.get("layer", 0)
         next_layer = layer + 1
         current_price = self._tick.price
         losses = abs(closed_order.profit)
-        take_profit_percentage = self._settings.get("recovery_take_profit_percentage")
+        take_profit_percentage = self._settings.get("recovery_take_profit_percentage", 0.0)
         take_profit_price = current_price + (current_price * take_profit_percentage)
-        stop_loss_percentage = self._settings.get("recovery_stop_loss_percentage")
+        stop_loss_percentage = self._settings.get("recovery_stop_loss_percentage", 0.0)
         stop_loss_price = current_price - (current_price * stop_loss_percentage)
 
         volume = self._calculate_volume_based_on_target_price(
@@ -124,6 +126,8 @@ class EMA5BreakoutStrategy(StrategyService):
         )
 
     def _check_entry_conditions(self) -> None:
+        assert self._tick is not None
+
         if not self._previous_day_ema5_max:
             return
 
@@ -131,7 +135,9 @@ class EMA5BreakoutStrategy(StrategyService):
             return
 
         current_price = self._tick.price
-        candles = self._candles[Timeframe.ONE_HOUR].candles
+        candle_service = self._candles[Timeframe.ONE_HOUR]
+        assert isinstance(candle_service, CandleService)
+        candles = candle_service.candles
         current_ema5 = candles[-1]["i"]["ema5"]["value"]
         previous_ema5 = candles[-2]["i"]["ema5"]["value"]
 
@@ -143,14 +149,14 @@ class EMA5BreakoutStrategy(StrategyService):
                     f"Previous day EMA5 max: {self._previous_day_ema5_max}"
                 )
 
-            take_profit_percentage = self._settings.get("main_take_profit_percentage")
-            stop_loss_percentage = self._settings.get("main_stop_loss_percentage")
+            take_profit_percentage = self._settings.get("main_take_profit_percentage", 0.0)
+            stop_loss_percentage = self._settings.get("main_stop_loss_percentage", 0.0)
             take_profit_price = current_price + (current_price * take_profit_percentage)
             stop_loss_price = current_price - (current_price * stop_loss_percentage)
 
             # Is possible tu use self.nav, self.balance or self.allocation
             # to calculate the volume.
-            volume_percentage = self._settings.get("main_volume_percentage")
+            volume_percentage = self._settings.get("main_volume_percentage", 0.0)
             volume = self.nav / self._tick.price
             volume = volume * volume_percentage
 
@@ -169,7 +175,9 @@ class EMA5BreakoutStrategy(StrategyService):
         min_candles_required = 24
         today = tick.date.replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = today - datetime.timedelta(days=1)
-        candles = self._candles[Timeframe.ONE_HOUR].candles
+        candle_service = self._candles[Timeframe.ONE_HOUR]
+        assert isinstance(candle_service, CandleService)
+        candles = candle_service.candles
         ema5s = [
             candle["i"]["ema5"] for candle in candles[-min_candles_required:] if "i" in candle and "ema5" in candle["i"]
         ]

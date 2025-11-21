@@ -17,7 +17,7 @@ class ProductionService:
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
     _portfolio: PortfolioInterface
-    _portfolio_path: str
+    _portfolio_path: Optional[str]
     _assets: List[AssetInterface]
 
     _stream_started_at: datetime.datetime

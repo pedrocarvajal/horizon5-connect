@@ -1,14 +1,6 @@
-import importlib.util
 import unittest
-from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "get_sharpe_ratio",
-    Path(__file__).parent.parent.parent / "services" / "analytic" / "helpers" / "get_sharpe_ratio.py",
-)
-get_sharpe_ratio_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(get_sharpe_ratio_module)
-get_sharpe_ratio = get_sharpe_ratio_module.get_sharpe_ratio
+from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
 
 
 class TestGetSharpeRatio(unittest.TestCase):

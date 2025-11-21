@@ -6,6 +6,10 @@ from models.tick import TickModel
 
 
 class StrategyInterface(ABC):
+    _id: str
+    _name: str
+    _enabled: bool
+
     @abstractmethod
     def setup(self, **kwargs: Any) -> None:
         pass
@@ -33,3 +37,15 @@ class StrategyInterface(ABC):
 
     def on_end(self) -> None:  # noqa: B027
         pass
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled

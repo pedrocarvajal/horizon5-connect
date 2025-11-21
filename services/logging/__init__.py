@@ -9,8 +9,8 @@ from rich.json import JSON
 
 from helpers.get_slug import get_slug
 
-logging.SUCCESS = 25
-logging.addLevelName(logging.SUCCESS, "SUCCESS")
+SUCCESS_LEVEL = 25
+logging.addLevelName(SUCCESS_LEVEL, "SUCCESS")
 
 
 class ColoredFormatter(logging.Formatter):
@@ -21,7 +21,7 @@ class ColoredFormatter(logging.Formatter):
             logging.WARNING: Fore.YELLOW,
             logging.ERROR: Fore.RED,
             logging.CRITICAL: Fore.RED + Style.BRIGHT,
-            logging.SUCCESS: Fore.GREEN,
+            SUCCESS_LEVEL: Fore.GREEN,
         }
         color = level_colors.get(record.levelno, "")
         reset = Style.RESET_ALL
@@ -43,9 +43,10 @@ class LoggingService:
     # ───────────────────────────────────────────────────────────
     def debug(self, message: Any) -> None:
         if isinstance(message, (dict, list)):
-            console = Console(file=StringIO(), force_terminal=True, width=120)
+            string_io = StringIO()
+            console = Console(file=string_io, force_terminal=True, width=120)
             console.print(JSON.from_data(message))
-            output = console.file.getvalue().rstrip()
+            output = string_io.getvalue().rstrip()
         else:
             output = str(message)
 
@@ -60,7 +61,7 @@ class LoggingService:
 
     def success(self, message: str) -> None:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
-        self.logger.log(logging.SUCCESS, formatted_message)
+        self.logger.log(SUCCESS_LEVEL, formatted_message)
 
     def title(self, message: str) -> None:
         separator = "=" * 80
