@@ -59,7 +59,7 @@ class VolatilityIndicator(IndicatorInterface):
         current_price = self._candles[-1][self._price_to_use]
         self._prices.append(current_price)
 
-        if len(self._prices) < 2:
+        if len(self._prices) < self._MIN_TICKS_REQUIRED:
             value = VolatilityValueModel()
             value.date = self._candles[-1]["close_time"]
             value.value = self._INITIAL_VOLATILITY

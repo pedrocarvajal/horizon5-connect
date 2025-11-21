@@ -18,6 +18,11 @@ dependencies = [
     "websockets>=15.0.1",
 ]
 
+[dependency-groups]
+dev = [
+    "pyright>=1.1.390",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
@@ -50,11 +55,11 @@ ignore = [
     "UP035",   # typing.List/Dict deprecated
     "UP007",   # Union[X, Y] vs X | Y
     "PLR0913", # Too many arguments in function definition
+    "PLR0911", # Too many return statements
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN"]
-"tests/unit/test_binance_adapter.py" = ["PLR2004"]
+"tests/*" = ["ANN", "PLR2004", "PT027", "PTH"]
 
 [tool.ruff.format]
 quote-style = "double"

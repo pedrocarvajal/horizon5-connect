@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime
 
+from configs.timezone import TIMEZONE
 from helpers.parse import (
     parse_float,
     parse_int,
@@ -97,11 +98,11 @@ class TestParse(unittest.TestCase):
         assert parse_percentage(100) == 1.0
 
     def test_parse_timestamp_ms(self) -> None:
-        dt = datetime(2024, 1, 1, 0, 0, 0)
+        dt = datetime(2024, 1, 1, 0, 0, 0, tzinfo=TIMEZONE)
         timestamp_ms = parse_timestamp_ms(dt)
         assert isinstance(timestamp_ms, int)
         assert timestamp_ms > 0
 
-        dt2 = datetime(1970, 1, 1, 0, 0, 0)
+        dt2 = datetime(1970, 1, 1, 0, 0, 0, tzinfo=TIMEZONE)
         timestamp_ms2 = parse_timestamp_ms(dt2)
         assert isinstance(timestamp_ms2, int)

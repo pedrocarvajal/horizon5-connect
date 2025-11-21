@@ -65,10 +65,11 @@ class TicksService:
             price = tick_row["price"]
             date = self._get_datetime_from_timestamp(tick_row["id"])
 
-            tick = TickModel()
-            tick.date = date
-            tick.price = price
-            tick.is_simulated = True
+            tick = TickModel(
+                date=date,
+                price=price,
+                is_simulated=True,
+            )
             response.append(tick)
 
         return response

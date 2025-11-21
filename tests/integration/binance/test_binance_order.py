@@ -1,6 +1,7 @@
 # Code reviewed on 2025-11-21 by Pedro Carvajal
 
 import datetime
+from typing import List, Optional
 
 from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
@@ -9,7 +10,6 @@ from services.gateway.models.enums.gateway_order_status import GatewayOrderStatu
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.gateway.models.gateway_order import GatewayOrderModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
-from typing import List, Optional
 
 
 class TestBinanceOrder(BinanceWrapper):

@@ -421,7 +421,7 @@ class OrderComponent(BaseComponent):
 
         return True
 
-    def _validate_place_order_params(  # noqa: PLR0911
+    def _validate_place_order_params(
         self,
         symbol: str,
         side: OrderSide,
@@ -483,7 +483,7 @@ class OrderComponent(BaseComponent):
 
         return True
 
-    def _validate_get_orders_params(  # noqa: PLR0911
+    def _validate_get_orders_params(
         self,
         symbol: str,
         pair: str,

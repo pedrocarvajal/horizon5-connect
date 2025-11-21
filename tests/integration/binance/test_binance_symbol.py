@@ -1,12 +1,13 @@
 # Code reviewed on 2025-11-21 by Pedro Carvajal
 
+from typing import Optional
+
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
-from typing import Optional
 
 
 class TestBinanceSymbol(BinanceWrapper):

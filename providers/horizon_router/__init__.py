@@ -16,9 +16,15 @@ class HorizonRouterProvider:
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
     # ───────────────────────────────────────────────────────────
-    def __init__(self, **kwargs: Any) -> None:
-        self._base_url = get_env("HORIZON_ROUTER_BASE_URL")
-        self._api_key = get_env("HORIZON_ROUTER_APY_KEY")
+    def __init__(self) -> None:
+        base_url = get_env("HORIZON_ROUTER_BASE_URL", required=True)
+        api_key = get_env("HORIZON_ROUTER_APY_KEY", required=True)
+
+        if base_url is None or api_key is None:
+            raise ValueError("Required environment variables are not set.")
+
+        self._base_url = base_url
+        self._api_key = api_key
 
         self._prepare_headers()
 

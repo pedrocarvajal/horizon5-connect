@@ -2,6 +2,14 @@
 
 from enum import Enum, unique
 
+from configs.constants import (
+    HTTP_CLIENT_ERROR_MIN,
+    HTTP_REDIRECT_MIN,
+    HTTP_SERVER_ERROR_MAX,
+    HTTP_SERVER_ERROR_MIN,
+    HTTP_SUCCESS_MIN,
+)
+
 
 @unique
 class HttpStatus(Enum):
@@ -43,7 +51,7 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 2xx, False otherwise.
         """
-        return 200 <= self.value < 300
+        return HTTP_SUCCESS_MIN <= self.value < HTTP_REDIRECT_MIN
 
     @property
     def is_client_error(self) -> bool:
@@ -53,7 +61,7 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 4xx, False otherwise.
         """
-        return 400 <= self.value < 500
+        return HTTP_CLIENT_ERROR_MIN <= self.value < HTTP_SERVER_ERROR_MIN
 
     @property
     def is_server_error(self) -> bool:
@@ -63,7 +71,7 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 5xx, False otherwise.
         """
-        return 500 <= self.value < 600
+        return HTTP_SERVER_ERROR_MIN <= self.value < HTTP_SERVER_ERROR_MAX
 
     @staticmethod
     def is_success_code(status_code: int) -> bool:
@@ -76,7 +84,7 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 2xx, False otherwise.
         """
-        return 200 <= status_code < 300
+        return HTTP_SUCCESS_MIN <= status_code < HTTP_REDIRECT_MIN
 
     @staticmethod
     def is_client_error_code(status_code: int) -> bool:
@@ -89,7 +97,7 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 4xx, False otherwise.
         """
-        return 400 <= status_code < 500
+        return HTTP_CLIENT_ERROR_MIN <= status_code < HTTP_SERVER_ERROR_MIN
 
     @staticmethod
     def is_server_error_code(status_code: int) -> bool:
@@ -102,4 +110,4 @@ class HttpStatus(Enum):
         Returns:
             bool: True if status is 5xx, False otherwise.
         """
-        return 500 <= status_code < 600
+        return HTTP_SERVER_ERROR_MIN <= status_code < HTTP_SERVER_ERROR_MAX
