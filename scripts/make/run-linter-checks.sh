@@ -1,15 +1,18 @@
 #!/bin/bash
 set -e
 
-echo "Running linter checks..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../helpers/logger.sh"
 
-echo ""
-echo "Running Ruff..."
+log_setup "run-linter-checks"
+
+log_title "Running Linter Checks"
+
+log_info "Running Ruff..."
 uv run ruff check .
 
-echo ""
-echo "Running Pyright (Pylance)..."
+log_info "Running Pyright (Pylance)..."
 uv run pyright
 
-echo ""
-echo "All linter checks passed!"
+log_separator
+log_info "All linter checks passed!"
