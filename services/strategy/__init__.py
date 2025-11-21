@@ -289,6 +289,10 @@ class StrategyService(StrategyInterface):
         if not self.is_available_to_open_orders:
             return
 
+        if self._tick is None:
+            self._log.error("Tick must be set before opening orders.")
+            return
+
         order = OrderModel()
         order.strategy_id = self._id
         order.portfolio = self._portfolio

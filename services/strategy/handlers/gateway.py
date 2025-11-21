@@ -5,7 +5,9 @@ import datetime
 from typing import Any, Dict, Optional
 
 from configs.timezone import TIMEZONE
+from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
+from enums.order_type import OrderType
 from models.order import OrderModel
 from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
@@ -127,6 +129,51 @@ class GatewayHandler:
 
         order.executed_volume = gateway_order.executed_volume
         order.status = self._map_gateway_status_to_order_status(gateway_order.status)
+        self._pull_order_status(order)
+
+        return True
+
+    def close_order(self, order: OrderModel) -> bool:
+        """
+        Close an open position by placing an opposite order on the exchange gateway.
+
+        Closes a position by placing a market order in the opposite direction with
+        the same volume. In backtest mode, returns False without executing.
+        Updates the order with closing information and polls for execution status.
+
+        Args:
+            order: OrderModel instance representing the position to close.
+
+        Returns:
+            True if the closing order was placed successfully, False otherwise.
+        """
+        if order.backtest:
+            return False
+
+        if order.side is None:
+            self._log.error(f"Order {order.id} has no side defined")
+            return False
+
+        close_side = OrderSide.SELL if order.side.is_buy() else OrderSide.BUY
+
+        gateway_order = self._gateway.place_order(
+            symbol=order.symbol,
+            side=close_side,
+            order_type=OrderType.MARKET,
+            volume=order.executed_volume,
+        )
+
+        if gateway_order is None:
+            self._log.error(f"Failed to close order {order.id} on gateway")
+            return False
+
+        order.gateway_order_id = gateway_order.id
+
+        if gateway_order.price > 0:
+            order.close_price = gateway_order.price
+
+        order.status = OrderStatus.CLOSING
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
         self._pull_order_status(order)
 
         return True
@@ -351,6 +398,7 @@ class GatewayHandler:
         Handle order execution completion.
 
         Updates the order with execution data and final execution details.
+        Sets status to OPEN for opening orders or CLOSED for closing orders.
 
         Args:
             order: OrderModel instance to update.
@@ -365,11 +413,17 @@ class GatewayHandler:
             order.trades = gateway_trades
 
         order.executed_volume = gateway_order.executed_volume
-        order.price = gateway_order.price
-        order.status = OrderStatus.OPEN
-        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
-        self._log.success(f"Order {order.id} executed successfully")
+        if order.status == OrderStatus.CLOSING:
+            order.close_price = gateway_order.price
+            order.status = OrderStatus.CLOSED
+            self._log.success(f"Order {order.id} closed successfully")
+        else:
+            order.price = gateway_order.price
+            order.status = OrderStatus.OPEN
+            self._log.success(f"Order {order.id} executed successfully")
+
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
     def _handle_cancelled_order(self, order: OrderModel) -> None:
         """

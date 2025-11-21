@@ -52,7 +52,6 @@ class OrderbookHandler(GatewayHandler):
         self._balance = balance
         self._orders = {}
         self._leverage = leverage if leverage > 0 else 1
-        self._tick = None
         self._nav = 0.0
         self._exposure = 0.0
         self._on_transaction = on_transaction
@@ -101,6 +100,10 @@ class OrderbookHandler(GatewayHandler):
                 del self._orders[order_id]
 
     def open(self, order: OrderModel) -> None:
+        if self._tick is None:
+            self._log.error("Tick must be set before opening orders.")
+            return
+
         required_margin = (order.volume * order.price) / self._leverage
         margin_liquidation_ratio = 0.001
 
@@ -165,6 +168,10 @@ class OrderbookHandler(GatewayHandler):
         self._on_transaction(order)
 
     def close(self, order: OrderModel) -> None:
+        if self._tick is None:
+            self._log.error("Tick must be set before closing orders.")
+            return
+
         order.status = OrderStatus.CLOSED
         order.close_price = self._tick.price
         order.updated_at = self._tick.date

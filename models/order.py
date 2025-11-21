@@ -34,7 +34,7 @@ class OrderModel(BaseModel):
     gateway: Any = None
     side: Optional[OrderSide] = None
     order_type: Optional[OrderType] = Field(default=OrderType.MARKET)
-    status: Optional[OrderStatus] = Field(default=OrderStatus.OPENING)
+    status: OrderStatus = Field(default=OrderStatus.OPENING)
     volume: float = Field(default=0.0, ge=0)
     executed_volume: float = Field(default=0.0, ge=0)
     price: float = Field(default=0.0, ge=0)

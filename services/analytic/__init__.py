@@ -214,6 +214,10 @@ class AnalyticService(AnalyticInterface):
         final snapshot, updates the backtest status to completed, and generates
         the final report.
         """
+        if self._tick is None:
+            self._log.error("Tick must be set before ending analytics.")
+            return
+
         self._ended_at = self._tick.date
         self._perform_calculations()
         self._store_snapshot(SnapshotEvent.BACKTEST_END)
@@ -332,6 +336,10 @@ class AnalyticService(AnalyticInterface):
         Args:
             event: The snapshot event type (START_SNAPSHOT, ON_NEW_DAY, BACKTEST_END).
         """
+        if self._tick is None:
+            self._log.error("Tick must be set before storing snapshot.")
+            return
+
         self._snapshot.event = event
         self._snapshot.created_at = self._tick.date
 
