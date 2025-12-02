@@ -6,7 +6,7 @@ from multiprocessing import Queue
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from services.strategy.handlers.orderbook import OrderbookHandler
+    from services.orderbook import OrderbookService
 
 from enums.backtest_status import BacktestStatus
 from enums.command import Command
@@ -41,7 +41,7 @@ class AnalyticService(AnalyticInterface):
         _backtest: Whether the service is running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _strategy_id: Identifier of the strategy being analyzed.
-        _orderbook: Handler for managing orders and portfolio state.
+        _orderbook: Service for managing orders and portfolio state.
         _commands_queue: Queue for sending commands to external services.
         _events_queue: Queue for receiving events from external services.
         _horizon_router: Provider for Horizon Router API interactions.
@@ -60,7 +60,7 @@ class AnalyticService(AnalyticInterface):
     _backtest: bool
     _backtest_id: Optional[str]
     _strategy_id: str
-    _orderbook: "OrderbookHandler"
+    _orderbook: "OrderbookService"
     _commands_queue: Queue
     _events_queue: Queue
     _horizon_router: HorizonRouterProvider
@@ -82,7 +82,7 @@ class AnalyticService(AnalyticInterface):
         strategy_id: str,
         backtest: bool,
         backtest_id: Optional[str],
-        orderbook: "OrderbookHandler",
+        orderbook: "OrderbookService",
         commands_queue: Queue,
         events_queue: Queue,
     ) -> None:
@@ -93,7 +93,7 @@ class AnalyticService(AnalyticInterface):
             strategy_id: Identifier of the strategy being analyzed.
             backtest: Whether the service is running in backtest mode.
             backtest_id: Optional backtest identifier. Required if backtest is True.
-            orderbook: Handler for managing orders and portfolio state.
+            orderbook: Service for managing orders and portfolio state.
             commands_queue: Queue for sending commands to external services.
             events_queue: Queue for receiving events from external services.
 

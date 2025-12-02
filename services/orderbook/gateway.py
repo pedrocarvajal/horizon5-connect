@@ -1,30 +1,31 @@
-# Code reviewed on 2025-11-20 by Pedro Carvajal
-
 import asyncio
 import datetime
+import re
+import threading
 from typing import Any, Dict, Optional
 
 from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
+from interfaces.gateway_handler import GatewayHandlerInterface
 from models.order import OrderModel
 from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_order import GatewayOrderModel
+from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from services.logging import LoggingService
 
 
-class GatewayHandler:
+class GatewayHandlerService(GatewayHandlerInterface):
     """
-    Handler for gateway operations and configuration validation.
+    Service for gateway operations and configuration validation.
 
-    This handler manages gateway service interactions, validates gateway
+    This service manages gateway interactions, validates gateway
     configuration for production trading, and executes real orders on the
-    exchange when in production mode. It provides a base class for gateway
-    operations that can be extended by specific handlers.
+    exchange when in production mode.
 
-    The handler performs:
+    The service performs:
     - Gateway configuration validation (credentials, leverage, balance, etc.)
     - Trading requirements verification (margin mode, position mode, permissions)
     - Real order execution on exchange gateways (production mode only)
@@ -44,6 +45,8 @@ class GatewayHandler:
     MAX_POLLING_RETRIES: int = 5
     MAX_POLLING_ITERATIONS: int = 60
     POLLING_INTERVAL_SECONDS: int = 1
+    MAX_SYMBOL_LENGTH: int = 20
+    SYMBOL_PATTERN: str = r"^[A-Z0-9]+$"
 
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
@@ -53,7 +56,10 @@ class GatewayHandler:
     _backtest: bool
     _backtest_id: Optional[str]
     _verification: Optional[Dict[str, bool]]
-    _polling_tasks: Dict[str, asyncio.Task]
+    _polling_tasks: Dict[str, asyncio.Task[None]]
+    _polling_lock: threading.Lock
+    _symbol_info_cache: Dict[str, GatewaySymbolInfoModel]
+    _cache_lock: threading.Lock
 
     # ───────────────────────────────────────────────────────────
     # CONSTRUCTOR
@@ -64,7 +70,7 @@ class GatewayHandler:
         **kwargs: Any,
     ) -> None:
         """
-        Initialize the gateway handler.
+        Initialize the gateway handler service.
 
         Args:
             gateway: Gateway service instance for trading operations.
@@ -76,7 +82,7 @@ class GatewayHandler:
             ValueError: If gateway configuration is invalid for production trading.
         """
         self._log = LoggingService()
-        self._log.setup("gateway_handler")
+        self._log.setup("gateway_handler_service")
 
         self._gateway = gateway
 
@@ -84,6 +90,9 @@ class GatewayHandler:
         self._backtest_id = kwargs.get("backtest_id")
         self._verification = None
         self._polling_tasks = {}
+        self._polling_lock = threading.Lock()
+        self._symbol_info_cache = {}
+        self._cache_lock = threading.Lock()
 
         if not self._backtest:
             self._verification = self._gateway.get_verification()
@@ -109,14 +118,21 @@ class GatewayHandler:
         if order.backtest:
             return False
 
-        gateway_order = self._gateway.place_order(
-            symbol=order.symbol,
-            side=order.side,
-            order_type=order.order_type,
-            volume=order.volume,
-            price=order.price if order.price > 0 else None,
-            client_order_id=order.client_order_id,
-        )
+        if not self._validate_order_parameters(order):
+            return False
+
+        try:
+            gateway_order = self._gateway.place_order(
+                symbol=order.symbol,
+                side=order.side,
+                order_type=order.order_type,
+                volume=order.volume,
+                price=order.price if order.price > 0 else None,
+                client_order_id=order.client_order_id,
+            )
+        except Exception as e:
+            self._log.error(f"Exception placing order {order.id}: {e}")
+            return False
 
         if gateway_order is None:
             self._log.error(f"Failed to place order {order.id} on gateway")
@@ -132,6 +148,166 @@ class GatewayHandler:
         self._pull_order_status(order)
 
         return True
+
+    def _validate_order_parameters(self, order: OrderModel) -> bool:
+        """
+        Validate order parameters before sending to gateway.
+
+        Performs comprehensive validation including:
+        - Basic parameter checks (symbol, side, type, volume)
+        - Symbol format validation
+        - Volume range validation (min/max from gateway symbol info)
+        - Price range validation (min/max from gateway symbol info)
+        - Notional value validation (min order value)
+        - Safety checks for fat-finger errors
+
+        Args:
+            order: OrderModel instance to validate.
+
+        Returns:
+            True if order parameters are valid, False otherwise.
+        """
+        if not self._validate_basic_parameters(order):
+            return False
+
+        symbol_info = self._get_symbol_info(order.symbol)
+
+        if symbol_info is None:
+            self._log.warning(f"Could not retrieve symbol info for {order.symbol}, skipping range validation")
+            return True
+
+        return self._validate_symbol_info_constraints(order, symbol_info)
+
+    def _validate_basic_parameters(self, order: OrderModel) -> bool:
+        """
+        Validate basic order parameters.
+
+        Args:
+            order: OrderModel instance to validate.
+
+        Returns:
+            True if basic parameters are valid, False otherwise.
+        """
+        if not order.symbol or order.symbol.strip() == "":
+            self._log.error(f"Order {order.id} has invalid symbol")
+            return False
+
+        symbol = order.symbol.strip().upper()
+        if symbol != order.symbol:
+            self._log.error(f"Order {order.id} symbol must be uppercase without whitespace")
+            return False
+
+        if len(order.symbol) > self.MAX_SYMBOL_LENGTH:
+            self._log.error(f"Order {order.id} symbol too long: {len(order.symbol)} chars")
+            return False
+
+        if not re.match(self.SYMBOL_PATTERN, order.symbol):
+            self._log.error(f"Order {order.id} symbol contains invalid characters")
+            return False
+
+        if order.side is None or not isinstance(order.side, OrderSide):
+            self._log.error(f"Order {order.id} has invalid or missing side")
+            return False
+
+        if order.order_type is None or not isinstance(order.order_type, OrderType):
+            self._log.error(f"Order {order.id} has invalid or missing order type")
+            return False
+
+        if not isinstance(order.volume, (int, float)) or order.volume <= 0:
+            self._log.error(f"Order {order.id} has invalid volume: {order.volume}")
+            return False
+
+        return True
+
+    def _validate_symbol_info_constraints(
+        self,
+        order: OrderModel,
+        symbol_info: GatewaySymbolInfoModel,
+    ) -> bool:
+        """
+        Validate order against symbol info constraints.
+
+        Args:
+            order: OrderModel instance to validate.
+            symbol_info: Symbol info containing trading constraints.
+
+        Returns:
+            True if order meets symbol constraints, False otherwise.
+        """
+        if symbol_info.min_quantity is not None and order.volume < symbol_info.min_quantity:
+            self._log.error(
+                f"Order {order.id} volume {order.volume} below minimum {symbol_info.min_quantity}"
+            )
+            return False
+
+        if symbol_info.max_quantity is not None and order.volume > symbol_info.max_quantity:
+            self._log.error(
+                f"Order {order.id} volume {order.volume} exceeds maximum {symbol_info.max_quantity}"
+            )
+            return False
+
+        return not (order.price > 0 and not self._validate_price_constraints(order, symbol_info))
+
+    def _validate_price_constraints(
+        self,
+        order: OrderModel,
+        symbol_info: GatewaySymbolInfoModel,
+    ) -> bool:
+        """
+        Validate order price against symbol constraints.
+
+        Args:
+            order: OrderModel instance to validate.
+            symbol_info: Symbol info containing price constraints.
+
+        Returns:
+            True if price meets constraints, False otherwise.
+        """
+        if symbol_info.min_price is not None and order.price < symbol_info.min_price:
+            self._log.error(
+                f"Order {order.id} price {order.price} below minimum {symbol_info.min_price}"
+            )
+            return False
+
+        if symbol_info.max_price is not None and order.price > symbol_info.max_price:
+            self._log.error(
+                f"Order {order.id} price {order.price} exceeds maximum {symbol_info.max_price}"
+            )
+            return False
+
+        notional_value = order.volume * order.price
+
+        if symbol_info.min_notional is not None and notional_value < symbol_info.min_notional:
+            self._log.error(
+                f"Order {order.id} notional value {notional_value} below minimum {symbol_info.min_notional}"
+            )
+            return False
+
+        return True
+
+    def _get_symbol_info(self, symbol: str) -> Optional[GatewaySymbolInfoModel]:
+        """
+        Get symbol information from gateway with caching.
+
+        Args:
+            symbol: Trading symbol to get info for.
+
+        Returns:
+            GatewaySymbolInfoModel if available, None otherwise.
+        """
+        with self._cache_lock:
+            if symbol in self._symbol_info_cache:
+                return self._symbol_info_cache[symbol]
+
+        try:
+            symbol_info = self._gateway.get_symbol_info(symbol=symbol)
+            if symbol_info is not None:
+                with self._cache_lock:
+                    self._symbol_info_cache[symbol] = symbol_info
+            return symbol_info
+        except Exception as e:
+            self._log.warning(f"Failed to get symbol info for {symbol}: {e}")
+            return None
 
     def close_order(self, order: OrderModel) -> bool:
         """
@@ -150,18 +326,30 @@ class GatewayHandler:
         if order.backtest:
             return False
 
+        if not order.symbol or order.symbol.strip() == "":
+            self._log.error(f"Order {order.id} has invalid symbol for close operation")
+            return False
+
         if order.side is None:
             self._log.error(f"Order {order.id} has no side defined")
             return False
 
+        if order.executed_volume <= 0:
+            self._log.error(f"Order {order.id} has no executed volume to close: {order.executed_volume}")
+            return False
+
         close_side = OrderSide.SELL if order.side.is_buy() else OrderSide.BUY
 
-        gateway_order = self._gateway.place_order(
-            symbol=order.symbol,
-            side=close_side,
-            order_type=OrderType.MARKET,
-            volume=order.executed_volume,
-        )
+        try:
+            gateway_order = self._gateway.place_order(
+                symbol=order.symbol,
+                side=close_side,
+                order_type=OrderType.MARKET,
+                volume=order.executed_volume,
+            )
+        except Exception as e:
+            self._log.error(f"Exception closing order {order.id}: {e}")
+            return False
 
         if gateway_order is None:
             self._log.error(f"Failed to close order {order.id} on gateway")
@@ -314,8 +502,10 @@ class GatewayHandler:
         try:
             loop = asyncio.get_running_loop()
             task = asyncio.create_task(self._get_order_status_from_gateway(order))
+            task.add_done_callback(lambda t: self._cleanup_polling_task(order.id, t))
 
-            self._polling_tasks[order.id] = task
+            with self._polling_lock:
+                self._polling_tasks[order.id] = task
 
         except RuntimeError:
             loop = asyncio.new_event_loop()
@@ -325,6 +515,28 @@ class GatewayHandler:
                 loop.run_until_complete(self._get_order_status_from_gateway(order))
             finally:
                 loop.close()
+                asyncio.set_event_loop(None)
+
+    def _cleanup_polling_task(
+        self,
+        order_id: str,
+        task: asyncio.Task[None],
+    ) -> None:
+        """
+        Clean up completed polling task and handle any exceptions.
+
+        Args:
+            order_id: ID of the order whose task completed.
+            task: The completed async task.
+        """
+        with self._polling_lock:
+            if order_id in self._polling_tasks:
+                del self._polling_tasks[order_id]
+
+        if task.cancelled():
+            self._log.warning(f"Polling task for order {order_id} was cancelled")
+        elif task.exception() is not None:
+            self._log.error(f"Polling task for order {order_id} raised exception: {task.exception()}")
 
     async def _get_order_status_from_gateway(self, order: OrderModel) -> None:
         """
@@ -347,10 +559,24 @@ class GatewayHandler:
             await asyncio.sleep(self.POLLING_INTERVAL_SECONDS)
             iteration_count += 1
 
-            gateway_order = self._gateway.get_order(
-                symbol=order.symbol,
-                order_id=order.gateway_order_id,
-            )
+            try:
+                gateway_order = self._gateway.get_order(
+                    symbol=order.symbol,
+                    order_id=order.gateway_order_id,
+                )
+            except Exception as e:
+                self._log.error(f"Exception polling order {order.id}: {e}")
+                retry_count += 1
+
+                if retry_count >= self.MAX_POLLING_RETRIES:
+                    self._log.error(
+                        f"Order {order.id} polling failed after {self.MAX_POLLING_RETRIES} exceptions",
+                    )
+                    order.status = OrderStatus.CANCELLED
+                    order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+                    return
+
+                continue
 
             if gateway_order is None:
                 retry_count += 1
@@ -359,6 +585,8 @@ class GatewayHandler:
                     self._log.warning(
                         f"Order {order.id} not found after {self.MAX_POLLING_RETRIES} attempts, stopping polling",
                     )
+                    order.status = OrderStatus.CANCELLED
+                    order.updated_at = datetime.datetime.now(tz=TIMEZONE)
                     return
 
                 continue
@@ -366,16 +594,25 @@ class GatewayHandler:
             retry_count = 0
 
             if not self._should_continue_polling(gateway_order.status):
-                if gateway_order.status == GatewayOrderStatus.EXECUTED:
-                    self._handle_executed_order(order, gateway_order)
-                elif gateway_order.status == GatewayOrderStatus.CANCELLED:
-                    self._handle_cancelled_order(order)
+                try:
+                    if gateway_order.status == GatewayOrderStatus.EXECUTED:
+                        self._handle_executed_order(order, gateway_order)
+                    elif gateway_order.status == GatewayOrderStatus.CANCELLED:
+                        self._handle_cancelled_order(order)
+                except Exception as e:
+                    self._log.error(
+                        f"Failed to finalize order {order.id} with status {gateway_order.status}: {e}"
+                    )
+                    order.status = OrderStatus.CANCELLED
+                    order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
                 return
 
         self._log.warning(
             f"Order {order.id} polling stopped after {self.MAX_POLLING_ITERATIONS} iterations without final status",
         )
+        order.status = OrderStatus.CANCELLED
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
     def _should_continue_polling(self, status: Optional[GatewayOrderStatus]) -> bool:
         """
@@ -404,13 +641,16 @@ class GatewayHandler:
             order: OrderModel instance to update.
             gateway_order: Gateway order model with execution details.
         """
-        gateway_trades = self._gateway.get_trades(
-            symbol=order.symbol,
-            order_id=order.gateway_order_id,
-        )
+        try:
+            gateway_trades = self._gateway.get_trades(
+                symbol=order.symbol,
+                order_id=order.gateway_order_id,
+            )
 
-        if gateway_trades:
-            order.trades = gateway_trades
+            if gateway_trades:
+                order.trades = gateway_trades
+        except Exception as e:
+            self._log.error(f"Exception retrieving trades for order {order.id}: {e}")
 
         order.executed_volume = gateway_order.executed_volume
 

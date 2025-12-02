@@ -15,8 +15,8 @@ from models.tick import TickModel
 from services.analytic import AnalyticService
 from services.asset import AssetService
 from services.logging import LoggingService
+from services.orderbook import OrderbookService
 
-from .handlers.orderbook import OrderbookHandler
 from .helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
@@ -30,7 +30,7 @@ class StrategyService(StrategyInterface):
     implement their specific trading logic by overriding event handlers.
 
     The service manages:
-    - Order lifecycle through OrderbookHandler
+    - Order lifecycle through OrderbookService
     - Performance analytics through AnalyticService
     - Timeframe transitions (minute, hour, day, week, month)
     - Order creation and management
@@ -46,7 +46,7 @@ class StrategyService(StrategyInterface):
         _allocation: Capital allocation for this strategy.
         _leverage: Leverage multiplier for trading.
         _candles: Dictionary of candle services by timeframe.
-        _orderbook: Handler for managing orders and portfolio state.
+        _orderbook: Service for managing orders and portfolio state.
         _analytic: Service for tracking performance analytics.
         _commands_queue: Queue for sending commands to external services.
         _events_queue: Queue for receiving events from external services.
@@ -70,7 +70,7 @@ class StrategyService(StrategyInterface):
     _leverage: int
     _candles: Dict[Timeframe, CandleInterface]
 
-    _orderbook: Optional[OrderbookHandler]
+    _orderbook: Optional[OrderbookService]
     _analytic: Optional[AnalyticInterface]
 
     _commands_queue: Optional[Queue]
@@ -155,7 +155,7 @@ class StrategyService(StrategyInterface):
         assert self._events_queue is not None
         assert not self._backtest or self._backtest_id is not None
 
-        self._orderbook = OrderbookHandler(
+        self._orderbook = OrderbookService(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             balance=self._allocation,
@@ -433,7 +433,7 @@ class StrategyService(StrategyInterface):
         return self._asset
 
     @property
-    def orderbook(self) -> OrderbookHandler:
+    def orderbook(self) -> OrderbookService:
         assert self._orderbook is not None
         return self._orderbook
 

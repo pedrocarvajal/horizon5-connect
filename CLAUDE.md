@@ -76,6 +76,20 @@ Single test: `uv run python -m unittest tests.unit.test_filename -v`
    - Implementations: `services/gateway/gateways/binance` (active), `ib`, `kucoin` (stubs)
    - Handles: orders, positions, account info, symbol info, trading fees
 
+6. **Orderbook** (`interfaces/orderbook.py`, `services/orderbook/__init__.py`):
+   - Manages order lifecycle and portfolio state
+   - Tracks balance, margin, exposure, PnL with leverage support
+   - Enforces risk management: margin calls, liquidation prevention
+   - Evaluates stop loss and take profit conditions
+   - Coordinates with `GatewayHandlerService` for production execution
+
+7. **GatewayHandler** (`interfaces/gateway_handler.py`, `services/orderbook/gateway.py`):
+   - Validates gateway configuration for production trading
+   - Executes real orders on exchange gateways
+   - Polls order status asynchronously until final state (EXECUTED/CANCELLED)
+   - Maps gateway order statuses to internal order statuses
+   - Verifies trading requirements: credentials, leverage, balance, margin mode, permissions
+
 **Key Services:**
 
 - `AnalyticService` - Financial metrics calculation during backtests
@@ -84,6 +98,8 @@ Single test: `uv run python -m unittest tests.unit.test_filename -v`
 - `CandleService` - Builds candlesticks from ticks, manages indicators
 - `TicksService` - Downloads/manages historical tick data
 - `CommandsService` - Processes commands from queue (KILL, EXECUTE)
+- `OrderbookService` - Order management with margin tracking and risk enforcement
+- `GatewayHandlerService` - Production order execution and gateway validation
 
 **Data Models:**
 
