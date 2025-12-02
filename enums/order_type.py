@@ -8,7 +8,6 @@ class OrderType(Enum):
     """Represents the different types of orders available in the trading system."""
 
     MARKET = "market"
-    LIMIT = "limit"
 
     def is_market(self) -> bool:
         """
@@ -18,21 +17,3 @@ class OrderType(Enum):
             bool: True if order type is MARKET, False otherwise.
         """
         return self == OrderType.MARKET
-
-    def is_limit(self) -> bool:
-        """
-        Check if the order type is limit.
-
-        Returns:
-            bool: True if order type is LIMIT, False otherwise.
-        """
-        return self == OrderType.LIMIT
-
-    def requires_price(self) -> bool:
-        """
-        Check if the order type requires a price.
-
-        Returns:
-            bool: True if order type requires price (LIMIT), False otherwise.
-        """
-        return self == OrderType.LIMIT

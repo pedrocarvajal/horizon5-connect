@@ -22,7 +22,7 @@ class GatewayOrderModel(BaseModel):
         id: Order ID from the gateway/exchange.
         symbol: The symbol of the asset (e.g., "BTCUSDT").
         side: Order side: BUY or SELL. None if side is not specified.
-        order_type: Order type: MARKET, LIMIT, etc. Defaults to MARKET.
+        order_type: Order type: MARKET. Defaults to MARKET.
         status: Order status: PENDING, EXECUTED, CANCELLED. Defaults to PENDING.
         volume: Original order quantity. Must be >= 0.
         executed_volume: Executed order quantity. Must be >= 0.
@@ -52,7 +52,7 @@ class GatewayOrderModel(BaseModel):
     )
     order_type: Optional[OrderType] = Field(
         default=OrderType.MARKET,
-        description="Order type: MARKET, LIMIT, etc.",
+        description="Order type: MARKET.",
     )
     status: Optional[GatewayOrderStatus] = Field(
         default=GatewayOrderStatus.PENDING,
