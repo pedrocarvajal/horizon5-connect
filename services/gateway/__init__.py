@@ -192,9 +192,8 @@ class GatewayService(GatewayInterface):
                 Common arguments include:
                 - symbol: Trading symbol (e.g., "BTCUSDT")
                 - side: Order side (BUY or SELL)
-                - order_type: Order type (MARKET, LIMIT, etc.)
+                - order_type: Order type (MARKET)
                 - volume: Order volume/quantity
-                - price: Order price (required for LIMIT orders)
                 - client_order_id: Optional client-side order identifier
 
         Returns:
@@ -230,13 +229,14 @@ class GatewayService(GatewayInterface):
         """
         Modify an existing order on the gateway.
 
+        Note: This method is not yet implemented for most gateways.
+
         Args:
             **kwargs: Keyword arguments passed to the gateway's modify_order method.
                 Common arguments include:
                 - symbol: Trading symbol (e.g., "BTCUSDT")
                 - order_id: Gateway order ID
                 - client_order_id: Client-side order identifier
-                - price: New order price
                 - volume: New order volume/quantity
 
         Returns:

@@ -223,10 +223,8 @@ class Binance(GatewayInterface):
             **kwargs: Keyword arguments for order placement. Common arguments include:
                 - symbol: Trading symbol (e.g., "BTCUSDT").
                 - side: Order side (BUY or SELL).
-                - order_type: Order type (MARKET, LIMIT, STOP_LOSS, etc.).
+                - order_type: Order type (MARKET).
                 - volume: Order volume/quantity.
-                - price: Order price (required for LIMIT orders).
-                - stop_price: Stop price (required for STOP_LOSS orders).
                 - client_order_id: Optional client-side order identifier.
 
         Returns:
@@ -261,13 +259,14 @@ class Binance(GatewayInterface):
         """
         Modify an existing order on Binance.
 
+        Note: This method is not yet implemented.
+
         Args:
             **kwargs: Keyword arguments for order modification. Common arguments include:
                 - symbol: Trading symbol (e.g., "BTCUSDT").
                 - order_id: Binance order ID.
                 - client_order_id: Client-side order identifier.
                 - volume: New order volume/quantity.
-                - price: New order price.
 
         Returns:
             GatewayOrderModel instance containing the modified order information,

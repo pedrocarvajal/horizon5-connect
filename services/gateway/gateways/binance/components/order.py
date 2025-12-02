@@ -21,8 +21,8 @@ class OrderComponent(BaseComponent):
 
     Provides methods to place, cancel, modify, and retrieve orders on Binance Futures.
     Handles order validation, volume calculation, and adaptation of Binance API responses
-    to internal order models. Supports both market and limit orders with proper validation
-    of symbol constraints, volume limits, and price requirements.
+    to internal order models. Supports MARKET orders with proper validation of symbol
+    constraints, volume limits, and price requirements.
 
     Attributes:
         _MAX_ORDERS_QUERY_DAYS: Maximum number of days to query in a single request (7 days).
@@ -70,15 +70,15 @@ class OrderComponent(BaseComponent):
         Place a new order on Binance Futures.
 
         Creates and submits an order to Binance Futures API. Validates all parameters,
-        calculates proper volume based on symbol constraints, and handles both market and
-        limit order types. Returns the created order model or None if the order fails.
+        calculates proper volume based on symbol constraints, and handles MARKET order types.
+        Returns the created order model or None if the order fails.
 
         Args:
             symbol: Trading pair symbol (e.g., "BTCUSDT").
             side: Order side (BUY or SELL).
-            order_type: Order type (MARKET or LIMIT).
+            order_type: Order type (MARKET).
             volume: Order volume/quantity.
-            price: Optional price for LIMIT orders. Required for LIMIT orders, ignored for MARKET orders.
+            price: Optional price parameter (ignored for MARKET orders).
             client_order_id: Optional custom client order ID for tracking.
 
         Returns:
@@ -100,7 +100,6 @@ class OrderComponent(BaseComponent):
             side=side,
             order_type=order_type,
             volume=volume,
-            price=price,
         ):
             return None
 
@@ -427,7 +426,6 @@ class OrderComponent(BaseComponent):
         side: OrderSide,
         order_type: OrderType,
         volume: float,
-        price: Optional[float],
     ) -> bool:
         """
         Validate all parameters for place_order method.
@@ -437,7 +435,6 @@ class OrderComponent(BaseComponent):
             side: Order side enum.
             order_type: Order type enum.
             volume: Order volume.
-            price: Optional order price.
 
         Returns:
             True if all parameters are valid, False otherwise.
@@ -471,14 +468,6 @@ class OrderComponent(BaseComponent):
 
         if volume <= 0:
             self._log.error("volume must be greater than 0")
-            return False
-
-        if order_type.requires_price() and not price:
-            self._log.error("Price is required for LIMIT orders")
-            return False
-
-        if order_type.is_limit() and (price is None or price <= 0):
-            self._log.error("Valid price is required for LIMIT orders")
             return False
 
         return True
@@ -615,15 +604,8 @@ class OrderComponent(BaseComponent):
             "quantity": quantity,
         }
 
-        if order_type.is_market() and price:
+        if price:
             self._log.warning("Price parameter is ignored for MARKET orders")
-
-        if order_type.is_limit():
-            if price is None or price <= 0:
-                return None
-
-            params["price"] = price
-            params["timeInForce"] = "GTC"
 
         if client_order_id:
             params["newClientOrderId"] = client_order_id
@@ -760,10 +742,10 @@ class OrderComponent(BaseComponent):
         status_str = response.get("status", "").upper()
         side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
 
-        order_type = {
-            "MARKET": OrderType.MARKET,
-            "LIMIT": OrderType.LIMIT,
-        }.get(type_str.upper(), OrderType.MARKET)
+        if type_str and type_str != "MARKET":
+            self._log.warning(f"Order {order_id} has non-MARKET type '{type_str}', treating as MARKET")
+
+        order_type = OrderType.MARKET
 
         status = self._adapt_order_status(status_str=status_str)
         price = parse_optional_float(value=response.get("price", 0))

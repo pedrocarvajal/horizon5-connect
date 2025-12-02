@@ -79,13 +79,11 @@ class BinanceWrapper(unittest.TestCase):
         symbol: Optional[str] = None,
         side: OrderSide = OrderSide.BUY,
         volume: Optional[float] = None,
-        price: Optional[float] = None,
     ) -> Optional[GatewayOrderModel]:
         """Place a test order through the gateway.
 
-        Places an order with the specified parameters. If symbol or volume
-        are not provided, uses default values. If price is provided, creates
-        a LIMIT order; otherwise creates a MARKET order.
+        Places a MARKET order with the specified parameters. If symbol or volume
+        are not provided, uses default values.
 
         Args:
             symbol: Trading symbol (e.g., "BTCUSDT"). Defaults to _SYMBOL
@@ -93,8 +91,6 @@ class BinanceWrapper(unittest.TestCase):
             side: Order side (BUY or SELL). Defaults to BUY.
             volume: Order volume. Defaults to _DEFAULT_ORDER_VOLUME if
                 not provided.
-            price: Order price. If provided, creates a LIMIT order. If None,
-                creates a MARKET order.
 
         Returns:
             GatewayOrderModel instance if order placement succeeds, None
@@ -106,14 +102,11 @@ class BinanceWrapper(unittest.TestCase):
         if volume is None:
             volume = self._DEFAULT_ORDER_VOLUME
 
-        order_type = OrderType.MARKET if price is None else OrderType.LIMIT
-
         return self._gateway.place_order(
             symbol=symbol,
             side=side,
-            order_type=order_type,
+            order_type=OrderType.MARKET,
             volume=volume,
-            price=price,
         )
 
     def _delete_order_by_id(

@@ -48,7 +48,7 @@ Core enums used throughout the application:
 - `HttpStatus` - HTTP status codes
 - `OrderSide` - Order direction (BUY, SELL)
 - `OrderStatus` - Order lifecycle states
-- `OrderType` - Order types (MARKET, LIMIT, STOP_LOSS, etc.)
+- `OrderType` - Order types (MARKET)
 - `OrderEvent` - Order events (OPEN_ORDER, CLOSE_ORDER)
 - `SnapshotEvent` - Analytics snapshot events
 - `Timeframe` - Trading timeframes (includes `to_seconds()` method)

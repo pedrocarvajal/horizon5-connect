@@ -120,7 +120,7 @@ Domain-specific helpers live in `services/*/helpers/`.
 
 All in `enums/` directory:
 - `BacktestStatus`, `Command`, `HttpStatus`
-- `OrderSide` (BUY, SELL), `OrderStatus`, `OrderType` (MARKET, LIMIT, STOP_LOSS, etc.)
+- `OrderSide` (BUY, SELL), `OrderStatus`, `OrderType` (MARKET)
 - `OrderEvent`, `SnapshotEvent`
 - `Timeframe` (includes `to_seconds()` method)
 

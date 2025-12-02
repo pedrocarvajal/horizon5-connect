@@ -7,7 +7,7 @@ This document contains all test cases for Binance gateway integration tests orga
 | Category             | File                        | Test Count |
 | -------------------- | --------------------------- | ---------- |
 | Account Management   | `test_binance_account.py`   | 2          |
-| Order Management     | `test_binance_order.py`     | 4          |
+| Order Management     | `test_binance_order.py`     | 3          |
 | Position Management  | `test_binance_positions.py` | 2          |
 | Symbol Information   | `test_binance_symbol.py`    | 4          |
 | Market Data (Klines) | `test_binance_kline.py`     | 1          |
@@ -28,12 +28,11 @@ This document contains all test cases for Binance gateway integration tests orga
 
 ## 2. Order Management (`test_binance_order.py`)
 
-| Test Method               | Description                               | Validations/Behaviors                                                                                                                                                                                                                                |
-| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test_place_order_market` | Places a market order through the gateway | Places MARKET BUY order for BTCUSDT<br>Order is valid GatewayOrderModel<br>Order ID is not empty<br>Order type is MARKET<br>Order status is PENDING or EXECUTED<br>Volume > 0<br>Cleans up order after test                                          |
-| `test_cancel_order`       | Places and cancels a limit order          | Calculates limit price with discount (90%)<br>Places LIMIT BUY order<br>Order is valid GatewayOrderModel<br>Order type is LIMIT<br>Cancels order through gateway<br>Cancelled order matches original order ID<br>Cancelled order status is CANCELLED |
-| `test_get_order`          | Retrieves a single order by ID            | Places MARKET order<br>Retrieves order by ID from gateway<br>Retrieved order matches original order<br>Order ID matches<br>Order symbol matches<br>Response data is not None<br>Cleans up order after test                                           |
-| `test_get_orders`         | Retrieves multiple orders with filters    | Queries orders for last 90 days<br>Returns list of GatewayOrderModel instances<br>All orders have valid symbol (BTCUSDT)<br>All orders have non-empty ID<br>All orders have response data                                                            |
+| Test Method               | Description                               | Validations/Behaviors                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test_place_order_market` | Places a market order through the gateway | Places MARKET BUY order for BTCUSDT<br>Order is valid GatewayOrderModel<br>Order ID is not empty<br>Order type is MARKET<br>Order status is PENDING or EXECUTED<br>Volume > 0<br>Cleans up order after test            |
+| `test_get_order`          | Retrieves a single order by ID            | Places MARKET order<br>Retrieves order by ID from gateway<br>Retrieved order matches original order<br>Order ID matches<br>Order symbol matches<br>Response data is not None<br>Cleans up order after test             |
+| `test_get_orders`         | Retrieves multiple orders with filters    | Queries orders for last 90 days<br>Returns list of GatewayOrderModel instances<br>All orders have valid symbol (BTCUSDT)<br>All orders have non-empty ID<br>All orders have response data                              |
 
 ---
 
