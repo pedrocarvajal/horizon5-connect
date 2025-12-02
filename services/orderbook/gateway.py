@@ -235,15 +235,11 @@ class GatewayHandlerService(GatewayHandlerInterface):
             True if order meets symbol constraints, False otherwise.
         """
         if symbol_info.min_quantity is not None and order.volume < symbol_info.min_quantity:
-            self._log.error(
-                f"Order {order.id} volume {order.volume} below minimum {symbol_info.min_quantity}"
-            )
+            self._log.error(f"Order {order.id} volume {order.volume} below minimum {symbol_info.min_quantity}")
             return False
 
         if symbol_info.max_quantity is not None and order.volume > symbol_info.max_quantity:
-            self._log.error(
-                f"Order {order.id} volume {order.volume} exceeds maximum {symbol_info.max_quantity}"
-            )
+            self._log.error(f"Order {order.id} volume {order.volume} exceeds maximum {symbol_info.max_quantity}")
             return False
 
         return not (order.price > 0 and not self._validate_price_constraints(order, symbol_info))
@@ -264,15 +260,11 @@ class GatewayHandlerService(GatewayHandlerInterface):
             True if price meets constraints, False otherwise.
         """
         if symbol_info.min_price is not None and order.price < symbol_info.min_price:
-            self._log.error(
-                f"Order {order.id} price {order.price} below minimum {symbol_info.min_price}"
-            )
+            self._log.error(f"Order {order.id} price {order.price} below minimum {symbol_info.min_price}")
             return False
 
         if symbol_info.max_price is not None and order.price > symbol_info.max_price:
-            self._log.error(
-                f"Order {order.id} price {order.price} exceeds maximum {symbol_info.max_price}"
-            )
+            self._log.error(f"Order {order.id} price {order.price} exceeds maximum {symbol_info.max_price}")
             return False
 
         notional_value = order.volume * order.price
@@ -363,6 +355,70 @@ class GatewayHandlerService(GatewayHandlerInterface):
         order.status = OrderStatus.CLOSING
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
         self._pull_order_status(order)
+
+        return True
+
+    def cancel_order(self, order: OrderModel) -> bool:
+        """
+        Cancel a pending order on the exchange gateway.
+
+        Cancels an order that is still pending execution (OPENING state).
+        In backtest mode, returns False without executing. Stops any active
+        polling tasks for the order and updates the order status to CANCELLED.
+
+        Args:
+            order: OrderModel instance representing the order to cancel.
+
+        Returns:
+            True if the order was cancelled successfully, False otherwise.
+        """
+        if order.backtest:
+            return False
+
+        if not order.gateway_order_id:
+            self._log.error(f"Order {order.id} has no gateway_order_id to cancel")
+            return False
+
+        if not (order.status.is_opening() or order.status.is_open()):
+            self._log.error(
+                f"Order {order.id} cannot be cancelled in status {order.status.value}. "
+                f"Only OPENING or OPEN orders can be cancelled."
+            )
+            return False
+
+        try:
+            gateway_order = self._gateway.cancel_order(
+                symbol=order.symbol,
+                order_id=order.gateway_order_id,
+            )
+        except Exception as e:
+            self._log.error(f"Exception cancelling order {order.id}: {e}")
+            return False
+
+        if gateway_order is None:
+            self._log.error(f"Failed to cancel order {order.id} on gateway")
+            return False
+
+        if gateway_order.executed_volume > 0 and gateway_order.executed_volume != order.executed_volume:
+            order.executed_volume = gateway_order.executed_volume
+            self._log.warning(
+                f"Order {order.id} had partial fills before cancellation: "
+                f"{gateway_order.executed_volume}/{order.volume}"
+            )
+
+        with self._polling_lock:
+            if order.id in self._polling_tasks:
+                task = self._polling_tasks.pop(order.id)
+
+                if not task.done():
+                    task.cancel()
+
+                self._log.info(f"Stopped polling task for cancelled order {order.id}")
+
+        order.status = OrderStatus.CANCELLED
+        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+        self._log.info(f"Order {order.id} cancelled successfully")
 
         return True
 
@@ -600,9 +656,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
                     elif gateway_order.status == GatewayOrderStatus.CANCELLED:
                         self._handle_cancelled_order(order)
                 except Exception as e:
-                    self._log.error(
-                        f"Failed to finalize order {order.id} with status {gateway_order.status}: {e}"
-                    )
+                    self._log.error(f"Failed to finalize order {order.id} with status {gateway_order.status}: {e}")
                     order.status = OrderStatus.CANCELLED
                     order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 

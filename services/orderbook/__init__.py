@@ -295,6 +295,12 @@ class OrderbookService(OrderbookInterface):
         """
         Close an existing order.
 
+        Handles three scenarios based on order execution status:
+        1. Not executed (executed_volume = 0): Cancels the order entirely.
+        2. Partially executed (0 < executed_volume < volume): Cancels the
+           unfilled portion and closes the executed portion.
+        3. Fully executed (executed_volume = volume): Closes the order normally.
+
         Updates order status to CLOSED, returns margin to balance, and applies
         profit/loss. In production mode, delegates execution to the gateway handler.
 
@@ -305,7 +311,35 @@ class OrderbookService(OrderbookInterface):
             self._log.error("Tick must be set before closing orders.")
             return
 
-        margin_used = (order.volume * order.price) / self._leverage
+        if order.executed_volume == 0:
+            self._log.info(f"Order {order.id} not executed, cancelling instead of closing")
+            self.cancel(order)
+            return
+
+        if order.executed_volume < order.volume:
+            unexecuted_volume = order.volume - order.executed_volume
+            margin_to_free = (unexecuted_volume * order.price) / self._leverage
+
+            self._log.info(
+                f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}. "
+                f"Cancelling unfilled portion and closing executed portion."
+            )
+
+            if not self._backtest:
+                cancel_success = self._gateway_handler.cancel_order(order)
+
+                if not cancel_success:
+                    self._log.warning(
+                        f"Failed to cancel unfilled portion of order {order.id}. "
+                        f"Proceeding to close executed portion anyway."
+                    )
+
+            with self._balance_lock:
+                self._balance += margin_to_free
+
+            order.volume = order.executed_volume
+
+        margin_used = (order.executed_volume * order.price) / self._leverage
         profit = order.profit
 
         order.status = OrderStatus.CLOSED
@@ -338,6 +372,54 @@ class OrderbookService(OrderbookInterface):
                     f"Reverted balance changes. Order remains OPEN."
                 )
                 return
+
+        self._on_transaction(order)
+
+    def cancel(self, order: OrderModel) -> None:
+        """
+        Cancel an existing order.
+
+        Cancels a pending or open order, releasing the reserved margin back
+        to the balance. In production mode, delegates execution to the gateway
+        handler to cancel the order on the exchange.
+
+        Args:
+            order: OrderModel instance representing the order to cancel.
+        """
+        if self._tick is None:
+            self._log.error("Tick must be set before cancelling orders.")
+            return
+
+        if not (order.status.is_opening() or order.status.is_open()):
+            self._log.error(
+                f"Order {order.id} cannot be cancelled in status {order.status.value}. "
+                f"Only OPENING or OPEN orders can be cancelled."
+            )
+            return
+
+        margin_to_release = (order.volume * order.price) / self._leverage
+
+        with self._balance_lock, self._orders_lock:
+            if order.id not in self._orders:
+                self._log.error(f"Order {order.id} not found in orderbook")
+                return
+
+            if not self._backtest:
+                gateway_success = self._gateway_handler.cancel_order(order)
+
+                if not gateway_success:
+                    self._log.critical(
+                        f"Failed to cancel order {order.id} on gateway. Order remains {order.status.value}."
+                    )
+                    return
+
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+            order.updated_at = self._tick.date
+
+            self._balance += margin_to_release
+            self._orders[order.id] = order
+            self._open_orders_index.discard(order.id)
 
         self._on_transaction(order)
 
