@@ -29,6 +29,10 @@ class OrderbookInterface(ABC):
         pass
 
     @abstractmethod
+    def cancel(self, order: OrderModel) -> None:
+        pass
+
+    @abstractmethod
     def where(
         self,
         side: Optional[OrderSide] = None,

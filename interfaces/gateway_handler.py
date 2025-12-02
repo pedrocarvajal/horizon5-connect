@@ -11,3 +11,7 @@ class GatewayHandlerInterface(ABC):
     @abstractmethod
     def close_order(self, order: OrderModel) -> bool:
         pass
+
+    @abstractmethod
+    def cancel_order(self, order: OrderModel) -> bool:
+        pass
