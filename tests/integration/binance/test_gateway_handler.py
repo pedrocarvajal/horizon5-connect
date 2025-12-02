@@ -2,18 +2,15 @@
 
 import datetime
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
 from models.order import OrderModel
-from services.strategy.handlers.gateway import GatewayHandler
+from services.orderbook.gateway import GatewayHandlerService
 from tests.integration.binance.wrappers.binance import BinanceWrapper
-
-if TYPE_CHECKING:
-    from services.strategy.handlers.gateway import GatewayHandler
 
 
 class TestGatewayHandler(BinanceWrapper):
@@ -28,7 +25,7 @@ class TestGatewayHandler(BinanceWrapper):
     # ───────────────────────────────────────────────────────────
     # PROPERTIES
     # ───────────────────────────────────────────────────────────
-    _handler: GatewayHandler
+    _handler: GatewayHandlerService
 
     # ───────────────────────────────────────────────────────────
     # PUBLIC METHODS
@@ -37,13 +34,13 @@ class TestGatewayHandler(BinanceWrapper):
         super().setUp()
         self._log.setup(name="test_gateway_handler")
 
-        self._handler = GatewayHandler(
+        self._handler = GatewayHandlerService(
             gateway=self._gateway,
             backtest=False,
         )
 
     def test_gateway_handler_initialization(self) -> None:
-        """Test GatewayHandler initialization succeeds with valid gateway."""
+        """Test GatewayHandlerService initialization succeeds with valid gateway."""
         assert self._handler is not None, "Handler should be initialized"
         assert self._handler._gateway is not None, "Handler should have gateway"
         assert self._handler._backtest is False, "Handler should not be in backtest mode"
@@ -100,7 +97,7 @@ class TestGatewayHandler(BinanceWrapper):
 
     def test_open_order_backtest_mode(self) -> None:
         """Test open_order returns False when handler is in backtest mode."""
-        handler_backtest = GatewayHandler(
+        handler_backtest = GatewayHandlerService(
             gateway=self._gateway,
             backtest=True,
             backtest_id=self._DEFAULT_ORDER_BACKTEST_ID,
@@ -241,7 +238,7 @@ class TestGatewayHandler(BinanceWrapper):
 
     def test_close_order_backtest_mode(self) -> None:
         """Test close_order returns False when handler is in backtest mode."""
-        handler_backtest = GatewayHandler(
+        handler_backtest = GatewayHandlerService(
             gateway=self._gateway,
             backtest=True,
             backtest_id=self._DEFAULT_ORDER_BACKTEST_ID,
@@ -294,7 +291,7 @@ class TestGatewayHandler(BinanceWrapper):
         order: "OrderModel",
         target_status: OrderStatus,
         timeout_seconds: int = 70,
-        handler: Optional["GatewayHandler"] = None,
+        handler: Optional[GatewayHandlerService] = None,
     ) -> None:
         self._log.info(f"Waiting for order {order.id} to reach {target_status} (max {timeout_seconds}s)")
 
