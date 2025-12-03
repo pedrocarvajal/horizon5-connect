@@ -1,128 +1,53 @@
-from typing import Any, Dict, Optional
-
-import requests
-
+from typing import Any, Dict
 from helpers.get_env import get_env
+from providers import BaseProvider
+from providers.horizon_router.models.backtest import BacktestCreateModel, BacktestUpdateModel
+from providers.horizon_router.models.order import OrderCreateModel
+from providers.horizon_router.models.snapshot import SnapshotCreateModel
+from providers.horizon_router.resources import AccountResource, AuthResource, BacktestResource, HealthResource, OrderResource, SnapshotResource, UserResource
 
+class HorizonRouterProvider(BaseProvider):
 
-class HorizonRouterProvider:
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-    _base_url: str
-    _api_key: str
-    _headers: Dict[str, str]
-
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
-        base_url = get_env("HORIZON_ROUTER_BASE_URL", required=True)
-        api_key = get_env("HORIZON_ROUTER_APY_KEY", required=True)
-
+        base_url = get_env('HORIZON_ROUTER_BASE_URL', required=True)
+        api_key = get_env('HORIZON_ROUTER_API_KEY', required=True)
         if base_url is None or api_key is None:
-            raise ValueError("Required environment variables are not set.")
+            raise ValueError('Required environment variables are not set.')
+        headers = {'X-API-Key': api_key, 'Content-Type': 'application/json'}
+        super().__init__(base_url=base_url, headers=headers, timeout=30, retry_times=3, retry_delay=100)
 
-        self._base_url = base_url
-        self._api_key = api_key
+    def get_service_name(self) -> str:
+        return 'horizon_router'
 
-        self._prepare_headers()
+    def accounts(self) -> AccountResource:
+        return AccountResource(self)
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
-    def backtest_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return self._execute(
-            method="POST",
-            url=f"{self._base_url}/api/backtest/",
-            query=None,
-            body=body,
-            headers=None,
-        )
+    def auth(self) -> AuthResource:
+        return AuthResource(self)
 
-    def backtest_update(
-        self,
-        id: str,
-        body: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        return self._execute(
-            method="PUT",
-            url=f"{self._base_url}/api/backtest/{id}/",
-            query=None,
-            body=body,
-            headers=None,
-        )
+    def backtests(self) -> BacktestResource:
+        return BacktestResource(self)
 
-    def backtests(
-        self,
-        query: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        return self._execute(
-            method="GET",
-            url=f"{self._base_url}/api/backtests/",
-            query=query,
-            body=None,
-            headers=None,
-        )
+    def health(self) -> HealthResource:
+        return HealthResource(self)
 
-    def order_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return self._execute(
-            method="POST",
-            url=f"{self._base_url}/api/order/",
-            query=None,
-            body=body,
-            headers=None,
-        )
+    def orders(self) -> OrderResource:
+        return OrderResource(self)
 
-    def snapshot_create(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        return self._execute(
-            method="POST",
-            url=f"{self._base_url}/api/snapshot/",
-            query=None,
-            body=body,
-            headers=None,
-        )
+    def snapshots(self) -> SnapshotResource:
+        return SnapshotResource(self)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
-    def _execute(
-        self,
-        method: str,
-        url: str,
-        query: Optional[Dict[str, Any]],
-        body: Optional[Dict[str, Any]],
-        headers: Optional[Dict[str, str]],
-    ) -> Any:
-        if query is None:
-            query = {}
+    def users(self) -> UserResource:
+        return UserResource(self)
 
-        if body is None:
-            body = {}
+    def backtest_create(self, body: BacktestCreateModel) -> Dict[str, Any]:
+        return self.backtests().create(body)
 
-        if headers is None:
-            headers = {}
+    def backtest_update(self, backtest_id: str, body: BacktestUpdateModel) -> Dict[str, Any]:
+        return self.backtests().update(backtest_id, body)
 
-        self._headers = {
-            **self._headers,
-            **headers,
-        }
+    def order_create(self, body: OrderCreateModel) -> Dict[str, Any]:
+        return self.orders().create(body)
 
-        try:
-            response = requests.request(
-                method,
-                url,
-                headers=self._headers,
-                json=body,
-                params=query,
-            )
-        except requests.exceptions.RequestException as e:
-            raise e
-
-        return response.json()
-
-    def _prepare_headers(self) -> None:
-        self._headers = {
-            "X-API-Key": self._api_key,
-            "Content-Type": "application/json",
-        }
+    def snapshot_create(self, body: SnapshotCreateModel) -> Dict[str, Any]:
+        return self.snapshots().create(body)

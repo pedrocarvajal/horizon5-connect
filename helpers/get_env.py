@@ -5,7 +5,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 def get_env(key: str, default: Optional[str] = None, required: bool = False) -> Optional[str]:
