@@ -2,6 +2,7 @@ from enums.order_side import OrderSide
 from services.gateway.models.gateway_account import GatewayAccountModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
 
+
 class TestBinanceAccount(BinanceWrapper):
     _VERIFICATION_REQUIRED_LEVERAGE: str = 'required_leverage'
     _VERIFICATION_USDT_BALANCE: str = 'usdt_balance'

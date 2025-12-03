@@ -2,6 +2,7 @@ from enums.order_side import OrderSide
 from services.gateway.models.gateway_trade import GatewayTradeModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
 
+
 class TestBinanceTrade(BinanceWrapper):
 
     def setUp(self) -> None:
@@ -12,7 +13,7 @@ class TestBinanceTrade(BinanceWrapper):
         trades = self._gateway.get_trades()
         assert trades is not None, 'Trades should not be None'
         assert isinstance(trades, list), 'Trades should be a list'
-        assert all((isinstance(t, GatewayTradeModel) for t in trades)), 'All trades should be GatewayTradeModel'
+        assert all(isinstance(t, GatewayTradeModel) for t in trades), 'All trades should be GatewayTradeModel'
         if len(trades) > 0:
             trade = trades[0]
             assert trade.id != '', 'Trade ID should not be empty'
@@ -28,6 +29,6 @@ class TestBinanceTrade(BinanceWrapper):
         trades = self._gateway.get_trades(symbol=self._SYMBOL)
         assert trades is not None, 'Trades should not be None'
         assert isinstance(trades, list), 'Trades should be a list'
-        assert all((isinstance(t, GatewayTradeModel) for t in trades)), 'Trades should be GatewayTradeModel'
+        assert all(isinstance(t, GatewayTradeModel) for t in trades), 'Trades should be GatewayTradeModel'
         for trade in trades:
             assert trade.symbol == self._SYMBOL, f'Symbol should be {self._SYMBOL}'

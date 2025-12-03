@@ -1,5 +1,7 @@
 import unittest
+
 from helpers.get_progress_between_dates import get_progress_between_dates
+
 
 class TestGetProgressBetweenDates(unittest.TestCase):
     _START_TIMESTAMP: int = 1000

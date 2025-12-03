@@ -1,10 +1,12 @@
 import datetime
 from typing import Any
+
 from configs.timezone import TIMEZONE
 from enums.timeframe import Timeframe
 from indicators.price_acceleration import PriceAccelerationIndicator
 from services.logging import LoggingService
 from tests.e2e.wrappers.indicator import WrapperIndicator
+
 
 class TestIndicatorPriceAcceleration(WrapperIndicator):
     expected_total_candles = 8759
@@ -18,7 +20,12 @@ class TestIndicatorPriceAcceleration(WrapperIndicator):
         self._log.setup('test_indicator_price_acceleration')
 
     def test_indicator_price_acceleration(self) -> None:
-        candles = self.candles(timeframe=Timeframe.ONE_HOUR, from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE), to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE), indicators=[PriceAccelerationIndicator(key='pa5', window_size=5, price_to_use='close_price')])
+        candles = self.candles(
+            timeframe=Timeframe.ONE_HOUR,
+            from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE),
+            to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE),
+            indicators=[PriceAccelerationIndicator(key='pa5', window_size=5, price_to_use='close_price')],
+        )
         expected_values = self.get_json_data('indicator_price_acceleration_expected.json')
         last_10_candles = candles[-self.expected_last_candles:]
         assert len(candles) == self.expected_total_candles

@@ -1,7 +1,9 @@
 import unittest
 from datetime import datetime
+
 from configs.timezone import TIMEZONE
 from helpers.parse import parse_float, parse_int, parse_optional_float, parse_percentage, parse_timestamp_ms
+
 
 class TestParse(unittest.TestCase):
     _INT_POSITIVE: int = 42
@@ -31,14 +33,23 @@ class TestParse(unittest.TestCase):
     _STRING_INVALID: str = 'invalid'
 
     def test_parse_int_with_integer_returns_same_value(self) -> None:
-        test_cases = [(self._INT_POSITIVE, self._INT_POSITIVE), (self._INT_ZERO, self._INT_ZERO), (self._INT_NEGATIVE, self._INT_NEGATIVE)]
+        test_cases = [
+            (self._INT_POSITIVE, self._INT_POSITIVE),
+            (self._INT_ZERO, self._INT_ZERO),
+            (self._INT_NEGATIVE, self._INT_NEGATIVE),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_int(value)
                 assert result == expected
 
     def test_parse_int_with_string_returns_integer(self) -> None:
-        test_cases = [(self._STRING_INT_POSITIVE, self._INT_POSITIVE), (self._STRING_INT_ZERO, self._INT_ZERO), (self._STRING_INT_NEGATIVE, self._INT_NEGATIVE), (self._STRING_FLOAT_PI, 3)]
+        test_cases = [
+            (self._STRING_INT_POSITIVE, self._INT_POSITIVE),
+            (self._STRING_INT_ZERO, self._INT_ZERO),
+            (self._STRING_INT_NEGATIVE, self._INT_NEGATIVE),
+            (self._STRING_FLOAT_PI, 3),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_int(value)
@@ -56,14 +67,22 @@ class TestParse(unittest.TestCase):
         assert result == self._INT_ZERO
 
     def test_parse_float_with_float_returns_same_value(self) -> None:
-        test_cases = [(self._FLOAT_PI, self._FLOAT_PI), (self._FLOAT_ZERO, self._FLOAT_ZERO), (self._FLOAT_NEGATIVE, self._FLOAT_NEGATIVE)]
+        test_cases = [
+            (self._FLOAT_PI, self._FLOAT_PI),
+            (self._FLOAT_ZERO, self._FLOAT_ZERO),
+            (self._FLOAT_NEGATIVE, self._FLOAT_NEGATIVE),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_float(value)
                 assert result == expected
 
     def test_parse_float_with_string_returns_float(self) -> None:
-        test_cases = [(self._STRING_FLOAT_PI, self._FLOAT_PI), (self._STRING_INT_ZERO, self._FLOAT_ZERO), (self._STRING_FLOAT_NEGATIVE, self._FLOAT_NEGATIVE)]
+        test_cases = [
+            (self._STRING_FLOAT_PI, self._FLOAT_PI),
+            (self._STRING_INT_ZERO, self._FLOAT_ZERO),
+            (self._STRING_FLOAT_NEGATIVE, self._FLOAT_NEGATIVE),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_float(value)
@@ -111,14 +130,22 @@ class TestParse(unittest.TestCase):
         assert result is None
 
     def test_parse_percentage_with_float_less_than_one_returns_same_value(self) -> None:
-        test_cases = [(self._PERCENTAGE_HALF, self._PERCENTAGE_HALF), (self._FLOAT_ZERO, self._FLOAT_ZERO), (self._PERCENTAGE_ALMOST_ONE, self._PERCENTAGE_ALMOST_ONE)]
+        test_cases = [
+            (self._PERCENTAGE_HALF, self._PERCENTAGE_HALF),
+            (self._FLOAT_ZERO, self._FLOAT_ZERO),
+            (self._PERCENTAGE_ALMOST_ONE, self._PERCENTAGE_ALMOST_ONE),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_percentage(value)
                 assert result == expected
 
     def test_parse_percentage_with_float_greater_than_one_converts_to_decimal(self) -> None:
-        test_cases = [(self._PERCENTAGE_HALF_VALUE, self._PERCENTAGE_HALF), (self._PERCENTAGE_FULL_VALUE, self._PERCENTAGE_FULL), (self._PERCENTAGE_QUARTER_VALUE, self._PERCENTAGE_QUARTER_RESULT)]
+        test_cases = [
+            (self._PERCENTAGE_HALF_VALUE, self._PERCENTAGE_HALF),
+            (self._PERCENTAGE_FULL_VALUE, self._PERCENTAGE_FULL),
+            (self._PERCENTAGE_QUARTER_VALUE, self._PERCENTAGE_QUARTER_RESULT),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_percentage(value)
@@ -129,7 +156,10 @@ class TestParse(unittest.TestCase):
         assert result == self._PERCENTAGE_HALF
 
     def test_parse_percentage_with_string_greater_than_one_converts_to_decimal(self) -> None:
-        test_cases = [(self._STRING_PERCENTAGE_HALF_VALUE, self._PERCENTAGE_HALF), (self._STRING_PERCENTAGE_FULL, self._PERCENTAGE_FULL)]
+        test_cases = [
+            (self._STRING_PERCENTAGE_HALF_VALUE, self._PERCENTAGE_HALF),
+            (self._STRING_PERCENTAGE_FULL, self._PERCENTAGE_FULL),
+        ]
         for value, expected in test_cases:
             with self.subTest(value=value):
                 result = parse_percentage(value)

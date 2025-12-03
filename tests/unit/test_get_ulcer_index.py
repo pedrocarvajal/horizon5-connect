@@ -1,6 +1,8 @@
 import unittest
 from typing import ClassVar
+
 from services.analytic.helpers.get_ulcer_index import get_ulcer_index
+
 
 class TestGetUlcerIndex(unittest.TestCase):
     _NAV_INITIAL: float = 1000.0

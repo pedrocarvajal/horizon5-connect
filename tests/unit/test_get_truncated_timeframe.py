@@ -1,8 +1,10 @@
 import datetime
 import unittest
+
 from configs.timezone import TIMEZONE
 from enums.timeframe import Timeframe
 from services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
+
 
 class TestGetTruncatedTimeframe(unittest.TestCase):
     _DATETIME_FULL: datetime.datetime = datetime.datetime(2024, 1, 1, 12, 30, 45, 123456, tzinfo=TIMEZONE)

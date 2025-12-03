@@ -1,5 +1,7 @@
 import unittest
+
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
+
 
 class TestGetCalmarRatio(unittest.TestCase):
     _CAGR_POSITIVE: float = 0.15

@@ -1,7 +1,9 @@
 import datetime
 import unittest
+
 from configs.timezone import TIMEZONE
 from helpers.get_duration import get_duration
+
 
 class TestGetDuration(unittest.TestCase):
     _BASE_DATETIME: datetime.datetime = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=TIMEZONE)

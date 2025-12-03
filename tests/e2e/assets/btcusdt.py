@@ -1,6 +1,8 @@
 from typing import List
+
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
+
 
 class BTCUSDT(AssetService):
     _symbol = 'BTCUSDT'

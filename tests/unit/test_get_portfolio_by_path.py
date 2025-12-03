@@ -1,7 +1,9 @@
 import unittest
 from pathlib import Path
+
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.portfolio import PortfolioInterface
+
 
 class TestGetPortfolioByPath(unittest.TestCase):
     _PORTFOLIO_ID: str = 'low-risk'

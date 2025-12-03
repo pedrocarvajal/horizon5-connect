@@ -1,8 +1,10 @@
 import datetime
 from typing import List
+
 from configs.timezone import TIMEZONE
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
+
 
 class TestBinanceKline(BinanceWrapper):
 
@@ -17,9 +19,15 @@ class TestBinanceKline(BinanceWrapper):
         def callback(klines: List[GatewayKlineModel]) -> None:
             self._log.info(f'Received {len(klines)} klines')
             all_klines.extend(klines)
-        self._gateway.get_klines(symbol='BTCUSDT', timeframe='1d', from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE).timestamp(), to_date=datetime.datetime(2024, 1, 2, tzinfo=TIMEZONE).timestamp(), callback=callback)
+        self._gateway.get_klines(
+            symbol='BTCUSDT',
+            timeframe='1d',
+            from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE).timestamp(),
+            to_date=datetime.datetime(2024, 1, 2, tzinfo=TIMEZONE).timestamp(),
+            callback=callback,
+        )
         assert len(all_klines) > 0, f'Should return at least 1 kline, got {len(all_klines)}'
-        assert all((isinstance(k, GatewayKlineModel) for k in all_klines)), 'All klines should be GatewayKlineModel'
+        assert all(isinstance(k, GatewayKlineModel) for k in all_klines), 'All klines should be GatewayKlineModel'
         assert all_klines[0].symbol == 'BTCUSDT', f'Symbol should be BTCUSDT, got {all_klines[0].symbol}'
         assert all_klines[0].open_time > 0, f'Open time should be > 0, got {all_klines[0].open_time}'
         assert all_klines[0].close_time > 0, f'Close time should be > 0, got {all_klines[0].close_time}'

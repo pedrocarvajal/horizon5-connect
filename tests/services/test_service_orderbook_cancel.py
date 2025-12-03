@@ -1,6 +1,7 @@
 from enums.order_status import OrderStatus
 from tests.services.wrappers.orderbook import OrderbookWrapper
 
+
 class TestServiceOrderbookCancel(OrderbookWrapper):
 
     def test_cancel_order_in_backtest_mode_releases_margin(self) -> None:
