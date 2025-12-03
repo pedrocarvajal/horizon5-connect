@@ -1,5 +1,7 @@
 import unittest
+
 from services.analytic.helpers.get_recovery_factor import get_recovery_factor
+
 
 class TestGetRecoveryFactor(unittest.TestCase):
     _PROFIT_SMALL: float = 0.05

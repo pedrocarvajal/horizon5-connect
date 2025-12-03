@@ -2,6 +2,7 @@ from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from tests.services.wrappers.orderbook import OrderbookWrapper
 
+
 class TestServiceOrderbook(OrderbookWrapper):
 
     def test_initialization_with_valid_parameters(self) -> None:

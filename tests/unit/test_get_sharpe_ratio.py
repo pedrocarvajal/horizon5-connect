@@ -1,6 +1,8 @@
 import unittest
 from typing import ClassVar
+
 from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
+
 
 class TestGetSharpeRatio(unittest.TestCase):
     _NAV_INITIAL: float = 1000.0

@@ -1,5 +1,7 @@
 import unittest
+
 from services.gateway.helpers.has_api_error import has_api_error
+
 
 class TestHasApiError(unittest.TestCase):
     _ERROR_CODE_TIMESTAMP: int = -1021

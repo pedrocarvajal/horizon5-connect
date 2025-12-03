@@ -1,4 +1,4 @@
-.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-linter-checks run-submodules-synchronization run-submodules-push
+.PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-linter-checks run-linter-fixes run-submodules-synchronization run-submodules-push
 
 run-tests:
 	./scripts/make/run-tests.sh
@@ -14,6 +14,9 @@ run-tests-unit:
 
 run-linter-checks:
 	./scripts/make/run-linter-checks.sh
+
+run-linter-fixes:
+	./scripts/make/run-linter-fixes.sh
 
 run-submodules-synchronization:
 	./scripts/make/run-submodules-synchronization.sh

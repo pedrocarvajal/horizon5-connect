@@ -1,5 +1,7 @@
 import unittest
+
 from services.analytic.helpers.get_cagr import get_cagr
+
 
 class TestGetCagr(unittest.TestCase):
     _DEFAULT_INITIAL_NAV = 1000.0

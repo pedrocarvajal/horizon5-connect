@@ -1,6 +1,8 @@
 import unittest
 from typing import ClassVar
+
 from services.analytic.helpers.get_r2 import get_r2
+
 
 class TestGetR2(unittest.TestCase):
     _VALUE_INITIAL: float = 100.0

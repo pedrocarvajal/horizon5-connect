@@ -1,6 +1,8 @@
 import unittest
 from typing import ClassVar
+
 from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
+
 
 class TestGetSortinoRatio(unittest.TestCase):
     _NAV_INITIAL: float = 1000.0

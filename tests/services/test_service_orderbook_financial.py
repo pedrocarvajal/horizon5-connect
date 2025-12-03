@@ -1,6 +1,7 @@
 from enums.order_side import OrderSide
 from tests.services.wrappers.orderbook import OrderbookWrapper
 
+
 class TestServiceOrderbookFinancial(OrderbookWrapper):
 
     def test_nav_identity_with_no_positions(self) -> None:

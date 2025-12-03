@@ -1,8 +1,10 @@
 import asyncio
 import contextlib
 from typing import List
+
 from models.tick import TickModel
 from tests.integration.binance.wrappers.binance import BinanceWrapper
+
 
 class TestBinanceStream(BinanceWrapper):
     _STREAM_NAME: str = 'btcusdt@bookTicker'
@@ -29,7 +31,7 @@ class TestBinanceStream(BinanceWrapper):
                 await stream_task
         asyncio.run(test_with_timeout())
         assert len(all_ticks) > 0, f'Should receive at least 1 tick, got {len(all_ticks)}'
-        assert all((isinstance(t, TickModel) for t in all_ticks)), 'All ticks should be TickModel'
+        assert all(isinstance(t, TickModel) for t in all_ticks), 'All ticks should be TickModel'
         assert all_ticks[0].price > 0, f'Price should be > 0, got {all_ticks[0].price}'
         assert all_ticks[0].bid_price > 0, f'Bid price should be > 0, got {all_ticks[0].bid_price}'
         assert all_ticks[0].ask_price > 0, f'Ask price should be > 0, got {all_ticks[0].ask_price}'

@@ -1,6 +1,8 @@
 import unittest
 from typing import ClassVar
+
 from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
+
 
 class TestGetExpectedShortfall(unittest.TestCase):
     _NAV_INITIAL: float = 1000.0

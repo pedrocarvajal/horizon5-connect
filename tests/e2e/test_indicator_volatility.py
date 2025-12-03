@@ -1,10 +1,12 @@
 import datetime
 from typing import Any
+
 from configs.timezone import TIMEZONE
 from enums.timeframe import Timeframe
 from indicators.volatility import VolatilityIndicator
 from services.logging import LoggingService
 from tests.e2e.wrappers.indicator import WrapperIndicator
+
 
 class TestIndicatorVolatility(WrapperIndicator):
     expected_total_candles = 8759
@@ -18,7 +20,12 @@ class TestIndicatorVolatility(WrapperIndicator):
         self._log.setup('test_indicator_volatility')
 
     def test_indicator_volatility(self) -> None:
-        candles = self.candles(timeframe=Timeframe.ONE_HOUR, from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE), to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE), indicators=[VolatilityIndicator(key='vol20', window_size=20, price_to_use='close_price')])
+        candles = self.candles(
+            timeframe=Timeframe.ONE_HOUR,
+            from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE),
+            to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE),
+            indicators=[VolatilityIndicator(key='vol20', window_size=20, price_to_use='close_price')],
+        )
         expected_values = self.get_json_data('indicator_volatility_expected.json')
         last_10_candles = candles[-self.expected_last_candles:]
         assert len(candles) == self.expected_total_candles

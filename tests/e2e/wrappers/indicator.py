@@ -3,18 +3,20 @@ import json
 import unittest
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from enums.timeframe import Timeframe
 from interfaces.indicator import IndicatorInterface
 from services.candle import CandleService
 from services.ticks import TicksService
 from tests.e2e.assets.btcusdt import BTCUSDT
 
+
 class WrapperIndicator(unittest.TestCase):
     _ticks_service: TicksService
     _candle_service: CandleService
 
-    def __init__(self, methodName: str='runTest') -> None:
-        super().__init__(methodName)
+    def __init__(self, method_name: str='runTest') -> None:
+        super().__init__(method_name)
 
     def setUp(self, **kwargs: Any) -> None:
         super().setUp()
@@ -24,7 +26,13 @@ class WrapperIndicator(unittest.TestCase):
         self._ticks_service = TicksService()
         self._ticks_service.setup(asset=BTCUSDT(), restore_ticks=False, disable_download=True)
 
-    def candles(self, timeframe: Timeframe, from_date: datetime.datetime, to_date: datetime.datetime, indicators: Optional[List[IndicatorInterface]]=None) -> List[Dict[str, Any]]:
+    def candles(
+        self,
+        timeframe: Timeframe,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+        indicators: Optional[List[IndicatorInterface]]=None,
+    ) -> List[Dict[str, Any]]:
         service = CandleService(timeframe=timeframe, indicators=indicators)
         ticks = self._ticks_service.ticks(from_date=from_date, to_date=to_date)
         for tick in ticks:

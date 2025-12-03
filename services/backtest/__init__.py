@@ -129,17 +129,22 @@ class BacktestService:
         self._log.info(f"Backtest completed in: {duration}")
 
     def _create_backtest(self) -> None:
-        response = self._horizon_router.backtest_create(
-            body={
-                "asset": self._asset.symbol,
-                "strategies": ",".join([strategy.id for strategy in self._asset.strategies]),
-                "from_date": int(self._from_date.timestamp()),
-                "to_date": int(self._to_date.timestamp()),
-            }
-        )
+        # response = self._horizon_router.backtest_create(
+        #     body=BacktestCreateModel(
+        #         user_id="system",
+        #         settings=BacktestSettingsModel(
+        #             asset=self._asset.symbol,
+        #             strategies=",".join([strategy.id for strategy in self._asset.strategies]),
+        #             from_date=int(self._from_date.timestamp()),
+        #             to_date=int(self._to_date.timestamp()),
+        #         ),
+        #     )
+        # )
 
-        self._id = response["data"]["_id"]
-        self._log.info(f"Backtest created: {response}")
+        # self._id = response["data"]["_id"]
+        # self._log.info(f"Backtest created: {response}")
+
+        pass
 
     def _kill(self) -> None:
         if self._commands_queue is not None:

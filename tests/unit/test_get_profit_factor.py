@@ -1,5 +1,7 @@
 import unittest
+
 from services.analytic.helpers.get_profit_factor import get_profit_factor
+
 
 class TestGetProfitFactor(unittest.TestCase):
     _PROFIT_LARGE: float = 100.0
@@ -39,7 +41,14 @@ class TestGetProfitFactor(unittest.TestCase):
         assert result == self._EXPECTED_ONE
 
     def test_get_profit_factor_mixed_trades(self) -> None:
-        trades_profits = [self._PROFIT_LARGE, self._LOSS_QUARTER, self._PROFIT_SMALL, self._LOSS_QUARTER, self._PROFIT_MEDIUM, self._LOSS_HALF]
+        trades_profits = [
+            self._PROFIT_LARGE,
+            self._LOSS_QUARTER,
+            self._PROFIT_SMALL,
+            self._LOSS_QUARTER,
+            self._PROFIT_MEDIUM,
+            self._LOSS_HALF,
+        ]
         result = get_profit_factor(trades_profits)
         assert result == self._EXPECTED_TWO_QUARTER
 
