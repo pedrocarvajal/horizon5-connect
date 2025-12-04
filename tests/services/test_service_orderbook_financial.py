@@ -1,4 +1,7 @@
+from typing import List
+
 from enums.order_side import OrderSide
+from models.order import OrderModel
 from tests.services.wrappers.orderbook import OrderbookWrapper
 
 
@@ -223,11 +226,11 @@ class TestServiceOrderbookFinancial(OrderbookWrapper):
         orderbook = self._create_orderbook(balance=10000.0, leverage=5)
         prices = [50000.0, 49000.0, 48000.0, 47000.0]
         volume_per_entry = 0.02
-        orders = []
+        opened_orders: List[OrderModel] = []
         for price in prices:
             order = self._open_position(orderbook, OrderSide.BUY, volume_per_entry, price)
-            orders.append(order)
+            opened_orders.append(order)
         final_tick = self._create_tick(48500.0)
         orderbook.refresh(final_tick)
         assert orderbook.exposure > 0
-        assert len([o for o in orderbook.orders if o.status.is_open()]) == len(orders)
+        assert len([o for o in orderbook.orders if o.status.is_open()]) == len(opened_orders)

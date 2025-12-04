@@ -16,29 +16,40 @@ class TestGetExpectedShortfall(unittest.TestCase):
 
     def test_get_expected_shortfall_with_default_confidence(self) -> None:
         result = get_expected_shortfall(self._NAV_DECLINING_SMALL)
+
         assert isinstance(result, float)
 
     def test_get_expected_shortfall_with_custom_confidence(self) -> None:
-        result = get_expected_shortfall(self._NAV_DECLINING_SMALL, confidence_level=self._CONFIDENCE_CUSTOM)
+        result = get_expected_shortfall(
+            self._NAV_DECLINING_SMALL,
+            confidence_level=self._CONFIDENCE_CUSTOM,
+        )
+
         assert isinstance(result, float)
 
     def test_get_expected_shortfall_negative_returns(self) -> None:
         result = get_expected_shortfall(self._NAV_DECLINING_LARGE)
+
         assert result < 0
 
     def test_get_expected_shortfall_positive_returns(self) -> None:
         result = get_expected_shortfall(self._NAV_INCREASING)
+
         assert isinstance(result, float)
 
     def test_get_expected_shortfall_insufficient_data_returns_zero(self) -> None:
         result = get_expected_shortfall([self._NAV_INITIAL])
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_expected_shortfall_empty_list_returns_zero(self) -> None:
         nav_history: list[float] = []
+
         result = get_expected_shortfall(nav_history)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_expected_shortfall_with_zero_nav(self) -> None:
         result = get_expected_shortfall(self._NAV_WITH_ZERO)
+
         assert isinstance(result, float)

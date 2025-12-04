@@ -1,3 +1,5 @@
+"""Orderbook test wrapper module."""
+
 import datetime
 import unittest
 from typing import List
@@ -12,15 +14,22 @@ from services.orderbook import OrderbookService
 
 
 class OrderbookWrapper(unittest.TestCase):
+    """Base test wrapper for OrderbookService tests."""
+
     _INITIAL_BALANCE: float = 10000.0
     _DEFAULT_SYMBOL: str = "BTCUSDT"
     _DEFAULT_PRICE: float = 50000.0
     _EPSILON: float = 0.01
-    _gateway: Mock
-    _transactions: List[OrderModel]
-    _orderbook: OrderbookService
+
+    def __init__(self, method_name: str = "runTest") -> None:
+        """Initialize test case."""
+        super().__init__(method_name)
+        self._gateway: Mock = Mock()
+        self._transactions: List[OrderModel] = []
+        self._orderbook: OrderbookService = None  # type: ignore[assignment]
 
     def setUp(self) -> None:
+        """Set up test fixtures."""
         self._gateway = Mock()
         self._transactions = []
         self._orderbook = self._create_orderbook()

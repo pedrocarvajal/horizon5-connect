@@ -21,23 +21,46 @@ class TestGetProfitFactor(unittest.TestCase):
     _EXPECTED_THREE_HALF: float = 3.5
 
     def test_get_profit_factor_balanced_returns_two(self) -> None:
-        trades_profits = [self._PROFIT_LARGE, self._LOSS_HALF, self._PROFIT_LARGE, self._LOSS_HALF]
+        trades_profits = [
+            self._PROFIT_LARGE,
+            self._LOSS_HALF,
+            self._PROFIT_LARGE,
+            self._LOSS_HALF,
+        ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_TWO
 
     def test_get_profit_factor_positive_returns_correct_ratio(self) -> None:
-        trades_profits = [self._PROFIT_DOUBLE, self._LOSS_HALF, self._PROFIT_LARGE_MEDIUM, self._LOSS_HALF]
+        trades_profits = [
+            self._PROFIT_DOUBLE,
+            self._LOSS_HALF,
+            self._PROFIT_LARGE_MEDIUM,
+            self._LOSS_HALF,
+        ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_THREE_HALF
 
     def test_get_profit_factor_negative_returns_less_than_one(self) -> None:
-        trades_profits = [self._PROFIT_SMALL, self._LOSS_LARGE, self._PROFIT_SMALL, self._LOSS_LARGE]
+        trades_profits = [
+            self._PROFIT_SMALL,
+            self._LOSS_LARGE,
+            self._PROFIT_SMALL,
+            self._LOSS_LARGE,
+        ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_HALF
 
     def test_get_profit_factor_break_even_returns_one(self) -> None:
         trades_profits = [self._PROFIT_LARGE, self._LOSS_LARGE]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_ONE
 
     def test_get_profit_factor_mixed_trades(self) -> None:
@@ -49,20 +72,36 @@ class TestGetProfitFactor(unittest.TestCase):
             self._PROFIT_MEDIUM,
             self._LOSS_HALF,
         ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_TWO_QUARTER
 
     def test_get_profit_factor_empty_list_returns_zero(self) -> None:
         trades_profits: list[float] = []
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_profit_factor_only_wins_returns_zero(self) -> None:
-        trades_profits = [self._PROFIT_LARGE, self._PROFIT_SMALL, self._PROFIT_MEDIUM]
+        trades_profits = [
+            self._PROFIT_LARGE,
+            self._PROFIT_SMALL,
+            self._PROFIT_MEDIUM,
+        ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_profit_factor_only_losses_returns_zero(self) -> None:
-        trades_profits = [self._LOSS_LARGE, self._LOSS_HALF, self._LOSS_MEDIUM]
+        trades_profits = [
+            self._LOSS_LARGE,
+            self._LOSS_HALF,
+            self._LOSS_MEDIUM,
+        ]
+
         result = get_profit_factor(trades_profits)
+
         assert result == self._EXPECTED_ZERO

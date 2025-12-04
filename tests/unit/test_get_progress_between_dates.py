@@ -23,37 +23,82 @@ class TestGetProgressBetweenDates(unittest.TestCase):
     _PROGRESS_AFTER_END: float = 1.5
 
     def test_get_progress_between_dates_at_start_returns_zero(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._END_TIMESTAMP, self._START_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._END_TIMESTAMP,
+            self._START_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_ZERO
 
     def test_get_progress_between_dates_at_midpoint_returns_half(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._END_TIMESTAMP, self._MIDPOINT_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._END_TIMESTAMP,
+            self._MIDPOINT_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_HALF
 
     def test_get_progress_between_dates_at_end_returns_one(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._END_TIMESTAMP, self._END_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._END_TIMESTAMP,
+            self._END_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_COMPLETE
 
     def test_get_progress_between_dates_at_quarter_returns_quarter(self) -> None:
-        result = get_progress_between_dates(0, 1000, self._QUARTER_TIMESTAMP)
+        result = get_progress_between_dates(
+            0,
+            1000,
+            self._QUARTER_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_QUARTER
 
     def test_get_progress_between_dates_at_three_quarters_returns_three_quarters(self) -> None:
-        result = get_progress_between_dates(0, 1000, self._THREE_QUARTERS_TIMESTAMP)
+        result = get_progress_between_dates(
+            0,
+            1000,
+            self._THREE_QUARTERS_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_THREE_QUARTERS
 
     def test_get_progress_between_dates_with_large_numbers(self) -> None:
-        result = get_progress_between_dates(self._LARGE_START, self._LARGE_END, self._LARGE_MIDPOINT)
+        result = get_progress_between_dates(
+            self._LARGE_START,
+            self._LARGE_END,
+            self._LARGE_MIDPOINT,
+        )
+
         assert result == self._PROGRESS_HALF
 
     def test_get_progress_between_dates_before_start_returns_negative(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._END_TIMESTAMP, self._BEFORE_START_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._END_TIMESTAMP,
+            self._BEFORE_START_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_BEFORE_START
 
     def test_get_progress_between_dates_after_end_returns_greater_than_one(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._END_TIMESTAMP, self._AFTER_END_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._END_TIMESTAMP,
+            self._AFTER_END_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_AFTER_END
 
     def test_get_progress_between_dates_zero_duration_returns_complete(self) -> None:
-        result = get_progress_between_dates(self._START_TIMESTAMP, self._START_TIMESTAMP, self._START_TIMESTAMP)
+        result = get_progress_between_dates(
+            self._START_TIMESTAMP,
+            self._START_TIMESTAMP,
+            self._START_TIMESTAMP,
+        )
+
         assert result == self._PROGRESS_COMPLETE

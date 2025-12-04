@@ -495,3 +495,39 @@ class OrderbookService(OrderbookInterface):
             return float("inf")
 
         return self.equity / self.used_margin
+
+    @property
+    def leverage(self) -> int:
+        """Return leverage multiplier."""
+        return self._leverage
+
+    @property
+    def margin_call_active(self) -> bool:
+        """Return whether margin call is active."""
+        return self._margin_call_active
+
+    @margin_call_active.setter
+    def margin_call_active(self, value: bool) -> None:
+        """Set margin call active status."""
+        self._margin_call_active = value
+
+    @property
+    def open_orders_index(self) -> Set[str]:
+        """Return set of open order IDs."""
+        with self._orders_lock:
+            return self._open_orders_index.copy()
+
+    @property
+    def is_backtest(self) -> bool:
+        """Return whether running in backtest mode."""
+        return self._backtest
+
+    @is_backtest.setter
+    def is_backtest(self, value: bool) -> None:
+        """Set backtest mode."""
+        self._backtest = value
+
+    @property
+    def gateway_handler(self) -> GatewayHandlerService:
+        """Return gateway handler service."""
+        return self._gateway_handler

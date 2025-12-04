@@ -47,6 +47,54 @@ class GatewayHandlerService(GatewayHandlerInterface):
     MAX_SYMBOL_LENGTH: int = 20
     SYMBOL_PATTERN: str = r"^[A-Z0-9]+$"
 
+    @property
+    def gateway(self) -> GatewayService:
+        """Get the gateway service instance."""
+        return self._gateway
+
+    @property
+    def backtest(self) -> bool:
+        """Check if running in backtest mode."""
+        return self._backtest
+
+    def validate_order_parameters(self, order: OrderModel) -> bool:
+        """
+        Public interface for validating order parameters.
+
+        Args:
+            order: OrderModel instance to validate.
+
+        Returns:
+            True if order parameters are valid, False otherwise.
+        """
+        return self._validate_order_parameters(order)
+
+    def handle_executed_order(
+        self,
+        order: OrderModel,
+        gateway_order: GatewayOrderModel,
+    ) -> None:
+        """
+        Public interface for handling order execution completion.
+
+        Args:
+            order: OrderModel instance to update.
+            gateway_order: Gateway order model with execution details.
+        """
+        self._handle_executed_order(order, gateway_order)
+
+    def get_symbol_info(self, symbol: str) -> Optional[GatewaySymbolInfoModel]:
+        """
+        Public interface for getting symbol information.
+
+        Args:
+            symbol: Trading symbol to get info for.
+
+        Returns:
+            GatewaySymbolInfoModel if available, None otherwise.
+        """
+        return self._get_symbol_info(symbol)
+
     _gateway: GatewayService
     _log: LoggingService
     _backtest: bool

@@ -16,29 +16,37 @@ class TestGetR2(unittest.TestCase):
 
     def test_get_r2_perfect_linear_returns_high_value(self) -> None:
         result = get_r2(self._VALUES_PERFECT_LINEAR)
+
         assert result > self._EXPECTED_HIGH_THRESHOLD
 
     def test_get_r2_volatile_returns_valid_range(self) -> None:
         result = get_r2(self._VALUES_VOLATILE)
+
         assert 0.0 <= result <= 1.0
 
     def test_get_r2_negative_trend_returns_high_value(self) -> None:
         result = get_r2(self._VALUES_DECLINING)
+
         assert result > self._EXPECTED_HIGH_THRESHOLD
 
     def test_get_r2_mixed_trend_returns_valid_range(self) -> None:
         result = get_r2(self._VALUES_MIXED)
+
         assert 0.0 <= result <= 1.0
 
     def test_get_r2_insufficient_data_returns_zero(self) -> None:
         result = get_r2([self._VALUE_INITIAL])
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_r2_empty_list_returns_zero(self) -> None:
         values: list[float] = []
+
         result = get_r2(values)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_r2_no_variance_returns_zero(self) -> None:
         result = get_r2(self._VALUES_CONSTANT)
+
         assert result == self._EXPECTED_ZERO

@@ -71,9 +71,9 @@ class TestServiceOrderbookCancel(OrderbookWrapper):
         self._orderbook.refresh(tick)
         order = self._create_order()
         self._orderbook.open(order)
-        assert order.id in self._orderbook._open_orders_index
+        assert order.id in self._orderbook.open_orders_index
         self._orderbook.cancel(order)
-        assert order.id not in self._orderbook._open_orders_index
+        assert order.id not in self._orderbook.open_orders_index
 
     def test_close_order_with_zero_executed_volume_cancels(self) -> None:
         tick = self._create_tick(50000.0)

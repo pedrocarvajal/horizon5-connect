@@ -11,31 +11,81 @@ class TestGetCagr(unittest.TestCase):
     _SHORT_ELAPSED_DAYS = 30
 
     def test_get_cagr_positive_growth(self) -> None:
-        result = get_cagr(self._DEFAULT_INITIAL_NAV, self._GROWTH_FINAL_NAV, self._DEFAULT_ELAPSED_DAYS)
+        result = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            self._GROWTH_FINAL_NAV,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
         assert result > 0
         assert result < 1.0
         assert abs(result - 0.1) < 0.01
 
     def test_get_cagr_negative_growth(self) -> None:
-        result = get_cagr(self._DEFAULT_INITIAL_NAV, self._LOSS_FINAL_NAV, self._DEFAULT_ELAPSED_DAYS)
+        result = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            self._LOSS_FINAL_NAV,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
         assert result < 0
         assert abs(result - -0.1) < 0.01
 
     def test_get_cagr_no_growth(self) -> None:
-        result = get_cagr(self._DEFAULT_INITIAL_NAV, self._DEFAULT_INITIAL_NAV, self._DEFAULT_ELAPSED_DAYS)
+        result = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            self._DEFAULT_INITIAL_NAV,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
         assert result == 0.0
 
     def test_get_cagr_short_period(self) -> None:
-        result = get_cagr(self._DEFAULT_INITIAL_NAV, self._GROWTH_FINAL_NAV, self._SHORT_ELAPSED_DAYS)
+        result = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            self._GROWTH_FINAL_NAV,
+            self._SHORT_ELAPSED_DAYS,
+        )
+
         assert result > 0
 
     def test_get_cagr_insufficient_days(self) -> None:
-        assert get_cagr(self._DEFAULT_INITIAL_NAV, self._GROWTH_FINAL_NAV, 0) == 0.0
+        result = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            self._GROWTH_FINAL_NAV,
+            0,
+        )
+
+        assert result == 0.0
 
     def test_get_cagr_invalid_initial_nav(self) -> None:
-        assert get_cagr(-self._DEFAULT_INITIAL_NAV, self._GROWTH_FINAL_NAV, self._DEFAULT_ELAPSED_DAYS) == 0.0
-        assert get_cagr(0.0, self._GROWTH_FINAL_NAV, self._DEFAULT_ELAPSED_DAYS) == 0.0
+        result_negative = get_cagr(
+            -self._DEFAULT_INITIAL_NAV,
+            self._GROWTH_FINAL_NAV,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
+        result_zero = get_cagr(
+            0.0,
+            self._GROWTH_FINAL_NAV,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
+        assert result_negative == 0.0
+        assert result_zero == 0.0
 
     def test_get_cagr_invalid_final_nav(self) -> None:
-        assert get_cagr(self._DEFAULT_INITIAL_NAV, 0.0, self._DEFAULT_ELAPSED_DAYS) == -1.0
-        assert get_cagr(self._DEFAULT_INITIAL_NAV, -100.0, self._DEFAULT_ELAPSED_DAYS) == -1.0
+        result_zero = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            0.0,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
+        result_negative = get_cagr(
+            self._DEFAULT_INITIAL_NAV,
+            -100.0,
+            self._DEFAULT_ELAPSED_DAYS,
+        )
+
+        assert result_zero == -1.0
+        assert result_negative == -1.0

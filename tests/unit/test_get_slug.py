@@ -43,16 +43,22 @@ class TestGetSlug(unittest.TestCase):
 
         for text, expected in test_cases:
             with self.subTest(text=text):
-                result = get_slug(text, separator=self._SEPARATOR_UNDERSCORE)
+                result = get_slug(
+                    text,
+                    separator=self._SEPARATOR_UNDERSCORE,
+                )
 
                 assert result == expected
 
     def test_get_slug_converts_underscores_to_custom_separator(self) -> None:
         result_default = get_slug("hello_world")
-        assert result_default == self._EXPECTED_HELLO_WORLD
+        result_underscore = get_slug(
+            "test_string",
+            separator=self._SEPARATOR_UNDERSCORE,
+        )
 
-        result_underscore = get_slug("test_string", separator=self._SEPARATOR_UNDERSCORE)
         assert result_underscore == "test_string"
+        assert result_default == self._EXPECTED_HELLO_WORLD
 
     def test_get_slug_converts_special_characters_using_dictionary(self) -> None:
         test_cases = [
@@ -75,7 +81,10 @@ class TestGetSlug(unittest.TestCase):
 
         for text, expected in test_cases:
             with self.subTest(text=text):
-                result = get_slug(text, dictionary=dictionary)
+                result = get_slug(
+                    text,
+                    dictionary=dictionary,
+                )
 
                 assert result == expected
 
@@ -141,9 +150,7 @@ class TestGetSlug(unittest.TestCase):
                 assert result == expected
 
     def test_get_slug_returns_empty_for_empty_string(self) -> None:
-        result = get_slug("")
-
-        assert result == ""
+        assert get_slug("") == ""
 
     def test_get_slug_returns_empty_for_only_separators(self) -> None:
         test_cases = ["---", "___"]
