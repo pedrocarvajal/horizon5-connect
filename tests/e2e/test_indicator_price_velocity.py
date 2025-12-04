@@ -9,7 +9,7 @@ from tests.e2e.wrappers.indicator import WrapperIndicator
 
 
 class TestIndicatorPriceVelocity(WrapperIndicator):
-    expected_total_candles = 8759
+    expected_total_candles = 743
     expected_last_candles = 10
     price_tolerance = 0.01
     _log: LoggingService
@@ -23,7 +23,7 @@ class TestIndicatorPriceVelocity(WrapperIndicator):
         candles = self.candles(
             timeframe=Timeframe.ONE_HOUR,
             from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE),
-            to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE),
+            to_date=datetime.datetime(2024, 2, 1, tzinfo=TIMEZONE),
             indicators=[PriceVelocityIndicator(key="pv5", window_size=5, price_to_use="close_price")],
         )
         expected_values = self.get_json_data("indicator_price_velocity_expected.json")

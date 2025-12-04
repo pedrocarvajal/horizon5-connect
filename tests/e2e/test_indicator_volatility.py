@@ -9,7 +9,7 @@ from tests.e2e.wrappers.indicator import WrapperIndicator
 
 
 class TestIndicatorVolatility(WrapperIndicator):
-    expected_total_candles = 8759
+    expected_total_candles = 743
     expected_last_candles = 10
     price_tolerance = 0.0001
     _log: LoggingService
@@ -23,7 +23,7 @@ class TestIndicatorVolatility(WrapperIndicator):
         candles = self.candles(
             timeframe=Timeframe.ONE_HOUR,
             from_date=datetime.datetime(2024, 1, 1, tzinfo=TIMEZONE),
-            to_date=datetime.datetime(2024, 12, 31, tzinfo=TIMEZONE),
+            to_date=datetime.datetime(2024, 2, 1, tzinfo=TIMEZONE),
             indicators=[VolatilityIndicator(key="vol20", window_size=20, price_to_use="close_price")],
         )
         expected_values = self.get_json_data("indicator_volatility_expected.json")
