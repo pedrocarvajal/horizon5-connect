@@ -8,5 +8,5 @@ log_setup "run-tests"
 
 log_title "Running All Tests"
 
-PYTHONPATH="$(pwd)" uv run python -m unittest discover -s tests -p "test_*.py" -v -b --locals -f
+uv run python -m unittest discover -s tests -t . -p "test_*.py" -v -b --locals -f
 
