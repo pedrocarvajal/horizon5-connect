@@ -12,10 +12,12 @@ class TestIndicatorPriceVelocity(WrapperIndicator):
     expected_total_candles = 743
     expected_last_candles = 10
     price_tolerance = 0.01
-    _log: LoggingService
+
+    _log: LoggingService  # type: ignore
 
     def setUp(self, **kwargs: Any) -> None:
         super().setUp(**kwargs, **{"test_name": "test_indicator_price_velocity"})
+
         self._log = LoggingService()
         self._log.setup("test_indicator_price_velocity")
 
@@ -26,16 +28,21 @@ class TestIndicatorPriceVelocity(WrapperIndicator):
             to_date=datetime.datetime(2024, 2, 1, tzinfo=TIMEZONE),
             indicators=[PriceVelocityIndicator(key="pv5", window_size=5, price_to_use="close_price")],
         )
+
         expected_values = self.get_json_data("indicator_price_velocity_expected.json")
         last_10_candles = candles[-self.expected_last_candles :]
+
         assert len(candles) == self.expected_total_candles
         assert len(last_10_candles) == self.expected_last_candles
+
         for candle, expected in zip(last_10_candles, expected_values, strict=True):
             assert "i" in candle
             assert "pv5" in candle["i"]
+
             candle_close_price = candle["close_price"]
             expected_close_price = expected["close"]
             pv5_value = candle["i"]["pv5"]["value"]
             expected_pv5_value = expected["pv5"]
+
             assert abs(candle_close_price - expected_close_price) < self.price_tolerance
             assert abs(pv5_value - expected_pv5_value) < self.price_tolerance
