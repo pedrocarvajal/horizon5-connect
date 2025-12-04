@@ -108,7 +108,7 @@ class WrapperIndicator(unittest.TestCase):
         Returns:
             Parsed JSON data as a list of dictionaries.
         """
-        json_path = Path(__file__).parent.parent / "jsons" / path
+        json_path = Path(__file__).parent.parent / "fixtures" / path
 
         with json_path.open() as file:
             return json.load(file)
