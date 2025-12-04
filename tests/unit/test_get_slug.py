@@ -1,4 +1,3 @@
-
 import unittest
 
 from helpers.get_slug import get_slug

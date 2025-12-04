@@ -1,4 +1,5 @@
-# Constants for enums/http_status.py
+"""HTTP status code range constants for status classification."""
+
 HTTP_SUCCESS_MIN = 200
 HTTP_REDIRECT_MIN = 300
 HTTP_CLIENT_ERROR_MIN = 400

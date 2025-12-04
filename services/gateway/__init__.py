@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway service facade for exchange integrations."""
 
 from typing import Any, Dict, List, Optional
 
@@ -32,9 +32,6 @@ class GatewayService(GatewayInterface):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _name: str
     _backtest: bool
     _sandbox: bool
@@ -43,9 +40,6 @@ class GatewayService(GatewayInterface):
     _gateway: GatewayInterface
     _log: LoggingService
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         gateway: str,
@@ -73,9 +67,6 @@ class GatewayService(GatewayInterface):
 
         self._setup()
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
         **kwargs: Any,
@@ -367,9 +358,6 @@ class GatewayService(GatewayInterface):
         """
         return self._gateway.get_positions(**kwargs)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _setup(self) -> None:
         """
         Set up the gateway instance.
@@ -400,9 +388,6 @@ class GatewayService(GatewayInterface):
 
         self._gateway = gateway_config["class"](**gateway_kwargs)
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @property
     def name(self) -> str:
         """

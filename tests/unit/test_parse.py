@@ -21,16 +21,16 @@ class TestParse(unittest.TestCase):
     _PERCENTAGE_QUARTER_VALUE: float = 25.5
     _PERCENTAGE_QUARTER_RESULT: float = 0.255
     _PERCENTAGE_ALMOST_ONE: float = 0.99
-    _STRING_INT_POSITIVE: str = '42'
-    _STRING_INT_ZERO: str = '0'
-    _STRING_INT_NEGATIVE: str = '-10'
-    _STRING_FLOAT_PI: str = '3.14'
-    _STRING_FLOAT_NEGATIVE: str = '-10.5'
-    _STRING_PERCENTAGE_HALF: str = '0.5'
-    _STRING_PERCENTAGE_HALF_VALUE: str = '50'
-    _STRING_PERCENTAGE_FULL: str = '100'
-    _STRING_EMPTY: str = ''
-    _STRING_INVALID: str = 'invalid'
+    _STRING_INT_POSITIVE: str = "42"
+    _STRING_INT_ZERO: str = "0"
+    _STRING_INT_NEGATIVE: str = "-10"
+    _STRING_FLOAT_PI: str = "3.14"
+    _STRING_FLOAT_NEGATIVE: str = "-10.5"
+    _STRING_PERCENTAGE_HALF: str = "0.5"
+    _STRING_PERCENTAGE_HALF_VALUE: str = "50"
+    _STRING_PERCENTAGE_FULL: str = "100"
+    _STRING_EMPTY: str = ""
+    _STRING_INVALID: str = "invalid"
 
     def test_parse_int_with_integer_returns_same_value(self) -> None:
         test_cases = [

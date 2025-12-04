@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by pedrocarvajal
+"""Binance trade component for trade history retrieval."""
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -21,9 +21,6 @@ class TradeComponent(BaseComponent):
         Inherits _config and _log from BaseComponent.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_trades(
         self,
         symbol: Optional[str] = None,
@@ -56,12 +53,12 @@ class TradeComponent(BaseComponent):
             >>> print(f"Found {len(trades)} trades")
         """
         if not self._validate_trades_params(
-            symbol=symbol,
-            pair=pair,
-            order_id=order_id,
+            _symbol=symbol,
+            _pair=pair,
+            _order_id=order_id,
             start_time=start_time,
             end_time=end_time,
-            from_id=from_id,
+            _from_id=from_id,
             limit=limit,
         ):
             return []
@@ -87,17 +84,14 @@ class TradeComponent(BaseComponent):
             order_id=order_id,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_trades_params(
         self,
-        symbol: Optional[str],
-        pair: Optional[str],
-        order_id: Optional[str],
+        _symbol: Optional[str],
+        _pair: Optional[str],
+        _order_id: Optional[str],
         start_time: Optional[datetime],
         end_time: Optional[datetime],
-        from_id: Optional[int],
+        _from_id: Optional[int],
         limit: int,
     ) -> bool:
         """
@@ -115,35 +109,11 @@ class TradeComponent(BaseComponent):
         Returns:
             bool: True if all validations pass, False otherwise.
         """
-        if symbol and not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
-            return False
-
-        if pair and not isinstance(pair, str):
-            self._log.error("pair must be a string")
-            return False
-
-        if order_id and not isinstance(order_id, str):
-            self._log.error("order_id must be a string")
-            return False
-
-        if start_time and not isinstance(start_time, datetime):
-            self._log.error("start_time must be a datetime")
-            return False
-
-        if end_time and not isinstance(end_time, datetime):
-            self._log.error("end_time must be a datetime")
-            return False
-
         if start_time and end_time and start_time > end_time:
             self._log.error("start_time must be before end_time")
             return False
 
-        if from_id is not None and not isinstance(from_id, int):
-            self._log.error("from_id must be an integer")
-            return False
-
-        if limit is not None and limit <= 0:
+        if limit <= 0:
             self._log.error("limit must be greater than 0")
             return False
 
@@ -293,13 +263,10 @@ class TradeComponent(BaseComponent):
         """
         trades: List[GatewayTradeModel] = []
 
-        if not response or not isinstance(response, list):
+        if not response:
             return trades
 
         for trade_data in response:
-            if not isinstance(trade_data, dict):
-                continue
-
             adapted_trade = self._adapt_trade_response(response=trade_data)
 
             if adapted_trade:

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Order type enumeration (MARKET, LIMIT, etc)."""
 
 from enum import Enum, unique
 

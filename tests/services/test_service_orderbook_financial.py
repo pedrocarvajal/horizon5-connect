@@ -3,7 +3,6 @@ from tests.services.wrappers.orderbook import OrderbookWrapper
 
 
 class TestServiceOrderbookFinancial(OrderbookWrapper):
-
     def test_nav_identity_with_no_positions(self) -> None:
         tick = self._create_tick(50000.0)
         self._orderbook.refresh(tick)
@@ -12,7 +11,7 @@ class TestServiceOrderbookFinancial(OrderbookWrapper):
 
     def test_nav_identity_with_open_position(self) -> None:
         self._open_position(self._orderbook, OrderSide.BUY, 0.1, 50000.0)
-        self._assert_accounting_identity(self._orderbook, 'NAV Identity')
+        self._assert_accounting_identity(self._orderbook, "NAV Identity")
 
     def test_equity_identity_with_profitable_position(self) -> None:
         self._open_position(self._orderbook, OrderSide.BUY, 0.1, 50000.0)
@@ -49,7 +48,7 @@ class TestServiceOrderbookFinancial(OrderbookWrapper):
         margin_level = self._orderbook.margin_level
         equity = self._orderbook.equity
         used_margin = self._orderbook.used_margin
-        expected_margin_level = equity / used_margin if used_margin > 0 else float('inf')
+        expected_margin_level = equity / used_margin if used_margin > 0 else float("inf")
         assert abs(margin_level - expected_margin_level) < self._EPSILON
 
     def test_capital_conservation_after_full_cycle(self) -> None:
@@ -196,7 +195,7 @@ class TestServiceOrderbookFinancial(OrderbookWrapper):
         self._open_position(orderbook, OrderSide.SELL, 0.00456, 50000.0)
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
-        self._assert_accounting_identity(orderbook, 'NAV with fractional volumes')
+        self._assert_accounting_identity(orderbook, "NAV with fractional volumes")
 
     def test_pyramiding_increases_exposure(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0, leverage=10)

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance gateway implementation for exchange integration."""
 
 from typing import Any, Dict, List, Optional
 
@@ -45,9 +45,6 @@ class Binance(GatewayInterface):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _config: BinanceConfigModel
     _account_component: AccountComponent
     _kline_component: KlineComponent
@@ -58,9 +55,6 @@ class Binance(GatewayInterface):
     _trade_component: TradeComponent
     _log: LoggingService
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         **kwargs: Any,
@@ -119,9 +113,6 @@ class Binance(GatewayInterface):
             config=self._config,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
         **kwargs: Any,
@@ -404,9 +395,6 @@ class Binance(GatewayInterface):
         """
         return self._account_component.get_verification(**kwargs)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _build_urls(
         self,
         sandbox: bool,

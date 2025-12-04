@@ -1,3 +1,5 @@
+"""Price Velocity indicator measuring rate of price change over time."""
+
 import datetime
 from typing import Any, Dict, List, Optional
 
@@ -9,15 +11,11 @@ from .models.value import PriceVelocityValueModel
 
 
 class PriceVelocityIndicator(IndicatorInterface):
-    # ───────────────────────────────────────────────────────────
-    # CONSTANTS
-    # ───────────────────────────────────────────────────────────
+    """Indicator measuring the first derivative of price (rate of change)."""
+
     _MIN_TICKS_REQUIRED: int = 2
     _INITIAL_VELOCITY: float = 0.0
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _name: str = "Price Velocity"
     _key: str
     _window_size: int
@@ -27,9 +25,6 @@ class PriceVelocityIndicator(IndicatorInterface):
     _prices: List[float]
     _velocities: List[float]
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         key: str,
@@ -37,6 +32,7 @@ class PriceVelocityIndicator(IndicatorInterface):
         price_to_use: str = "close_price",
         candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
+        """Initialize the Price Velocity indicator with configuration parameters."""
         self._key = key
         self._window_size = window_size
         self._price_to_use = price_to_use
@@ -48,10 +44,8 @@ class PriceVelocityIndicator(IndicatorInterface):
         self._log = LoggingService()
         self._log.setup("price_velocity_indicator")
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and refresh indicator if candle closed."""
         super().on_tick(tick)
 
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
@@ -65,6 +59,7 @@ class PriceVelocityIndicator(IndicatorInterface):
             self.refresh()
 
     def refresh(self) -> None:
+        """Recalculate velocity based on current price changes."""
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
             return
 
@@ -90,9 +85,6 @@ class PriceVelocityIndicator(IndicatorInterface):
 
         self._values.append(value)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _should_refresh(self, candle_close_time: datetime.datetime) -> bool:
         if len(self._values) == 0:
             return True
@@ -100,9 +92,7 @@ class PriceVelocityIndicator(IndicatorInterface):
         last_date = self._values[-1].date
         return last_date is None or last_date < candle_close_time
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @property
     def values(self) -> List[PriceVelocityValueModel]:
+        """Return the list of calculated velocity values."""
         return self._values

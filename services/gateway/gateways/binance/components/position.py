@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance position component for position data retrieval."""
 
 from typing import Any, Dict, List, Optional
 
@@ -10,8 +10,7 @@ from services.gateway.models.gateway_position import GatewayPositionModel
 
 
 class PositionComponent(BaseComponent):
-    """
-    Component for handling Binance position-related operations.
+    """Component for handling Binance position-related operations.
 
     Provides methods to retrieve position information and position mode settings
     from Binance Futures API. Handles position data retrieval, validation, and
@@ -22,13 +21,6 @@ class PositionComponent(BaseComponent):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_positions(
         self,
         symbol: Optional[str] = None,
@@ -55,7 +47,7 @@ class PositionComponent(BaseComponent):
             >>> for position in positions:
             ...     print(f"{position.symbol}: {position.volume} @ {position.open_price}")
         """
-        if not self._validate_symbol_or_pair(symbol=symbol, pair=pair):
+        if not self._validate_symbol_or_pair(_symbol=symbol, _pair=pair):
             return []
 
         params = self._build_position_params(symbol=symbol, pair=pair)
@@ -120,13 +112,10 @@ class PositionComponent(BaseComponent):
         dual_side_position = response.get("dualSidePosition", False)
         return bool(dual_side_position)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_symbol_or_pair(
         self,
-        symbol: Optional[str],
-        pair: Optional[str],
+        _symbol: Optional[str],
+        _pair: Optional[str],
     ) -> bool:
         """
         Validate that symbol and pair parameters are strings if provided.
@@ -138,14 +127,6 @@ class PositionComponent(BaseComponent):
         Returns:
             True if both parameters are valid (None or string), False otherwise.
         """
-        if symbol and not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
-            return False
-
-        if pair and not isinstance(pair, str):
-            self._log.error("pair must be a string")
-            return False
-
         return True
 
     def _build_position_params(
@@ -248,15 +229,12 @@ class PositionComponent(BaseComponent):
             List of GatewayPositionModel instances. Empty list if response is invalid
             or contains no positions with non-zero volume.
         """
-        positions = []
+        positions: List[GatewayPositionModel] = []
 
-        if not response or not isinstance(response, list):
+        if not response:
             return positions
 
         for position_data in response:
-            if not isinstance(position_data, dict):
-                continue
-
             position_amt = parse_optional_float(value=position_data.get("positionAmt", 0))
 
             if position_amt and position_amt != 0:

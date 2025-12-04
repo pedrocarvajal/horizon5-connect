@@ -1,3 +1,5 @@
+"""Performance snapshot model with analytics and metrics tracking."""
+
 import datetime
 from typing import Any, Dict, List, Optional
 
@@ -8,9 +10,24 @@ from services.logging import LoggingService
 
 
 class SnapshotModel(BaseModel):
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
+    """Performance snapshot with financial metrics and historical tracking.
+
+    Attributes:
+        backtest: Whether snapshot is from backtest.
+        strategy_id: Associated strategy identifier.
+        event: Snapshot trigger event.
+        allocation: Capital allocation.
+        nav: Net asset value.
+        nav_peak: Historical NAV peak.
+        r2: R-squared coefficient.
+        cagr: Compound annual growth rate.
+        sharpe_ratio: Risk-adjusted return metric.
+        max_drawdown: Maximum drawdown from peak.
+        performance_history: Historical performance values.
+        nav_history: Historical NAV values.
+        profit_history: Historical profit values.
+    """
+
     backtest: bool = Field(default=False)
     backtest_id: Optional[str] = None
     strategy_id: str = Field(...)
@@ -30,25 +47,29 @@ class SnapshotModel(BaseModel):
     sortino_ratio: float = Field(default=0)
     ulcer_index: float = Field(default=0, ge=0)
 
-    performance_history: List[float] = Field(default_factory=list)
-    nav_history: List[float] = Field(default_factory=list)
-    profit_history: List[float] = Field(default_factory=list)
+    performance_history: List[float] = Field(default_factory=lambda: [])
+    nav_history: List[float] = Field(default_factory=lambda: [])
+    profit_history: List[float] = Field(default_factory=lambda: [])
 
     created_at: Optional[datetime.datetime] = None
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize snapshot model and setup logging.
+
+        Args:
+            **kwargs: Snapshot attributes.
+        """
         super().__init__(**kwargs)
 
         self._log = LoggingService()
         self._log.setup("snapshot_model")
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def to_dict(self) -> Dict[str, Any]:
+        """Convert snapshot to dictionary representation.
+
+        Returns:
+            Dictionary with all snapshot metrics.
+        """
         return {
             "backtest": self.backtest,
             "backtest_id": self.backtest_id,
@@ -73,10 +94,20 @@ class SnapshotModel(BaseModel):
 
     @property
     def performance(self) -> float:
+        """Calculate absolute performance as NAV minus allocation.
+
+        Returns:
+            Performance in currency units.
+        """
         return self.nav - self.allocation
 
     @property
     def performance_percentage(self) -> float:
+        """Calculate performance as percentage of allocation.
+
+        Returns:
+            Performance percentage (0.0 if allocation is 0).
+        """
         if self.allocation == 0:
             return 0.0
 
@@ -84,6 +115,11 @@ class SnapshotModel(BaseModel):
 
     @property
     def drawdown(self) -> float:
+        """Calculate current drawdown from NAV peak.
+
+        Returns:
+            Drawdown as negative percentage (0.0 if no peak).
+        """
         if self.nav_peak == 0:
             return 0.0
 

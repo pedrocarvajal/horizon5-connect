@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway order status enumeration for exchange order states."""
 
 from enum import Enum, unique
 

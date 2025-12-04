@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Progress calculation utilities for timestamp ranges."""
 
 
 def get_progress_between_dates(

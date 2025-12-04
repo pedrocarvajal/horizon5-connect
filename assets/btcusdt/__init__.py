@@ -1,3 +1,5 @@
+"""BTCUSDT asset configuration for Binance exchange trading."""
+
 from typing import List
 
 from interfaces.strategy import StrategyInterface
@@ -8,17 +10,14 @@ from strategies.test import TestStrategy
 
 
 class Asset(AssetService):
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
+    """BTCUSDT trading asset with configured strategies for Binance."""
+
     _symbol = "BTCUSDT"
     _gateway_name = "binance"
     _strategies: List[StrategyInterface]
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self) -> None:
+        """Initialize BTCUSDT asset with trading strategies."""
         super().__init__()
 
         self._log = LoggingService()
@@ -35,6 +34,6 @@ class Asset(AssetService):
                 id="test",
                 allocation=1000,
                 leverage=3,
-                enabled=True,
+                enabled=False,
             ),
         ]

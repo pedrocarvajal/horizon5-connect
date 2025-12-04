@@ -1,3 +1,5 @@
+"""Candle service for building candlesticks from tick data."""
+
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -9,35 +11,30 @@ from models.tick import TickModel
 
 
 class CandleService(CandleInterface):
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    """Service that builds OHLC candlesticks from tick data with indicator support."""
+
     def __init__(
         self,
         timeframe: Timeframe,
         on_close: Optional[Callable[[Dict[str, Any]], None]] = None,
         indicators: Optional[List[IndicatorInterface]] = None,
     ) -> None:
+        """Initialize the candle service with timeframe and optional indicators."""
         self._timeframe = timeframe
         self._on_close = on_close
         self._candles: List[Dict[str, Any]] = []
         self._indicators = indicators if indicators is not None else []
 
         for indicator in self._indicators:
-            indicator._candles = self._candles
+            indicator._candles = self._candles  # pyright: ignore[reportPrivateUsage]
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and update current candle."""
         for indicator in self._indicators:
             indicator.on_tick(tick)
 
         self._compute(tick)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _compute(self, tick: TickModel) -> None:
         if len(self._candles) == 0 or tick.date >= self._candles[-1]["close_time"]:
             if len(self._candles) > 0:
@@ -48,7 +45,7 @@ class CandleService(CandleInterface):
 
             aligned_time = self._align_time_to_timeframe(tick.date)
             candle_duration = timedelta(seconds=self._timeframe.to_seconds())
-            candle = {
+            candle: Dict[str, Any] = {
                 "open_time": aligned_time,
                 "close_time": aligned_time + candle_duration,
                 "open_price": tick.price,
@@ -135,9 +132,7 @@ class CandleService(CandleInterface):
                 if latest_value.date == candle["close_time"]:
                     candle["i"][indicator.key] = latest_value.to_dict()
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @property
     def candles(self) -> List[Dict[str, Any]]:
+        """Return completed candles excluding the current in-progress candle."""
         return self._candles[0:-1]

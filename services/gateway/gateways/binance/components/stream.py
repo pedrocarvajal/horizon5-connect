@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by pedrocarvajal
+"""Binance stream component for WebSocket market data streaming."""
 
 import datetime
 import json
@@ -26,14 +26,8 @@ class StreamComponent(BaseComponent):
         Inherits _config and _log from BaseComponent.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     SUPPORTED_STREAM_TYPES: ClassVar[List[str]] = ["bookTicker"]
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     async def stream(
         self,
         streams: List[str],
@@ -64,7 +58,7 @@ class StreamComponent(BaseComponent):
         if not self._validate_streams(streams=streams):
             return
 
-        if not self._validate_callback(callback=callback):
+        if not self._validate_callback(_callback=callback):
             return
 
         if not self._validate_supported_streams(streams=streams):
@@ -80,9 +74,6 @@ class StreamComponent(BaseComponent):
                     callback=callback,
                 )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_streams(
         self,
         streams: List[str],
@@ -100,10 +91,6 @@ class StreamComponent(BaseComponent):
             self._log.error("streams is required")
             return False
 
-        if not isinstance(streams, list):
-            self._log.error("streams must be a list")
-            return False
-
         if len(streams) == 0:
             self._log.error("streams must not be empty")
             return False
@@ -113,15 +100,11 @@ class StreamComponent(BaseComponent):
                 self._log.error("stream item cannot be empty")
                 return False
 
-            if not isinstance(stream, str):
-                self._log.error("all stream items must be strings")
-                return False
-
         return True
 
     def _validate_callback(
         self,
-        callback: Callable[[TickModel], Awaitable[None]],
+        _callback: Callable[[TickModel], Awaitable[None]],
     ) -> bool:
         """
         Validate the callback parameter.
@@ -132,14 +115,6 @@ class StreamComponent(BaseComponent):
         Returns:
             bool: True if callback is valid, False otherwise.
         """
-        if not callback:
-            self._log.error("callback is required")
-            return False
-
-        if not callable(callback):
-            self._log.error("callback must be callable")
-            return False
-
         return True
 
     def _validate_supported_streams(

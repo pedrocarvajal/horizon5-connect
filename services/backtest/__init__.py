@@ -1,48 +1,88 @@
+"""Backtest service for historical strategy simulation."""
+
+from __future__ import annotations
+
 import argparse
 import datetime
+import signal
+import sys
 from multiprocessing import Queue
-from typing import Optional, Type
+from time import sleep
+from types import FrameType
+from typing import Any, List, Optional, Type
 
 from configs.timezone import TIMEZONE
+from enums.backtest_status import BacktestStatus
 from enums.command import Command
 from helpers.get_duration import get_duration
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
+from models.backtest_settings import (
+    AssetSettingsModel,
+    BacktestSettingsModel,
+    PortfolioSettingsModel,
+    StrategySettingsModel,
+)
 from providers.horizon_router import HorizonRouterProvider
 from services.logging import LoggingService
 from services.ticks import TicksService
 
 
 class BacktestService:
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
+    """Backtest service for simulating trading strategies on historical data.
+
+    Manages backtest lifecycle including setup, tick processing, and result collection.
+    Integrates with HorizonRouter API for backtest tracking and analytics.
+
+    Attributes:
+        _id: Unique backtest identifier.
+        _tick: Ticks service for historical data.
+        _commands_queue: Queue for inter-process commands.
+        _events_queue: Queue for event broadcasting.
+        _horizon_router: Provider for HorizonRouter API.
+        _portfolio_path: Path to portfolio configuration.
+    """
+
     _id: Optional[str]
     _tick: TicksService
-    _commands_queue: Optional[Queue]
-    _events_queue: Optional[Queue]
+    _commands_queue: Optional[Queue[Any]]
+    _events_queue: Optional[Queue[Any]]
     _horizon_router: HorizonRouterProvider
+    _portfolio_path: Optional[str]
+    _shutdown_requested: bool
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         asset: Type[AssetInterface],
         from_date: datetime.datetime,
         to_date: datetime.datetime,
-        commands_queue: Optional[Queue] = None,
-        events_queue: Optional[Queue] = None,
+        commands_queue: Optional[Queue[Any]] = None,
+        events_queue: Optional[Queue[Any]] = None,
         portfolio_path: Optional[str] = None,
         args: Optional[argparse.Namespace] = None,
     ) -> None:
+        """Initialize backtest service with asset and date range.
+
+        Args:
+            asset: Asset class to backtest.
+            from_date: Start date for backtest.
+            to_date: End date for backtest.
+            commands_queue: Queue for receiving commands.
+            events_queue: Queue for publishing events.
+            portfolio_path: Path to portfolio configuration.
+            args: Command-line arguments namespace.
+        """
         restore_ticks = args.restore_ticks == "true" if args is not None else False
+
+        self._shutdown_requested = False
+        self._setup_signal_handlers()
 
         self._id = None
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
         self._to_date = to_date
         self._restore_ticks = restore_ticks
+        self._portfolio_path = portfolio_path
         self._commands_queue = commands_queue
         self._events_queue = events_queue
 
@@ -88,10 +128,8 @@ class BacktestService:
             **queues,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def run(self) -> None:
+        """Execute backtest by processing all ticks in date range."""
         enabled_strategies = len(self._asset.strategies)
         ticks = self._tick.ticks(
             from_date=self._from_date,
@@ -105,10 +143,12 @@ class BacktestService:
 
         if len(ticks) == 0:
             self._log.error("No ticks found")
+            self._kill()
             return
 
         if enabled_strategies == 0:
             self._log.error("No enabled strategies found")
+            self._kill()
             return
 
         for tick_model in ticks:
@@ -116,35 +156,97 @@ class BacktestService:
 
         self._on_end()
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _on_end(self) -> None:
         end_at = datetime.datetime.now(TIMEZONE)
         duration = get_duration(self._start_at, end_at)
 
         self._asset.on_end()
+        self._update_backtest(status=BacktestStatus.COMPLETED.value)
         self._kill()
 
         self._log.info(f"Backtest completed in: {duration}")
 
+    def _update_backtest(self, status: str) -> None:
+        if not self._id:
+            return
+
+        self._horizon_router.backtest_update(
+            backtest_id=self._id,
+            status=status,
+        )
+
     def _create_backtest(self) -> None:
-        # response = self._horizon_router.backtest_create(
-        #     body=BacktestCreateModel(
-        #         user_id="system",
-        #         settings=BacktestSettingsModel(
-        #             asset=self._asset.symbol,
-        #             strategies=",".join([strategy.id for strategy in self._asset.strategies]),
-        #             from_date=int(self._from_date.timestamp()),
-        #             to_date=int(self._to_date.timestamp()),
-        #         ),
-        #     )
-        # )
+        portfolio_id = ""
+        strategies: List[StrategySettingsModel] = []
 
-        # self._id = response["data"]["_id"]
-        # self._log.info(f"Backtest created: {response}")
+        if self._portfolio_path:
+            portfolio_instance = get_portfolio_by_path(self._portfolio_path)
 
-        pass
+            if portfolio_instance:
+                portfolio_id = portfolio_instance.id
+
+        for strategy in self._asset.strategies:
+            strategy_settings = getattr(strategy, "_settings", {})
+            strategies.append(
+                StrategySettingsModel(
+                    id=strategy.id,
+                    enabled=strategy.enabled,
+                    allocation=getattr(strategy, "_allocation", 0.0),
+                    leverage=getattr(strategy, "_leverage", 1),
+                    settings=strategy_settings,
+                )
+            )
+
+        asset = AssetSettingsModel(
+            symbol=self._asset.symbol,
+            gateway=getattr(self._asset, "_gateway_name", ""),
+        )
+
+        portfolio = PortfolioSettingsModel(
+            id=portfolio_id,
+            path=self._portfolio_path or "",
+        )
+
+        settings = BacktestSettingsModel(
+            from_date=int(self._from_date.timestamp()),
+            to_date=int(self._to_date.timestamp()),
+            portfolio=portfolio,
+            asset=asset,
+            strategies=strategies,
+        )
+
+        response = self._horizon_router.backtest_create(
+            settings=settings.to_dict(),
+        )
+
+        self._id = response["data"]["id"]
+        self._log.info(f"Backtest created: {self._id}")
+
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(
+            signal.SIGINT,
+            self._handle_shutdown,
+        )
+
+        signal.signal(
+            signal.SIGTERM,
+            self._handle_shutdown,
+        )
+
+    def _handle_shutdown(
+        self,
+        _signum: int,
+        _frame: Optional[FrameType],
+    ) -> None:
+        if self._shutdown_requested:
+            return
+
+        self._shutdown_requested = True
+        self._log.info("Shutdown signal received, cleaning up...")
+        self._kill()
+
+        sleep(3)
+        sys.exit(0)
 
     def _kill(self) -> None:
         if self._commands_queue is not None:

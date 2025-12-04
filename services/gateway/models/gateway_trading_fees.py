@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway trading fees model for exchange fee information."""
 
 from typing import Any, Optional
 
@@ -22,9 +22,6 @@ class GatewayTradingFeesModel(BaseModel):
         response: Raw broker-specific data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
@@ -46,9 +43,6 @@ class GatewayTradingFeesModel(BaseModel):
         description="Raw broker-specific data for additional information",
     )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     @field_validator(
         "maker_commission",
         "taker_commission",

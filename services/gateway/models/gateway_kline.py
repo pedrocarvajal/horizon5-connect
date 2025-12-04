@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway kline model for candlestick data representation."""
 
 from typing import Any
 
@@ -42,9 +42,6 @@ class GatewayKlineModel(BaseModel):
         response: Raw broker-specific data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
@@ -108,9 +105,6 @@ class GatewayKlineModel(BaseModel):
         description="Raw broker-specific data for additional information",
     )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     @field_validator(
         "open_time",
         "close_time",

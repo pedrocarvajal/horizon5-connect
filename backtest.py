@@ -1,48 +1,57 @@
+"""Backtest entry point for historical strategy simulation."""
+
+from __future__ import annotations
+
 import argparse
 import datetime
+import sys
 from multiprocessing import Process, Queue
 from typing import Any
 
 from configs.timezone import TIMEZONE
 from helpers.get_portfolio_by_path import get_portfolio_by_path
+from helpers.parse import parse_date
+from services.authentication import AuthenticationService
 from services.backtest import BacktestService
 from services.commands import CommandsService
 
 
 class Backtest(BacktestService):
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    """Backtest process wrapper that runs historical simulation."""
+
     def __init__(
         self,
         **kwargs: Any,
     ) -> None:
+        """Initialize and immediately start backtest execution.
+
+        Args:
+            **kwargs: Arguments passed to BacktestService.
+        """
         super().__init__(**kwargs)
         super().run()
 
 
 class Commands(CommandsService):
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    """Commands process wrapper for backtest control."""
+
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize commands service.
+
+        Args:
+            **kwargs: Arguments passed to CommandsService.
+        """
         super().__init__(**kwargs)
 
 
-def _parse_date(
-    value: str,
-    parser: argparse.ArgumentParser,
-    argument: str,
-) -> datetime.datetime:
-    try:
-        return datetime.datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=TIMEZONE)
-    except ValueError:
-        parser.error(f"Invalid value for {argument}. Use YYYY-MM-DD (e.g. 2024-01-31).")
-
-
 if __name__ == "__main__":
-    commands_queue = Queue()
-    events_queue = Queue()
+    auth = AuthenticationService()
+
+    if not auth.setup():
+        sys.exit(1)
+
+    commands_queue: Queue[Any] = Queue()
+    events_queue: Queue[Any] = Queue()
 
     parser = argparse.ArgumentParser()
 
@@ -70,14 +79,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    from_date = _parse_date(
+    from_date = parse_date(
         args.from_date,
-        parser,
-        "--from-date",
+        timezone=TIMEZONE,
+        parser=parser,
+        argument="--from-date",
     )
 
-    to_date = _parse_date(args.to_date, parser, "--to-date") if args.to_date else datetime.datetime.now(tz=TIMEZONE)
-
+    to_date = (
+        parse_date(args.to_date, timezone=TIMEZONE, parser=parser, argument="--to-date")
+        if args.to_date
+        else datetime.datetime.now(tz=TIMEZONE)
+    )
     portfolio = get_portfolio_by_path(args.portfolio_path)
     assets = getattr(portfolio, "assets", None)
 

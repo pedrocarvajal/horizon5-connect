@@ -1,3 +1,5 @@
+"""EMA5 breakout trading strategy implementation."""
+
 import datetime
 from typing import Any, Dict, Optional
 
@@ -13,17 +15,41 @@ from services.strategy import StrategyService
 
 
 class EMA5BreakoutStrategy(StrategyService):
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
+    """Trading strategy based on EMA5 breakout above previous day's maximum.
+
+    Entry Rules:
+    - Opens BUY order when current EMA5 breaks above previous day's EMA5 max
+    - Only executes in live mode
+
+    Exit Rules:
+    - Take profit: Configurable % above entry (default: 3%)
+    - Stop loss: Configurable % below entry (default: 15%)
+    - Recovery mechanism with multiple attempts if initial trades fail
+
+    Attributes:
+        _enabled: Strategy activation flag.
+        _name: Strategy identifier.
+        _settings: Configuration parameters.
+        _previous_day_ema5_max: Maximum EMA5 value from previous day.
+        _candles: Candle services for different timeframes.
+    """
+
     _enabled = False
     _name = "EMA5Breakout"
     _settings: Dict[str, Any]
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize EMA5 breakout strategy with configuration.
+
+        Args:
+            **kwargs: Keyword arguments including optional 'settings' dict with:
+                - main_volume_percentage: Order size as % of NAV (default: 0.05)
+                - main_take_profit_percentage: TP % above entry (default: 0.03)
+                - main_stop_loss_percentage: SL % below entry (default: 0.15)
+                - recovery_maximum_number_of_openings: Max recovery attempts (default: 3)
+                - recovery_take_profit_percentage: Recovery TP % (default: 0.03)
+                - recovery_stop_loss_percentage: Recovery SL % (default: 0.15)
+        """
         super().__init__(**kwargs)
         self._log = LoggingService()
         self._log.setup("ema5_breakout_strategy")
@@ -56,23 +82,32 @@ class EMA5BreakoutStrategy(StrategyService):
             )
         }
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and update current tick reference.
+
+        Args:
+            tick: Current market tick data.
+        """
         super().on_tick(tick)
         self._tick = tick
 
     def on_new_hour(self) -> None:
+        """Handle new hour event by checking entry conditions for breakout."""
         super().on_new_hour()
         self._check_entry_conditions()
 
     def on_new_day(self) -> None:
+        """Handle new day event by calculating previous day's EMA5 maximum."""
         super().on_new_day()
         assert self._tick is not None
         self._calculate_previous_day_ema5_max(self._tick)
 
     def on_transaction(self, order: OrderModel) -> None:
+        """Handle order transaction events and log status changes.
+
+        Args:
+            order: Order that triggered the transaction event.
+        """
         super().on_transaction(order)
 
         if order.status.is_open():
@@ -88,9 +123,6 @@ class EMA5BreakoutStrategy(StrategyService):
             if profit_percentage < 0 and max_layers > 0:
                 self._open_recovery_order(closed_order=order)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _open_recovery_order(self, closed_order: OrderModel) -> None:
         assert self._tick is not None
 
@@ -144,9 +176,11 @@ class EMA5BreakoutStrategy(StrategyService):
         if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
             if self.is_live:
                 self._log.info(
-                    f"Breakout: {self._tick.date} | "
-                    f"Opening price: {self._tick.price} | "
-                    f"Previous day EMA5 max: {self._previous_day_ema5_max}"
+                    (
+                        f"Breakout: {self._tick.date} | "
+                        f"Opening price: {self._tick.price} | "
+                        f"Previous day EMA5 max: {self._previous_day_ema5_max}"
+                    ),
                 )
 
             take_profit_percentage = self._settings.get("main_take_profit_percentage", 0.0)
@@ -154,8 +188,6 @@ class EMA5BreakoutStrategy(StrategyService):
             take_profit_price = current_price + (current_price * take_profit_percentage)
             stop_loss_price = current_price - (current_price * stop_loss_percentage)
 
-            # Is possible tu use self.nav, self.balance or self.allocation
-            # to calculate the volume.
             volume_percentage = self._settings.get("main_volume_percentage", 0.0)
             volume = self.nav / self._tick.price
             volume = volume * volume_percentage

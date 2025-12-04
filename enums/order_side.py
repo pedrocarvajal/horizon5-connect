@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Order side enumeration (BUY, SELL)."""
 
 from enum import Enum, unique
 

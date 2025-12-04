@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Ulcer Index (measure of downside volatility/stress)."""
 
 from typing import List
 
@@ -27,7 +27,7 @@ def get_ulcer_index(nav_history: List[float]) -> float:
     if len(nav_history) < min_observations:
         return 0.0
 
-    squared_drawdowns = []
+    squared_drawdowns: List[float] = []
     peak = nav_history[0]
 
     for nav in nav_history:

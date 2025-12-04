@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by Pedro Carvajal
+"""Test trading strategy for validation and demonstration."""
 
 import datetime
 from typing import Any, Dict, Optional
@@ -28,25 +28,25 @@ class TestStrategy(StrategyService):
     - Order volume calculated as percentage of NAV (configurable, default: 1%)
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-    # Mandatory variables (from StrategyService base class)
     _enabled = True
     _name = "Test"
 
-    # Class variables
     _settings: Dict[str, Any]
     _tick: Optional[TickModel]
     _last_order_time: Optional[datetime.datetime] = None
 
-    # Dependency injections
     _log: LoggingService
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize test strategy with configuration settings.
+
+        Args:
+            **kwargs: Keyword arguments including optional 'settings' dict with:
+                - volume_percentage: Order size as % of NAV (default: 0.01)
+                - take_profit_percentage: TP % above entry (default: 0.02)
+                - stop_loss_percentage: SL % below entry (default: 0.01)
+                - interval_minutes: Minutes between orders (default: 10)
+        """
         super().__init__(**kwargs)
         self._log = LoggingService()
         self._log.setup("test_strategy")
@@ -62,18 +62,26 @@ class TestStrategy(StrategyService):
         )
         self._tick = None
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and update current tick reference.
+
+        Args:
+            tick: Current market tick data.
+        """
         super().on_tick(tick)
         self._tick = tick
 
     def on_new_minute(self) -> None:
+        """Handle new minute event by checking if new order should be opened."""
         super().on_new_minute()
         self._check_and_open_order()
 
     def on_transaction(self, order: OrderModel) -> None:
+        """Handle order transaction events and log status changes.
+
+        Args:
+            order: Order that triggered the transaction event.
+        """
         super().on_transaction(order)
 
         if order.status.is_open():
@@ -86,9 +94,6 @@ class TestStrategy(StrategyService):
             profit = order.profit
             self._log.info(f"Order: {order.id}, was closed, with profit: {profit:.2f} ({profit_percentage:.2f}%).")
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _check_and_open_order(self) -> None:
         """
         Check if conditions are met to open a new order and open it.

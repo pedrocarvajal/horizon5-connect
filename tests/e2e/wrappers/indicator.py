@@ -15,14 +15,14 @@ class WrapperIndicator(unittest.TestCase):
     _ticks_service: TicksService
     _candle_service: CandleService
 
-    def __init__(self, method_name: str='runTest') -> None:
+    def __init__(self, method_name: str = "runTest") -> None:
         super().__init__(method_name)
 
     def setUp(self, **kwargs: Any) -> None:
         super().setUp()
-        test_name = kwargs.get('test_name')
+        test_name = kwargs.get("test_name")
         if test_name is None:
-            raise ValueError('Test name is required')
+            raise ValueError("Test name is required")
         self._ticks_service = TicksService()
         self._ticks_service.setup(asset=BTCUSDT(), restore_ticks=False, disable_download=True)
 
@@ -31,7 +31,7 @@ class WrapperIndicator(unittest.TestCase):
         timeframe: Timeframe,
         from_date: datetime.datetime,
         to_date: datetime.datetime,
-        indicators: Optional[List[IndicatorInterface]]=None,
+        indicators: Optional[List[IndicatorInterface]] = None,
     ) -> List[Dict[str, Any]]:
         service = CandleService(timeframe=timeframe, indicators=indicators)
         ticks = self._ticks_service.ticks(from_date=from_date, to_date=to_date)
@@ -40,6 +40,6 @@ class WrapperIndicator(unittest.TestCase):
         return service.candles
 
     def get_json_data(self, path: str) -> List[Dict[str, Any]]:
-        json_path = Path(__file__).parent.parent / 'jsons' / path
+        json_path = Path(__file__).parent.parent / "jsons" / path
         with json_path.open() as f:
             return json.load(f)

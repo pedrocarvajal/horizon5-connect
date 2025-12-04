@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""HMAC signature generation for Binance API authentication."""
 
 import hashlib
 import hmac

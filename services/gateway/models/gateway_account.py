@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by pedrocarvajal
+"""Gateway account model for exchange account information."""
 
 from typing import Any, List, Optional
 
@@ -20,9 +20,6 @@ class GatewayAccountBalanceModel(BaseModel):
         response: Raw balance data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
@@ -68,15 +65,12 @@ class GatewayAccountModel(BaseModel):
         response: Raw broker-specific account data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
     )
     balances: List[GatewayAccountBalanceModel] = Field(
-        default_factory=list,
+        default_factory=lambda: [],
         description="List of account balances by asset",
     )
     balance: float = Field(

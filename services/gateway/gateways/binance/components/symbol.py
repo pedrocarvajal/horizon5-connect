@@ -1,6 +1,6 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance symbol component for trading pair information."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import requests
 
@@ -25,9 +25,6 @@ class SymbolComponent(BaseComponent):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_symbol_info(
         self,
         symbol: str,
@@ -214,9 +211,6 @@ class SymbolComponent(BaseComponent):
 
         return True
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_symbol(
         self,
         symbol: str,
@@ -232,10 +226,6 @@ class SymbolComponent(BaseComponent):
         """
         if not symbol:
             self._log.error("symbol is required")
-            return False
-
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
             return False
 
         return True
@@ -256,14 +246,6 @@ class SymbolComponent(BaseComponent):
             True if both parameters are valid, False otherwise.
         """
         if not self._validate_symbol(symbol=symbol):
-            return False
-
-        if leverage is None:
-            self._log.error("leverage is required")
-            return False
-
-        if not isinstance(leverage, int):
-            self._log.error("leverage must be an integer")
             return False
 
         if leverage <= 0:
@@ -447,13 +429,15 @@ class SymbolComponent(BaseComponent):
         if not response:
             return None
 
-        if not isinstance(response, list) or len(response) == 0:
+        if not isinstance(response, list):
             return None
 
-        for position_data in response:
-            if not isinstance(position_data, dict):
-                continue
+        position_list = cast(List[Dict[str, Any]], response)
 
+        if len(position_list) == 0:
+            return None
+
+        for position_data in position_list:
             leverage = int(position_data.get("leverage", 1))
 
             return GatewayLeverageInfoModel(
@@ -482,14 +466,23 @@ class SymbolComponent(BaseComponent):
         if not response:
             return None
 
-        fees_data = response[0] if isinstance(response, list) and len(response) > 0 else response
-
-        if not isinstance(fees_data, dict) or not fees_data:
+        if isinstance(response, list):
+            response_list = cast(List[Dict[str, Any]], response)
+            if len(response_list) > 0:
+                fees_data = response_list[0]
+            else:
+                return None
+        elif isinstance(response, dict):
+            fees_data = cast(Dict[str, Any], response)
+        else:
             return None
 
-        symbol_name = fees_data.get("symbol", "")
-        maker_commission = fees_data.get("makerCommissionRate")
-        taker_commission = fees_data.get("takerCommissionRate")
+        if not fees_data:
+            return None
+
+        symbol_name: str = str(fees_data.get("symbol", ""))
+        maker_commission: Optional[float] = fees_data.get("makerCommissionRate")
+        taker_commission: Optional[float] = fees_data.get("takerCommissionRate")
 
         return GatewayTradingFeesModel(
             symbol=symbol_name,

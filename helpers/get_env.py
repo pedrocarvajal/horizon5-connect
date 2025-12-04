@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Environment variable retrieval utilities."""
 
 import os
 from typing import Optional

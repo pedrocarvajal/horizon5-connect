@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway symbol info model for trading pair specifications."""
 
 from typing import Any, Optional
 
@@ -42,9 +42,6 @@ class GatewaySymbolInfoModel(BaseModel):
         response: Raw broker-specific data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
@@ -111,9 +108,6 @@ class GatewaySymbolInfoModel(BaseModel):
         description="Raw broker-specific data for additional information",
     )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     @field_validator(
         "price_precision",
         "quantity_precision",

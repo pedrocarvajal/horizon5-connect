@@ -1,3 +1,5 @@
+"""Volatility indicator implementation using standard deviation of returns."""
+
 import datetime
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +11,8 @@ from .models.value import VolatilityValueModel
 
 
 class VolatilityIndicator(IndicatorInterface):
+    """Price volatility indicator measuring standard deviation of returns."""
+
     _MIN_TICKS_REQUIRED: int = 2
     _INITIAL_VOLATILITY: float = 0.0
 
@@ -28,6 +32,7 @@ class VolatilityIndicator(IndicatorInterface):
         price_to_use: str = "close_price",
         candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
+        """Initialize the Volatility indicator with configuration parameters."""
         self._key = key
         self._window_size = window_size
         self._price_to_use = price_to_use
@@ -40,6 +45,7 @@ class VolatilityIndicator(IndicatorInterface):
         self._log.setup("volatility_indicator")
 
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and refresh indicator if candle closed."""
         super().on_tick(tick)
 
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
@@ -53,6 +59,7 @@ class VolatilityIndicator(IndicatorInterface):
             self.refresh()
 
     def refresh(self) -> None:
+        """Recalculate volatility based on current price returns."""
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
             return
 
@@ -95,5 +102,5 @@ class VolatilityIndicator(IndicatorInterface):
 
     @property
     def values(self) -> List[VolatilityValueModel]:
+        """Return the list of calculated volatility values."""
         return self._values
-

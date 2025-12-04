@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance account component for account and balance operations."""
 
 from typing import Any, Dict, List, Optional
 
@@ -27,15 +27,9 @@ class AccountComponent(BaseComponent):
         _symbol_component: Component for symbol-related operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _position_component: PositionComponent
     _symbol_component: SymbolComponent
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         config: BinanceConfigModel,
@@ -56,9 +50,6 @@ class AccountComponent(BaseComponent):
             config=config,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_account(
         self,
         **kwargs: Any,  # noqa: ARG002
@@ -151,9 +142,6 @@ class AccountComponent(BaseComponent):
             "trading_permissions": self._check_trading_permissions(),
         }
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _adapt_account_response(
         self,
         response: Dict[str, Any],
@@ -175,9 +163,7 @@ class AccountComponent(BaseComponent):
         total_wallet_balance = parse_optional_float(value=response.get("totalWalletBalance", 0)) or 0.0
         total_margin_balance = parse_optional_float(value=response.get("totalMarginBalance", 0)) or 0.0
         total_unrealized_pnl = parse_optional_float(value=response.get("totalUnrealizedProfit", 0)) or 0.0
-        total_position_initial_margin = (
-            parse_optional_float(value=response.get("totalPositionInitialMargin", 0)) or 0.0
-        )
+        total_position_initial_margin = parse_optional_float(value=response.get("totalPositionInitialMargin", 0)) or 0.0
         total_open_order_initial_margin = (
             parse_optional_float(value=response.get("totalOpenOrderInitialMargin", 0)) or 0.0
         )
@@ -298,10 +284,10 @@ class AccountComponent(BaseComponent):
         positions = self._position_component.get_positions()
 
         if positions:
-            margin_types = set()
+            margin_types: set[str] = set()
 
             for position in positions:
-                margin_type = position.response.get("marginType", "")
+                margin_type = str(position.response.get("marginType", ""))
 
                 if margin_type:
                     margin_types.add(margin_type.lower())

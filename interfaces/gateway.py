@@ -1,3 +1,5 @@
+"""Gateway interface for exchange integrations."""
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -11,11 +13,14 @@ from services.gateway.models.gateway_trading_fees import GatewayTradingFeesModel
 
 
 class GatewayInterface(ABC):
+    """Abstract interface for exchange/gateway integrations."""
+
     @abstractmethod
     def get_klines(
         self,
         **kwargs: Any,
     ) -> None:
+        """Retrieve candlestick/kline data from exchange."""
         pass
 
     @abstractmethod
@@ -23,6 +28,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewaySymbolInfoModel]:
+        """Get trading symbol information and specifications."""
         pass
 
     @abstractmethod
@@ -30,6 +36,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayTradingFeesModel]:
+        """Get trading fees for symbol."""
         pass
 
     @abstractmethod
@@ -37,6 +44,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayLeverageInfoModel]:
+        """Get leverage information for symbol."""
         pass
 
     @abstractmethod
@@ -44,6 +52,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> None:
+        """Stream real-time market data."""
         pass
 
     @abstractmethod
@@ -51,6 +60,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> bool:
+        """Set leverage for trading symbol."""
         pass
 
     @abstractmethod
@@ -58,6 +68,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayOrderModel]:
+        """Place new order on exchange."""
         pass
 
     @abstractmethod
@@ -65,6 +76,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayAccountModel]:
+        """Get account information and balances."""
         pass
 
     @abstractmethod
@@ -72,6 +84,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayOrderModel]:
+        """Get order details by ID."""
         pass
 
     @abstractmethod
@@ -79,6 +92,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayOrderModel]:
+        """Cancel existing order."""
         pass
 
     @abstractmethod
@@ -86,6 +100,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Optional[GatewayOrderModel]:
+        """Modify existing order."""
         pass
 
     @abstractmethod
@@ -93,6 +108,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> List[GatewayOrderModel]:
+        """Get list of orders."""
         pass
 
     @abstractmethod
@@ -100,6 +116,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> Dict[str, bool]:
+        """Verify gateway configuration and permissions."""
         pass
 
     @abstractmethod
@@ -107,6 +124,7 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> List[GatewayTradeModel]:
+        """Get list of executed trades."""
         pass
 
     @abstractmethod
@@ -114,4 +132,5 @@ class GatewayInterface(ABC):
         self,
         **kwargs: Any,
     ) -> List[GatewayPositionModel]:
+        """Get list of open positions."""
         pass

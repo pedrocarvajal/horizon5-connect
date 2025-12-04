@@ -1,3 +1,5 @@
+"""Moving Average indicator implementation."""
+
 import datetime
 from typing import Any, Dict, List, Optional
 
@@ -9,14 +11,10 @@ from .models.value import MAValueModel
 
 
 class MAIndicator(IndicatorInterface):
-    # ───────────────────────────────────────────────────────────
-    # CONSTANTS
-    # ───────────────────────────────────────────────────────────
+    """Simple and Exponential Moving Average indicator for price analysis."""
+
     _MULTIPLIER_COEFFICIENT: int = 2
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _name: str = "Moving Average"
     _key: str
     _period: int
@@ -25,9 +23,6 @@ class MAIndicator(IndicatorInterface):
     _candles: List[Dict[str, Any]]
     _values: List[MAValueModel]
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         key: str,
@@ -36,6 +31,7 @@ class MAIndicator(IndicatorInterface):
         exponential: bool = False,
         candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
+        """Initialize the Moving Average indicator with configuration parameters."""
         self._key = key
         self._period = period
         self._price_to_use = price_to_use
@@ -46,10 +42,8 @@ class MAIndicator(IndicatorInterface):
         self._log = LoggingService()
         self._log.setup("ma_indicator")
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and refresh indicator if candle closed."""
         super().on_tick(tick)
 
         if len(self._candles) < self._period:
@@ -63,6 +57,7 @@ class MAIndicator(IndicatorInterface):
             self.refresh()
 
     def refresh(self) -> None:
+        """Recalculate the moving average value based on current candles."""
         if len(self._candles) < self._period:
             return
 
@@ -80,25 +75,18 @@ class MAIndicator(IndicatorInterface):
             else:
                 multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
                 current_price = self._candles[-1][self._price_to_use]
-                value.value = (current_price * multiplier) + (
-                    self._values[-1].value * (1 - multiplier)
-                )
+                value.value = (current_price * multiplier) + (self._values[-1].value * (1 - multiplier))
         else:
             value.value = self._compute_simple(prices)
 
         self._values.append(value)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _compute_exponential(self, prices: List[float]) -> float:
         multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
         exponential_moving_average = prices[0]
 
         for price in prices[1:]:
-            exponential_moving_average = (price * multiplier) + (
-                exponential_moving_average * (1 - multiplier)
-            )
+            exponential_moving_average = (price * multiplier) + (exponential_moving_average * (1 - multiplier))
 
         return exponential_moving_average
 

@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.12.3",
     "pymongo>=4.15.3",
     "python-dotenv>=1.2.1",
+    "questionary>=2.1.1",
     "requests>=2.32.5",
     "rich>=13.0.0",
     "scikit-learn>=1.7.2",
@@ -20,6 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pydocstyle>=6.3.0",
     "pyright>=1.1.390",
 ]
 
@@ -67,6 +69,12 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+[tool.pydocstyle]
+convention = "pep257"
+add-ignore = []
+match = "(?!test_).*\\.py"
+match-dir = "^(?!(\\.venv|tests|__pycache__|.git)).*"
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -80,3 +88,60 @@ warn_unused_ignores = true
 warn_no_return = true
 check_untyped_defs = true
 strict_equality = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+warn_unreachable = true
+strict_optional = true
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+include = [
+    "services",
+    "helpers",
+    "models",
+    "enums",
+    "interfaces",
+    "configs",
+    "indicators",
+    "providers",
+    "assets",
+    "portfolios",
+    "strategies",
+    "backtest.py",
+    "production.py",
+]
+exclude = [
+    ".venv",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "tests",
+    "logs",
+    "docs",
+    "libraries",
+    "storage",
+    "trash",
+    "scripts",
+    ".cursor",
+    ".vscode",
+    ".claude",
+    ".github",
+]
+reportMissingTypeStubs = true
+reportUnknownParameterType = true
+reportUnknownArgumentType = true
+reportUnknownMemberType = true
+reportUnknownVariableType = true
+reportUntypedFunctionDecorator = true
+reportUntypedClassDecorator = true
+reportCallInDefaultInitializer = true
+reportImplicitStringConcatenation = true
+reportMissingSuperCall = false
+reportPropertyTypeMismatch = true
+reportUninitializedInstanceVariable = true
+reportUnnecessaryTypeIgnoreComment = true
+reportMatchNotExhaustive = true

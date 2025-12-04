@@ -1,6 +1,6 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Helper function to detect API errors in gateway responses."""
 
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 
 def has_api_error(response: Any) -> Tuple[bool, Optional[str], Optional[int]]:
@@ -30,10 +30,13 @@ def has_api_error(response: Any) -> Tuple[bool, Optional[str], Optional[int]]:
     if not isinstance(response, dict):
         return False, None, None
 
-    if "code" not in response:
+    response_dict = cast(Dict[str, Any], response)
+
+    if "code" not in response_dict:
         return False, None, None
 
-    error_msg = response.get("msg", "Unknown error")
-    error_code = response.get("code")
+    error_msg: str = str(response_dict.get("msg", "Unknown error"))
+    raw_code = response_dict.get("code")
+    error_code: Optional[int] = int(raw_code) if raw_code is not None else None
 
     return True, error_msg, error_code
