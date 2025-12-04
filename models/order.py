@@ -1,3 +1,5 @@
+"""Order model for trading operations with lifecycle management."""
+
 from __future__ import annotations
 
 import datetime
@@ -19,9 +21,24 @@ from services.logging import LoggingService
 
 
 class OrderModel(BaseModel):
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
+    """Trading order with status tracking, profit calculation, and gateway integration.
+
+    Attributes:
+        id: Unique order identifier.
+        gateway_order_id: Exchange-specific order ID.
+        backtest: Whether order is from backtest.
+        portfolio: Associated portfolio instance.
+        asset: Associated asset instance.
+        side: Order side (BUY/SELL).
+        status: Current order status.
+        volume: Order size.
+        price: Entry price.
+        take_profit_price: Take profit target.
+        stop_loss_price: Stop loss threshold.
+        trades: List of executed trades.
+        logs: Order event history.
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     gateway_order_id: Optional[str] = None
@@ -45,17 +62,19 @@ class OrderModel(BaseModel):
     commission: float = Field(default=0.0, ge=0)
     commission_percentage: float = Field(default=0.0, ge=0)
 
-    trades: List[GatewayTradeModel] = Field(default_factory=list)
-    logs: List[Dict[str, Any]] = Field(default_factory=list)
+    trades: List[GatewayTradeModel] = Field(default_factory=lambda: [])
+    logs: List[Dict[str, Any]] = Field(default_factory=lambda: [])
     variables: Dict[str, Any] = Field(default_factory=dict)
 
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize order model and setup logging.
+
+        Args:
+            **kwargs: Order attributes.
+        """
         super().__init__(**kwargs)
 
         self._log = LoggingService()
@@ -63,21 +82,45 @@ class OrderModel(BaseModel):
         self._log.setup_prefix(f"[{self.id}]")
 
     def __setattr__(self, name: str, value: Any) -> None:
+        """Track status changes when setting attributes.
+
+        Args:
+            name: Attribute name.
+            value: Attribute value.
+        """
         if name == "status" and hasattr(self, "status"):
             self._track_status_change(value)
 
         super().__setattr__(name, value)
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def check_if_ready_to_close_take_profit(self, tick: TickModel) -> bool:
+        """Check if order should close at take profit.
+
+        Args:
+            tick: Current market tick.
+
+        Returns:
+            True if TP conditions met.
+        """
         return self.status.is_open() and self.take_profit_price > 0 and tick.price >= self.take_profit_price
 
     def check_if_ready_to_close_stop_loss(self, tick: TickModel) -> bool:
+        """Check if order should close at stop loss.
+
+        Args:
+            tick: Current market tick.
+
+        Returns:
+            True if SL conditions met.
+        """
         return self.status.is_open() and self.stop_loss_price > 0 and tick.price <= self.stop_loss_price
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert order to dictionary representation.
+
+        Returns:
+            Dictionary with all order fields.
+        """
         gateway = self.gateway.name if self.gateway else None
         side = self.side.value if self.side else None
         order_type = self.order_type.value if self.order_type else None
@@ -109,9 +152,6 @@ class OrderModel(BaseModel):
             "updated_at": self.updated_at,
         }
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _track_status_change(self, status: OrderStatus) -> None:
         self.logs.append(
             {
@@ -120,22 +160,22 @@ class OrderModel(BaseModel):
             }
         )
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @computed_field
     @property
     def portfolio_id(self) -> Optional[str]:
+        """Get portfolio ID from associated portfolio."""
         return self.portfolio.id if self.portfolio else None
 
     @computed_field
     @property
     def asset_id(self) -> Optional[str]:
+        """Get asset symbol from associated asset."""
         return self.asset.symbol if self.asset else None
 
     @computed_field
     @property
     def client_order_id(self) -> str:
+        """Generate exchange-compatible client order ID."""
         max_length = 16
         max_length_for_system_prefix = 4
 
@@ -153,11 +193,13 @@ class OrderModel(BaseModel):
     @computed_field
     @property
     def filled(self) -> bool:
+        """Check if order volume is fully executed."""
         return self.volume > 0 and self.executed_volume >= self.volume
 
     @computed_field
     @property
     def profit(self) -> float:
+        """Calculate profit in absolute currency units."""
         if self.side is not None and self.side.is_sell():
             return (self.price - self.close_price) * self.volume
 
@@ -166,6 +208,7 @@ class OrderModel(BaseModel):
     @computed_field
     @property
     def profit_percentage(self) -> float:
+        """Calculate profit as percentage of entry price."""
         if self.price == 0:
             return 0.0
 

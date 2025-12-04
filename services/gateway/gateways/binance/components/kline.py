@@ -1,9 +1,9 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance kline component for candlestick data retrieval."""
 
 from collections.abc import Callable
 from datetime import datetime
 from time import sleep
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import requests
 
@@ -26,9 +26,6 @@ class KlineComponent(BaseComponent):
         Inherits _config and _log from BaseComponent.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def get_klines(
         self,
         symbol: str,
@@ -104,9 +101,6 @@ class KlineComponent(BaseComponent):
 
             callback(klines)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_get_klines_params(
         self,
         symbol: str,
@@ -130,16 +124,8 @@ class KlineComponent(BaseComponent):
             self._log.error("symbol is required")
             return False
 
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
-            return False
-
         if not timeframe:
             self._log.error("timeframe is required")
-            return False
-
-        if not isinstance(timeframe, str):
-            self._log.error("timeframe must be a string")
             return False
 
         if from_date is None:
@@ -258,7 +244,7 @@ class KlineComponent(BaseComponent):
             return []
 
         return self._adapt_klines_batch(
-            response=response,
+            response=cast(List[Any], response),
             symbol=symbol,
         )
 

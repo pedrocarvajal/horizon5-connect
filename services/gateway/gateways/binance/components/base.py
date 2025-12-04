@@ -1,3 +1,5 @@
+"""Base component class for Binance API operations."""
+
 from typing import Any, Dict, Optional
 
 from services.gateway.gateways.binance.helpers import execute_request
@@ -6,6 +8,8 @@ from services.logging import LoggingService
 
 
 class BaseComponent:
+    """Base class providing common functionality for Binance API components."""
+
     _config: BinanceConfigModel
     _log: LoggingService
 
@@ -13,6 +17,7 @@ class BaseComponent:
         self,
         config: BinanceConfigModel,
     ) -> None:
+        """Initialize the component with configuration."""
         self._config = config
         self._log = LoggingService()
         self._log.setup(self._get_log_name())

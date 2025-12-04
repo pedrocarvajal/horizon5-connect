@@ -1,3 +1,5 @@
+"""Gateway configuration and initialization for exchange integrations."""
+
 from typing import Any, Dict
 
 from helpers.get_env import get_env

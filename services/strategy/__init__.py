@@ -1,9 +1,10 @@
-# Code reviewed on 2025-11-20 by Pedro Carvajal
+"""Strategy service base class for implementing trading strategies."""
 
 import datetime
 from multiprocessing import Queue
 from typing import Any, Dict, List, Optional
 
+from enums.command import Command
 from enums.order_side import OrderSide
 from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
@@ -55,9 +56,6 @@ class StrategyService(StrategyInterface):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _id: str
     _name: str
     _enabled: bool
@@ -73,16 +71,13 @@ class StrategyService(StrategyInterface):
     _orderbook: Optional[OrderbookService]
     _analytic: Optional[AnalyticInterface]
 
-    _commands_queue: Optional[Queue]
-    _events_queue: Optional[Queue]
+    _commands_queue: Optional["Queue[Command]"] = None
+    _events_queue: Optional["Queue[Any]"] = None
 
     _last_timestamps: Dict[Timeframe, datetime.datetime]
     _tick: Optional[TickModel]
     _log: LoggingService
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         **kwargs: Any,
@@ -119,9 +114,6 @@ class StrategyService(StrategyInterface):
         self._leverage = kwargs.get("leverage", 1)
         self._enabled = kwargs.get("enabled", True)
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
         """
         Set up the strategy with required dependencies and configuration.
@@ -329,9 +321,6 @@ class StrategyService(StrategyInterface):
 
         self.orderbook.open(order)
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_setup_parameters(self) -> None:
         """
         Validate all required setup parameters.
@@ -408,64 +397,74 @@ class StrategyService(StrategyInterface):
         elif timeframe == Timeframe.ONE_MONTH:
             self.on_new_month()
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @property
     def id(self) -> str:
+        """Return strategy unique identifier."""
         return self._id
 
     @property
     def enabled(self) -> bool:
+        """Return whether strategy is enabled."""
         return self._enabled
 
     @property
     def name(self) -> str:
+        """Return strategy display name."""
         return self._name
 
     @property
     def backtest(self) -> bool:
+        """Return whether strategy is running in backtest mode."""
         return self._backtest
 
     @property
     def asset(self) -> AssetService:
+        """Return the asset this strategy trades."""
         assert self._asset is not None
         return self._asset
 
     @property
     def orderbook(self) -> OrderbookService:
+        """Return the orderbook managing this strategy's orders."""
         assert self._orderbook is not None
         return self._orderbook
 
     @property
     def allocation(self) -> float:
+        """Return strategy allocation percentage."""
         assert self._orderbook is not None
         return self._orderbook.allocation
 
     @property
     def nav(self) -> float:
+        """Return net asset value."""
         assert self._orderbook is not None
         return self._orderbook.nav
 
     @property
     def exposure(self) -> float:
+        """Return total market exposure."""
         assert self._orderbook is not None
         return self._orderbook.exposure
 
     @property
     def balance(self) -> float:
+        """Return current cash balance."""
         assert self._orderbook is not None
         return self._orderbook.balance
 
     @property
     def orders(self) -> List[OrderModel]:
+        """Return all orders for this strategy."""
         assert self._orderbook is not None
         return self._orderbook.orders
 
     @property
     def is_live(self) -> bool:
+        """Return whether strategy is in live trading mode."""
         return not self.backtest and self._tick is not None and not self._tick.is_simulated
 
     @property
     def is_available_to_open_orders(self) -> bool:
+        """Return whether strategy can open new orders."""
         return self.backtest or (self.is_live and not self.asset.is_historical_filling)

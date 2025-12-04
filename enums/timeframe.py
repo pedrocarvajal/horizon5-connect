@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Timeframe enumeration for candlestick intervals."""
 
 from enum import Enum, unique
 

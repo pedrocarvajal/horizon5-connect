@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate R-squared (coefficient of determination) for linear trend."""
 
 from typing import List
 

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance order component for order management operations."""
 
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -29,15 +29,9 @@ class OrderComponent(BaseComponent):
         _symbol_component: Component for symbol-related operations and symbol info retrieval.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _MAX_ORDERS_QUERY_DAYS = 7
     _symbol_component: SymbolComponent
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         config: BinanceConfigModel,
@@ -54,9 +48,6 @@ class OrderComponent(BaseComponent):
             config=config,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def place_order(
         self,
         symbol: str,
@@ -266,7 +257,7 @@ class OrderComponent(BaseComponent):
         if not self._validate_get_orders_params(
             symbol=symbol,
             pair=pair,
-            order_id=order_id,
+            _order_id=order_id,
             start_time=start_time,
             end_time=end_time,
             limit=limit,
@@ -367,9 +358,6 @@ class OrderComponent(BaseComponent):
             symbol=symbol.upper(),
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_symbol(
         self,
         symbol: str,
@@ -385,10 +373,6 @@ class OrderComponent(BaseComponent):
         """
         if not symbol:
             self._log.error("symbol is required")
-            return False
-
-        if not isinstance(symbol, str):
-            self._log.error("symbol must be a string")
             return False
 
         return True
@@ -408,10 +392,6 @@ class OrderComponent(BaseComponent):
         """
         if not order:
             self._log.error("order is required")
-            return False
-
-        if not isinstance(order, GatewayOrderModel):
-            self._log.error("order must be a GatewayOrderModel")
             return False
 
         if not order.id:
@@ -446,24 +426,8 @@ class OrderComponent(BaseComponent):
             self._log.error("side is required")
             return False
 
-        if not isinstance(side, OrderSide):
-            self._log.error("side must be an OrderSide enum")
-            return False
-
         if not order_type:
             self._log.error("order_type is required")
-            return False
-
-        if not isinstance(order_type, OrderType):
-            self._log.error("order_type must be an OrderType enum")
-            return False
-
-        if volume is None:
-            self._log.error("volume is required")
-            return False
-
-        if not isinstance(volume, (int, float)):
-            self._log.error("volume must be a number")
             return False
 
         if volume <= 0:
@@ -476,7 +440,7 @@ class OrderComponent(BaseComponent):
         self,
         symbol: str,
         pair: str,
-        order_id: int,
+        _order_id: int,
         start_time: datetime,
         end_time: datetime,
         limit: int,
@@ -502,39 +466,19 @@ class OrderComponent(BaseComponent):
             self._log.error("pair is required")
             return False
 
-        if not isinstance(pair, str):
-            self._log.error("pair must be a string")
-            return False
-
-        if order_id is None:
-            self._log.error("order_id is required")
-            return False
-
-        if not isinstance(order_id, int):
-            self._log.error("order_id must be an integer")
-            return False
-
         if not start_time:
             self._log.error("start_time is required")
-            return False
-
-        if not isinstance(start_time, datetime):
-            self._log.error("start_time must be a datetime")
             return False
 
         if not end_time:
             self._log.error("end_time is required")
             return False
 
-        if not isinstance(end_time, datetime):
-            self._log.error("end_time must be a datetime")
-            return False
-
         if start_time > end_time:
             self._log.error("start_time must be before end_time")
             return False
 
-        if limit is not None and limit <= 0:
+        if limit <= 0:
             self._log.error("limit must be greater than 0")
             return False
 
@@ -562,14 +506,6 @@ class OrderComponent(BaseComponent):
 
         if not order_id and not client_order_id:
             self._log.error("Either order_id or client_order_id must be provided")
-            return False
-
-        if order_id and not isinstance(order_id, str):
-            self._log.error("order_id must be a string")
-            return False
-
-        if client_order_id and not isinstance(client_order_id, str):
-            self._log.error("client_order_id must be a string")
             return False
 
         return True
@@ -780,18 +716,15 @@ class OrderComponent(BaseComponent):
         Returns:
             List of GatewayOrderModel instances.
         """
-        orders = []
+        orders: List[GatewayOrderModel] = []
 
-        if not response or not isinstance(response, list):
+        if not response:
             return orders
 
         for order_data in response:
-            if not isinstance(order_data, dict):
-                continue
-
             adapted_order = self._adapt_order_response(
                 response=order_data,
-                symbol=order_data.get("symbol", "").upper(),
+                symbol=str(order_data.get("symbol", "")).upper(),
             )
 
             if adapted_order:

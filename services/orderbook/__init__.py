@@ -1,3 +1,5 @@
+"""Orderbook service for order lifecycle and portfolio state management."""
+
 import threading
 from typing import Callable, Dict, List, Optional, Set
 
@@ -47,9 +49,6 @@ class OrderbookService(OrderbookInterface):
         _log: Logging service instance for logging operations.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _backtest: bool
     _backtest_id: Optional[str]
     _allocation: float
@@ -67,9 +66,6 @@ class OrderbookService(OrderbookInterface):
     _balance_lock: threading.Lock
     _orders_lock: threading.Lock
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         backtest: bool,
@@ -116,9 +112,6 @@ class OrderbookService(OrderbookInterface):
             backtest_id=backtest_id,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _cancel_order(self, order: OrderModel, reason: str) -> None:
         """
         Cancel an order and record it in the orderbook.
@@ -136,9 +129,6 @@ class OrderbookService(OrderbookInterface):
 
         self._on_transaction(order)
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def refresh(self, tick: TickModel) -> None:
         """
         Refresh orderbook state with new market tick.
@@ -284,8 +274,7 @@ class OrderbookService(OrderbookInterface):
                 order.executed_volume = 0
 
                 self._log.critical(
-                    f"Failed to open order {order.id} on gateway. "
-                    f"Reverted balance change: +{required_margin:.2f}"
+                    f"Failed to open order {order.id} on gateway. Reverted balance change: +{required_margin:.2f}"
                 )
                 return
 
@@ -320,19 +309,15 @@ class OrderbookService(OrderbookInterface):
             unexecuted_volume = order.volume - order.executed_volume
             margin_to_free = (unexecuted_volume * order.price) / self._leverage
 
-            self._log.info(
-                f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}. "
-                f"Cancelling unfilled portion and closing executed portion."
-            )
+            msg = f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}."
+            self._log.info(f"{msg} Cancelling unfilled portion and closing executed portion.")
 
             if not self._backtest:
                 cancel_success = self._gateway_handler.cancel_order(order)
 
                 if not cancel_success:
-                    self._log.warning(
-                        f"Failed to cancel unfilled portion of order {order.id}. "
-                        f"Proceeding to close executed portion anyway."
-                    )
+                    msg = f"Failed to cancel unfilled portion of order {order.id}."
+                    self._log.warning(f"{msg} Proceeding to close executed portion anyway.")
 
             with self._balance_lock:
                 self._balance += margin_to_free
@@ -368,8 +353,7 @@ class OrderbookService(OrderbookInterface):
                 order.status = OrderStatus.OPEN
 
                 self._log.critical(
-                    f"Failed to close order {order.id} on gateway. "
-                    f"Reverted balance changes. Order remains OPEN."
+                    f"Failed to close order {order.id} on gateway. Reverted balance changes. Order remains OPEN."
                 )
                 return
 
@@ -391,10 +375,8 @@ class OrderbookService(OrderbookInterface):
             return
 
         if not (order.status.is_opening() or order.status.is_open()):
-            self._log.error(
-                f"Order {order.id} cannot be cancelled in status {order.status.value}. "
-                f"Only OPENING or OPEN orders can be cancelled."
-            )
+            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
+            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
             return
 
         margin_to_release = (order.volume * order.price) / self._leverage
@@ -445,28 +427,30 @@ class OrderbookService(OrderbookInterface):
                 if (side is None or order.side == side) and (status is None or order.status == status)
             ]
 
-    # ───────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────
     @property
     def orders(self) -> List[OrderModel]:
+        """Return all orders in the orderbook."""
         with self._orders_lock:
             return list(self._orders.values())
 
     @property
     def balance(self) -> float:
+        """Return current cash balance."""
         return self._balance
 
     @property
     def allocation(self) -> float:
+        """Return strategy allocation percentage."""
         return self._allocation
 
     @property
     def nav(self) -> float:
+        """Return net asset value (balance + used margin + unrealized PnL)."""
         return self._balance + self.used_margin + self.pnl
 
     @property
     def exposure(self) -> float:
+        """Return total market exposure from open positions."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price)
@@ -476,6 +460,7 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def pnl(self) -> float:
+        """Return unrealized profit and loss from open positions."""
         with self._orders_lock:
             return sum(
                 order.profit
@@ -485,10 +470,12 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def free_margin(self) -> float:
+        """Return available margin for new positions."""
         return self.equity - self.used_margin
 
     @property
     def used_margin(self) -> float:
+        """Return margin currently used by open positions."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price) / self._leverage
@@ -498,10 +485,12 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def equity(self) -> float:
+        """Calculate account equity as balance plus unrealized PnL."""
         return self._balance + self.pnl
 
     @property
     def margin_level(self) -> float:
+        """Return margin level as ratio of equity to used margin."""
         if self.used_margin == 0:
             return float("inf")
 

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""URL-friendly slug generation utilities."""
 
 import re
 import unicodedata
@@ -42,9 +42,7 @@ def get_slug(
     flip = "_" if separator == "-" else "-"
     title = re.sub(rf"[{re.escape(flip)}]+", separator, title)
 
-    dict_with_separators = {
-        k: f"{separator}{v}{separator}" for k, v in dictionary.items()
-    }
+    dict_with_separators = {k: f"{separator}{v}{separator}" for k, v in dictionary.items()}
     for key, val in dict_with_separators.items():
         title = title.replace(key, val)
 

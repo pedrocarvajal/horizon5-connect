@@ -1,21 +1,17 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Service for calculating and tracking financial analytics during backtests."""
+
+from __future__ import annotations
 
 import datetime
 import json
 from multiprocessing import Queue
-from typing import TYPE_CHECKING, Optional
+from typing import Any, Optional
 
-if TYPE_CHECKING:
-    from services.orderbook import OrderbookService
-
-from enums.backtest_status import BacktestStatus
-from enums.command import Command
-from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
+from interfaces.orderbook import OrderbookInterface
 from models.order import OrderModel
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
-from providers.horizon_router import HorizonRouterProvider
 from services.analytic.helpers.get_cagr import get_cagr
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
 from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
@@ -44,7 +40,6 @@ class AnalyticService(AnalyticInterface):
         _orderbook: Service for managing orders and portfolio state.
         _commands_queue: Queue for sending commands to external services.
         _events_queue: Queue for receiving events from external services.
-        _horizon_router: Provider for Horizon Router API interactions.
         _log: Logging service instance for logging operations.
         _started: Whether analytics tracking has started.
         _started_at: Timestamp when analytics tracking started.
@@ -54,16 +49,12 @@ class AnalyticService(AnalyticInterface):
         _executed_orders: Count of executed orders.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _backtest: bool
     _backtest_id: Optional[str]
     _strategy_id: str
-    _orderbook: "OrderbookService"
-    _commands_queue: Queue
-    _events_queue: Queue
-    _horizon_router: HorizonRouterProvider
+    _orderbook: OrderbookInterface
+    _commands_queue: Queue[Any]
+    _events_queue: Queue[Any]
     _log: LoggingService
 
     _started: bool
@@ -74,17 +65,14 @@ class AnalyticService(AnalyticInterface):
     _snapshot: SnapshotModel
     _executed_orders: int
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         strategy_id: str,
         backtest: bool,
         backtest_id: Optional[str],
-        orderbook: "OrderbookService",
-        commands_queue: Queue,
-        events_queue: Queue,
+        orderbook: OrderbookInterface,
+        commands_queue: Queue[Any],
+        events_queue: Queue[Any],
     ) -> None:
         """
         Initialize the analytics service.
@@ -104,8 +92,6 @@ class AnalyticService(AnalyticInterface):
         self._log = LoggingService()
         self._log.setup("analytic_service")
 
-        self._horizon_router = HorizonRouterProvider()
-
         self._backtest = backtest
         self._backtest_id = backtest_id
         self._strategy_id = strategy_id
@@ -116,7 +102,7 @@ class AnalyticService(AnalyticInterface):
         if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required when backtest is True")
 
-        if self._strategy_id is None:
+        if not self._strategy_id:
             raise ValueError("Strategy ID is required")
 
         self._started = False
@@ -142,9 +128,6 @@ class AnalyticService(AnalyticInterface):
             ulcer_index=0,
         )
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def on_transaction(self, order: OrderModel) -> None:
         """
         Handle a transaction event (order status change).
@@ -159,7 +142,6 @@ class AnalyticService(AnalyticInterface):
         if order.status.is_closed():
             self._executed_orders += 1
             self._snapshot.profit_history.append(order.profit)
-            self._store_order(order)
 
     def on_tick(self, tick: TickModel) -> None:
         """
@@ -177,7 +159,6 @@ class AnalyticService(AnalyticInterface):
         if not self._started:
             self._started = True
             self._started_at = self._tick.date
-            self._store_snapshot(SnapshotEvent.START_SNAPSHOT)
 
     def on_new_day(self) -> None:
         """
@@ -189,7 +170,6 @@ class AnalyticService(AnalyticInterface):
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
         self._perform_calculations()
-        self._store_snapshot(SnapshotEvent.ON_NEW_DAY)
 
     def on_new_month(self) -> None:
         """
@@ -203,10 +183,11 @@ class AnalyticService(AnalyticInterface):
         max_drawdown_percentage = self._snapshot.max_drawdown * 100
 
         if self._is_running_in_live_mode():
-            self._log.info(
+            message = (
                 f"Closing month, with: {performance:.2f} ({performance_percentage:.2f}%), "
                 f"max drawdown: {max_drawdown_percentage:.2f}%."
             )
+            self._log.info(message)
 
     def on_end(self) -> None:
         """
@@ -222,13 +203,8 @@ class AnalyticService(AnalyticInterface):
 
         self._ended_at = self._tick.date
         self._perform_calculations()
-        self._store_snapshot(SnapshotEvent.BACKTEST_END)
-        self._update_backtest_to_finished()
         self._report()
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _report(self) -> None:
         """
         Generate and log the final analytics report.
@@ -300,89 +276,6 @@ class AnalyticService(AnalyticInterface):
                 self._snapshot.max_drawdown,
                 self._snapshot.drawdown,
             )
-
-    def _store_order(self, order: OrderModel) -> None:
-        """
-        Store an order via the commands queue.
-
-        Converts the order to a dictionary, removes the ID, converts timestamps
-        to integers, and queues a command to create the order via Horizon Router.
-
-        Args:
-            order: The order model to store.
-        """
-        order_dict = order.to_dict()
-        del order_dict["id"]
-
-        order_dict["created_at"] = int(float(order_dict["created_at"].timestamp()))
-        order_dict["updated_at"] = int(float(order_dict["updated_at"].timestamp()))
-
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": self._horizon_router.order_create,
-                "args": {
-                    "body": order_dict,
-                },
-            }
-        )
-
-    def _store_snapshot(self, event: SnapshotEvent) -> None:
-        """
-        Store a snapshot via the commands queue.
-
-        Sets the snapshot event and timestamp, creates a body dictionary with
-        snapshot data, removes computed fields, and queues a command to create
-        the snapshot via Horizon Router.
-
-        Args:
-            event: The snapshot event type (START_SNAPSHOT, ON_NEW_DAY, BACKTEST_END).
-        """
-        if self._tick is None:
-            self._log.error("Tick must be set before storing snapshot.")
-            return
-
-        self._snapshot.event = event
-        self._snapshot.created_at = self._tick.date
-
-        body = {
-            **self._snapshot.to_dict(),
-            "event": event.value,
-            "created_at": int(float(self._snapshot.created_at.timestamp())),
-        }
-
-        del body["performance"]
-        del body["performance_percentage"]
-
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": self._horizon_router.snapshot_create,
-                "args": {
-                    "body": body,
-                },
-            }
-        )
-
-    def _update_backtest_to_finished(self) -> None:
-        """
-        Update the backtest status to completed.
-
-        Queues a command to update the backtest status to COMPLETED via
-        Horizon Router.
-        """
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": self._horizon_router.backtest_update,
-                "args": {
-                    "id": self._backtest_id,
-                    "body": {
-                        "status": BacktestStatus.COMPLETED.value,
-                    },
-                },
-            }
-        )
 
     def _is_running_in_live_mode(self) -> bool:
         """

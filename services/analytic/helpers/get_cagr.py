@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Compound Annual Growth Rate (CAGR)."""
 
 
 def get_cagr(

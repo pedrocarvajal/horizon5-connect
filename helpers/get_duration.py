@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Duration formatting utilities for datetime objects."""
 
 import datetime
 

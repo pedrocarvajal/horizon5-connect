@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Calmar Ratio (return to drawdown ratio)."""
 
 
 def get_calmar_ratio(

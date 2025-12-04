@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Sortino Ratio (annualized downside risk-adjusted return)."""
 
 from typing import List
 
@@ -30,7 +30,7 @@ def get_sortino_ratio(
     min_observations = 2
     min_returns_for_variance = 2
     days_per_year = 365
-    returns = []
+    returns: List[float] = []
 
     if len(nav_history) < min_observations:
         return 0.0

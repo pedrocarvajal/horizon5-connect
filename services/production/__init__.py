@@ -1,9 +1,12 @@
+"""Production service for live trading execution."""
+
 import asyncio
 import datetime
 from multiprocessing import Queue
 from typing import Any, List, Optional
 
 from configs.timezone import TIMEZONE
+from enums.command import Command
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
@@ -13,24 +16,21 @@ from services.ticks import TicksService
 
 
 class ProductionService:
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-    _portfolio: PortfolioInterface
-    _portfolio_path: Optional[str]
+    """Service for live trading execution and stream management."""
+
+    _portfolio: Optional[PortfolioInterface] = None
+    _portfolio_path: Optional[str] = None
     _assets: List[AssetInterface]
 
     _stream_started_at: datetime.datetime
     _stream_last_updated_at: datetime.datetime
     _stream_tasks: List[asyncio.Task[None]]
 
-    _commands_queue: Optional[Queue]
-    _events_queue: Optional[Queue]
+    _commands_queue: Optional["Queue[Command]"] = None
+    _events_queue: Optional["Queue[Any]"] = None
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize production service with queues and portfolio path."""
         self._log = LoggingService()
         self._log.setup("production_service")
 
@@ -43,10 +43,8 @@ class ProductionService:
         self._events_queue = kwargs.get("events_queue")
         self._portfolio_path = kwargs.get("portfolio_path")
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def setup(self) -> None:
+        """Configure production service and load portfolio."""
         if not self._commands_queue:
             raise ValueError("Commands queue is required")
 
@@ -64,6 +62,10 @@ class ProductionService:
             raise ValueError("Portfolio not found")
 
     def run(self) -> None:
+        """Start live trading execution with stream connections."""
+        if not self._portfolio or not self._commands_queue or not self._events_queue:
+            raise ValueError("Service not properly setup")
+
         for asset in self._portfolio.assets:
             self._assets.append(asset())
 
@@ -83,9 +85,6 @@ class ProductionService:
         self._log.info("Connecting to the streams")
         asyncio.run(self._run_tasks())
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     async def _run_tasks(self) -> None:
         await asyncio.gather(
             self._connect(),

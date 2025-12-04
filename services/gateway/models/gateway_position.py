@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway position model for exchange position representation."""
 
 from typing import Any, Optional
 
@@ -27,9 +27,6 @@ class GatewayPositionModel(BaseModel):
         response: Raw gateway-specific response data for additional information.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance order status enumeration for API response mapping."""
 
 from enum import Enum, unique
 

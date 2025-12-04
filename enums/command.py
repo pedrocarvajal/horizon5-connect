@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by pedrocarvajal
+"""Command types for inter-process communication."""
 
 from enum import Enum, unique
 

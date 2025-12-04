@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Gateway trade model for executed trade representation."""
 
 from typing import Any, Optional
 
@@ -28,9 +28,6 @@ class GatewayTradeModel(BaseModel):
         response: Raw gateway-specific response data.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,

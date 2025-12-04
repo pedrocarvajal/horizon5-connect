@@ -1,13 +1,11 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Helper function to truncate datetime to timeframe boundaries."""
 
 import datetime
 
 from enums.timeframe import Timeframe
 
 
-def get_truncated_timeframe(
-    date: datetime.datetime, timeframe: Timeframe
-) -> datetime.datetime:
+def get_truncated_timeframe(date: datetime.datetime, timeframe: Timeframe) -> datetime.datetime:
     """
     Truncate datetime to the start of the specified timeframe period.
 

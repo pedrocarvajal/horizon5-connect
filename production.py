@@ -1,3 +1,5 @@
+"""Production entry point for live trading execution."""
+
 import argparse
 from multiprocessing import Process, Queue
 from typing import Any
@@ -7,26 +9,26 @@ from services.production import ProductionService
 
 
 class Production(ProductionService):
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    """Production process wrapper that runs live trading."""
+
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize and start production trading execution."""
         super().__init__(**kwargs)
         self.setup()
         self.run()
 
 
 class Commands(CommandsService):
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    """Commands process wrapper for production control."""
+
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize commands service."""
         super().__init__(**kwargs)
 
 
 if __name__ == "__main__":
-    commands_queue = Queue()
-    events_queue = Queue()
+    commands_queue: "Queue[Any]" = Queue()
+    events_queue: "Queue[Any]" = Queue()
 
     parser = argparse.ArgumentParser()
 

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""HTTP request execution helper for Binance API calls."""
 
 from time import time
 from typing import Any, Callable, Dict, Optional

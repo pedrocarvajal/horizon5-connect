@@ -4,7 +4,6 @@ from tests.services.wrappers.orderbook import OrderbookWrapper
 
 
 class TestServiceOrderbook(OrderbookWrapper):
-
     def test_initialization_with_valid_parameters(self) -> None:
         assert self._orderbook is not None
         assert self._orderbook.balance == self._INITIAL_BALANCE

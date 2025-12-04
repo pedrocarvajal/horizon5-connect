@@ -1,3 +1,5 @@
+"""Commands service for inter-process communication and command handling."""
+
 import datetime
 from multiprocessing import Queue
 from typing import Any, Callable, Dict, Optional
@@ -7,18 +9,15 @@ from services.logging import LoggingService
 
 
 class CommandsService:
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
-    _commands_queue: Optional[Queue]
-    _events_queue: Optional[Queue]
-    _commands: Dict[str, Any]
-    _ping_made_at: datetime.datetime
+    """Service that processes commands from the command queue."""
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
+    _commands_queue: Optional["Queue[Any]"]
+    _events_queue: Optional["Queue[Any]"]
+    _commands: Dict[str, Any]
+    _ping_made_at: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
+
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize the commands service with queue connections."""
         self._log = LoggingService()
         self._log.setup("commands_service")
         self._log.info("Commands service started")
@@ -33,9 +32,6 @@ class CommandsService:
 
         self._check_commands_queue()
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _check_commands_queue(self) -> None:
         if self._commands_queue is None:
             self._log.error("Commands queue is not set")

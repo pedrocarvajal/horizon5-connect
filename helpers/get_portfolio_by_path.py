@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Portfolio dynamic loading utilities."""
 
 import importlib.util
 import inspect

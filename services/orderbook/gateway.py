@@ -1,3 +1,5 @@
+"""Gateway handler service for production order execution."""
+
 import asyncio
 import datetime
 import re
@@ -39,18 +41,12 @@ class GatewayHandlerService(GatewayHandlerInterface):
         _polling_tasks: Dictionary mapping order IDs to async polling tasks.
     """
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTANTS
-    # ───────────────────────────────────────────────────────────
     MAX_POLLING_RETRIES: int = 5
     MAX_POLLING_ITERATIONS: int = 60
     POLLING_INTERVAL_SECONDS: int = 1
     MAX_SYMBOL_LENGTH: int = 20
     SYMBOL_PATTERN: str = r"^[A-Z0-9]+$"
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     _gateway: GatewayService
     _log: LoggingService
     _backtest: bool
@@ -61,9 +57,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
     _symbol_info_cache: Dict[str, GatewaySymbolInfoModel]
     _cache_lock: threading.Lock
 
-    # ───────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────
     def __init__(
         self,
         gateway: GatewayService,
@@ -98,9 +91,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
             self._verification = self._gateway.get_verification()
             self._validate_gateway_configuration()
 
-    # ───────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────
     def open_order(self, order: OrderModel) -> bool:
         """
         Execute a real order on the exchange gateway.
@@ -205,15 +195,15 @@ class GatewayHandlerService(GatewayHandlerInterface):
             self._log.error(f"Order {order.id} symbol contains invalid characters")
             return False
 
-        if order.side is None or not isinstance(order.side, OrderSide):
+        if order.side is None:
             self._log.error(f"Order {order.id} has invalid or missing side")
             return False
 
-        if order.order_type is None or not isinstance(order.order_type, OrderType):
+        if order.order_type is None:
             self._log.error(f"Order {order.id} has invalid or missing order type")
             return False
 
-        if not isinstance(order.volume, (int, float)) or order.volume <= 0:
+        if order.volume <= 0:
             self._log.error(f"Order {order.id} has invalid volume: {order.volume}")
             return False
 
@@ -380,10 +370,8 @@ class GatewayHandlerService(GatewayHandlerInterface):
             return False
 
         if not (order.status.is_opening() or order.status.is_open()):
-            self._log.error(
-                f"Order {order.id} cannot be cancelled in status {order.status.value}. "
-                f"Only OPENING or OPEN orders can be cancelled."
-            )
+            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
+            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
             return False
 
         try:
@@ -401,10 +389,8 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
         if gateway_order.executed_volume > 0 and gateway_order.executed_volume != order.executed_volume:
             order.executed_volume = gateway_order.executed_volume
-            self._log.warning(
-                f"Order {order.id} had partial fills before cancellation: "
-                f"{gateway_order.executed_volume}/{order.volume}"
-            )
+            filled = f"{gateway_order.executed_volume}/{order.volume}"
+            self._log.warning(f"Order {order.id} had partial fills before cancellation: {filled}")
 
         with self._polling_lock:
             if order.id in self._polling_tasks:
@@ -422,9 +408,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
         return True
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     def _validate_gateway_configuration(self) -> None:
         """
         Validate gateway configuration for production trading.

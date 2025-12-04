@@ -6,9 +6,9 @@ from interfaces.portfolio import PortfolioInterface
 
 
 class TestGetPortfolioByPath(unittest.TestCase):
-    _PORTFOLIO_ID: str = 'low-risk'
-    _PORTFOLIO_FILENAME: str = 'low-risk.py'
-    _PORTFOLIO_DIR: str = 'portfolios'
+    _PORTFOLIO_ID: str = "low-risk"
+    _PORTFOLIO_FILENAME: str = "low-risk.py"
+    _PORTFOLIO_DIR: str = "portfolios"
 
     def test_get_portfolio_by_path_with_absolute_path_returns_portfolio(self) -> None:
         portfolio_path = Path(__file__).parent.parent.parent / self._PORTFOLIO_DIR / self._PORTFOLIO_FILENAME
@@ -18,7 +18,7 @@ class TestGetPortfolioByPath(unittest.TestCase):
         assert portfolio.id == self._PORTFOLIO_ID
 
     def test_get_portfolio_by_path_with_relative_path_returns_portfolio(self) -> None:
-        portfolio_path = f'{self._PORTFOLIO_DIR}/{self._PORTFOLIO_FILENAME}'
+        portfolio_path = f"{self._PORTFOLIO_DIR}/{self._PORTFOLIO_FILENAME}"
         portfolio = get_portfolio_by_path(portfolio_path)
         assert portfolio is not None
         assert isinstance(portfolio, PortfolioInterface)

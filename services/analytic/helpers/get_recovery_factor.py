@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Recovery Factor (net profit to maximum drawdown ratio)."""
 
 
 def get_recovery_factor(

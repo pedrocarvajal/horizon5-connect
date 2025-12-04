@@ -1,4 +1,4 @@
-# Code reviewed on 2025-01-27 by pedrocarvajal
+"""Snapshot trigger event types."""
 
 from enum import Enum, unique
 

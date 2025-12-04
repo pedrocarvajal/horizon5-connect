@@ -3,7 +3,6 @@ from tests.services.wrappers.orderbook import OrderbookWrapper
 
 
 class TestServiceOrderbookCancel(OrderbookWrapper):
-
     def test_cancel_order_in_backtest_mode_releases_margin(self) -> None:
         tick = self._create_tick(50000.0)
         self._orderbook.refresh(tick)

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Profit Factor (ratio of gross profits to gross losses)."""
 
 from typing import List
 
@@ -31,4 +31,3 @@ def get_profit_factor(trades_profits: List[float]) -> float:
         return 0.0
 
     return total_wins / total_losses
-

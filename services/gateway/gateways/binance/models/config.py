@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Binance configuration model for API credentials and settings."""
 
 from typing import Optional
 
@@ -22,9 +22,6 @@ class BinanceConfigModel(BaseModel):
         sandbox: Whether to use sandbox/testnet mode (default: False).
     """
 
-    # ───────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────
     model_config = ConfigDict(
         frozen=True,
         validate_assignment=True,
@@ -54,9 +51,6 @@ class BinanceConfigModel(BaseModel):
         description="Enable sandbox mode",
     )
 
-    # ───────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────
     @field_validator("api_key", "api_secret")
     @classmethod
     def validate_credentials(cls, v: Optional[str]) -> Optional[str]:

@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Expected Shortfall (Conditional Value at Risk - CVaR)."""
 
 from typing import List
 
@@ -26,7 +26,7 @@ def get_expected_shortfall(
         More negative = higher tail risk
         Closer to 0 = lower tail risk
     """
-    returns = []
+    returns: List[float] = []
     min_observations = 2
 
     if len(nav_history) < min_observations:

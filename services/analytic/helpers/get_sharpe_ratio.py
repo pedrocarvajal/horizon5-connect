@@ -1,4 +1,4 @@
-# Code reviewed on 2025-11-19 by pedrocarvajal
+"""Calculate Sharpe Ratio (annualized risk-adjusted return)."""
 
 from typing import List
 
@@ -27,7 +27,7 @@ def get_sharpe_ratio(
         < 0.0: Losing money with volatility
         Industry standard: > 1.0 is acceptable
     """
-    returns = []
+    returns: List[float] = []
     min_observations = 2
     min_returns_for_variance = 2
 

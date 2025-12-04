@@ -1,3 +1,5 @@
+"""Ticks service for downloading and managing historical tick data."""
+
 import datetime
 import tempfile
 from pathlib import Path
@@ -14,26 +16,21 @@ from services.logging import LoggingService
 
 
 class TicksService:
-    # ───────────────────────────────────────────────────────────────
-    # PROPERTIES
-    # ───────────────────────────────────────────────────────────────
+    """Service for downloading and managing historical tick data."""
+
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
-    _asset: Optional[AssetInterface]
-    _restore_ticks: bool
-    _disable_download: bool
+    _asset: Optional[AssetInterface] = None
+    _restore_ticks: bool = False
+    _disable_download: bool = False
     _log: LoggingService
 
-    # ───────────────────────────────────────────────────────────────
-    # CONSTRUCTOR
-    # ───────────────────────────────────────────────────────────────
     def __init__(self) -> None:
+        """Initialize ticks service with logging."""
         self._log = LoggingService()
         self._log.setup("ticks_service")
 
-    # ───────────────────────────────────────────────────────────────
-    # PUBLIC METHODS
-    # ───────────────────────────────────────────────────────────────
     def setup(self, **kwargs: Any) -> None:
+        """Configure ticks service with asset and download options."""
         self._asset = kwargs.get("asset")
         self._restore_ticks = kwargs.get("restore_ticks", False)
         self._disable_download = kwargs.get("disable_download", False)
@@ -49,15 +46,15 @@ class TicksService:
         from_date: datetime.datetime,
         to_date: datetime.datetime,
     ) -> List[TickModel]:
+        """Retrieve tick data for the specified date range."""
         assert self._asset is not None
-        response = []
+        response: List[TickModel] = []
         ticks_folder = self.folder / self._asset.symbol
-        ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")
+        ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")  # pyright: ignore[reportUnknownMemberType]
 
         filtered_ticks = (
             ticks.filter(
-                (polars.col("id") >= int(from_date.timestamp()))
-                & (polars.col("id") <= int(to_date.timestamp()))
+                (polars.col("id") >= int(from_date.timestamp())) & (polars.col("id") <= int(to_date.timestamp()))
             )
             .sort("id")
             .collect(engine="streaming")
@@ -76,9 +73,6 @@ class TicksService:
 
         return response
 
-    # ───────────────────────────────────────────────────────────────
-    # PRIVATE METHODS
-    # ───────────────────────────────────────────────────────────────
     def _get_datetime_from_timestamp(self, timestamp: int) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(timestamp, tz=TIMEZONE)
 
@@ -97,7 +91,7 @@ class TicksService:
             return date
 
         if parquet_file.exists():
-            existing_ticks = polars.scan_parquet(parquet_file)
+            existing_ticks = polars.scan_parquet(parquet_file)  # pyright: ignore[reportUnknownMemberType]
             last_tick = existing_ticks.select(polars.col("id").max()).collect()
             last_timestamp = last_tick[0, "id"]
             date = self._get_datetime_from_timestamp(last_timestamp)
@@ -184,13 +178,8 @@ class TicksService:
             end_date_formatted = self._get_formatted_timestamp(end_timestamp)
             start_date_formatted = self._get_formatted_timestamp(start_timestamp)
 
-            self._log.info(
-                f"Downloading symbol: {asset.symbol}"
-                f" | Starting time: {start_date_formatted}"
-                f" | Current time: {current_date_formatted}"
-                f" | Ending time: {end_date_formatted}"
-                f" | Progress: {progress:.2f}%"
-            )
+            times = f"Start: {start_date_formatted} | Current: {current_date_formatted} | End: {end_date_formatted}"
+            self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
 
         try:
             gateway = asset.gateway
@@ -212,9 +201,7 @@ class TicksService:
 
         self._save_ticks(klines_list, parquet_file, ticks_folder)
 
-    # ───────────────────────────────────────────────────────────────
-    # GETTERS
-    # ───────────────────────────────────────────────────────────────
     @property
     def folder(self) -> Path:
+        """Return the folder path for tick data storage."""
         return self._ticks_folder
