@@ -1,4 +1,5 @@
 import threading
+from typing import List
 from unittest.mock import Mock, patch
 
 from enums.order_side import OrderSide
@@ -16,9 +17,9 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         order = self._create_order()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         with patch.object(
-            orderbook._gateway_handler._gateway, "get_trades", side_effect=Exception("Simulated get_trades error")
+            orderbook.gateway_handler.gateway, "get_trades", side_effect=Exception("Simulated get_trades error")
         ):
             gateway_order = GatewayOrderModel(
                 id="gw-123",
@@ -28,29 +29,29 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
                 executed_volume=0.01,
                 status=GatewayOrderStatus.EXECUTED,
             )
-            orderbook._gateway_handler._handle_executed_order(order, gateway_order)
+            orderbook.gateway_handler.handle_executed_order(order, gateway_order)
         assert order.status == OrderStatus.OPEN
         assert order.executed_volume == 0.01
 
     def test_validate_empty_symbol_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         order = self._create_order()
         order.symbol = ""
-        result = orderbook._gateway_handler._validate_order_parameters(order)
+        result = orderbook.gateway_handler.validate_order_parameters(order)
         assert result is False
 
     def test_validate_symbol_too_long_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         order = self._create_order()
         order.symbol = "A" * 25
-        result = orderbook._gateway_handler._validate_order_parameters(order)
+        result = orderbook.gateway_handler.validate_order_parameters(order)
         assert result is False
 
     def test_validate_volume_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -59,14 +60,14 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.0001)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is False
 
     def test_validate_volume_above_maximum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -75,14 +76,14 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=2000.0)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is False
 
     def test_validate_price_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -91,14 +92,14 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(price=0.005)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is False
 
     def test_validate_price_above_maximum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -107,14 +108,14 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(price=2000000.0)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is False
 
     def test_validate_notional_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -123,14 +124,14 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=100.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.001, price=50.0)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is False
 
     def test_validate_valid_order_accepted(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
             symbol="BTCUSDT",
             min_quantity=0.001,
@@ -139,20 +140,20 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", return_value=symbol_info):
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.01, price=50000.0)
-            result = orderbook._gateway_handler._validate_order_parameters(order)
+            result = orderbook.gateway_handler.validate_order_parameters(order)
             assert result is True
 
     def test_symbol_info_cached_after_first_request(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(symbol="BTCUSDT")
         mock_get_symbol_info = Mock(return_value=symbol_info)
-        with patch.object(orderbook._gateway_handler._gateway, "get_symbol_info", mock_get_symbol_info):
-            orderbook._gateway_handler._get_symbol_info("BTCUSDT")
-            orderbook._gateway_handler._get_symbol_info("BTCUSDT")
-            orderbook._gateway_handler._get_symbol_info("BTCUSDT")
+        with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", mock_get_symbol_info):
+            orderbook.gateway_handler.get_symbol_info("BTCUSDT")
+            orderbook.gateway_handler.get_symbol_info("BTCUSDT")
+            orderbook.gateway_handler.get_symbol_info("BTCUSDT")
         assert mock_get_symbol_info.call_count == 1
 
     def test_concurrent_open_orders_no_over_leverage(self) -> None:
@@ -160,7 +161,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        results = []
+        results: List[OrderModel] = []
 
         def open_order() -> None:
             order = self._create_order(volume=0.01, price=50000.0)
@@ -174,7 +175,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             thread.join()
         open_count = sum(1 for order in results if order.status == OrderStatus.OPEN)
         total_margin_used = sum(
-            order.volume * order.price / orderbook._leverage for order in results if order.status == OrderStatus.OPEN
+            order.volume * order.price / orderbook.leverage for order in results if order.status == OrderStatus.OPEN
         )
         expected_balance = initial_balance - total_margin_used
         assert abs(orderbook.balance - expected_balance) < self._EPSILON
@@ -186,7 +187,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        orders = []
+        orders: List[OrderModel] = []
         for _ in range(3):
             order = self._create_order(volume=0.01, price=50000.0)
             orderbook.open(order)
@@ -211,7 +212,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook.refresh(tick)
         for _ in range(5):
             orderbook.open(self._create_order())
-        results = []
+        results: List[bool] = []
 
         def access_properties() -> None:
             for _ in range(100):
@@ -235,11 +236,11 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_open_order_gateway_failure_reverts_balance(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        with patch.object(orderbook._gateway_handler, "open_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "open_order", return_value=False):
             order = self._create_order(volume=0.01, price=50000.0)
             orderbook.open(order)
         assert order.status == OrderStatus.CANCELLED
@@ -247,28 +248,28 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_close_order_gateway_failure_reverts_balance(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         order = self._create_order(volume=0.01, price=50000.0)
-        with patch.object(orderbook._gateway_handler, "open_order", return_value=True):
+        with patch.object(orderbook.gateway_handler, "open_order", return_value=True):
             orderbook.open(order)
         order.status = OrderStatus.OPEN
         profit_tick = self._create_tick(51000.0)
         orderbook.refresh(profit_tick)
         balance_before_close = orderbook.balance
-        with patch.object(orderbook._gateway_handler, "close_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "close_order", return_value=False):
             orderbook.close(order)
         assert order.status == OrderStatus.OPEN
         assert abs(orderbook.balance - balance_before_close) < self._EPSILON
 
     def test_multiple_gateway_failures_tracked_correctly(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook._backtest = False
+        orderbook.is_backtest = False
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        with patch.object(orderbook._gateway_handler, "open_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "open_order", return_value=False):
             for _ in range(5):
                 order = self._create_order(volume=0.01, price=50000.0)
                 orderbook.open(order)

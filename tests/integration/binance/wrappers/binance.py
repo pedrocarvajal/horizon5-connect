@@ -1,3 +1,5 @@
+"""Base wrapper for Binance integration tests."""
+
 import unittest
 from typing import Dict, Optional, Tuple
 
@@ -12,13 +14,25 @@ from services.logging import LoggingService
 
 
 class BinanceWrapper(unittest.TestCase):
+    """Base wrapper for Binance integration tests."""
+
     _SYMBOL: str = "BTCUSDT"
     _DEFAULT_ORDER_VOLUME: float = 0.002
-    _gateway: GatewayService
-    _log: LoggingService
-    _verification: Optional[Dict[str, bool]]
+
+    def __init__(self, method_name: str = "runTest") -> None:
+        """
+        Initialize the Binance wrapper.
+
+        Args:
+            method_name: Name of the test method to run.
+        """
+        super().__init__(method_name)
+        self._gateway: GatewayService
+        self._log: LoggingService
+        self._verification: Optional[Dict[str, bool]]
 
     def setUp(self) -> None:
+        """Set up the test environment."""
         self._log = LoggingService()
         self._log.setup(name=self.__class__.__name__)
         self._validate_sandbox_configuration()

@@ -12,7 +12,9 @@ class TestGetPortfolioByPath(unittest.TestCase):
 
     def test_get_portfolio_by_path_with_absolute_path_returns_portfolio(self) -> None:
         portfolio_path = Path(__file__).parent.parent.parent / self._PORTFOLIO_DIR / self._PORTFOLIO_FILENAME
+
         portfolio = get_portfolio_by_path(str(portfolio_path))
+
         assert portfolio is not None
         assert isinstance(portfolio, PortfolioInterface)
         assert portfolio.id == self._PORTFOLIO_ID
@@ -20,6 +22,7 @@ class TestGetPortfolioByPath(unittest.TestCase):
     def test_get_portfolio_by_path_with_relative_path_returns_portfolio(self) -> None:
         portfolio_path = f"{self._PORTFOLIO_DIR}/{self._PORTFOLIO_FILENAME}"
         portfolio = get_portfolio_by_path(portfolio_path)
+
         assert portfolio is not None
         assert isinstance(portfolio, PortfolioInterface)
         assert portfolio.id == self._PORTFOLIO_ID

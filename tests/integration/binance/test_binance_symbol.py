@@ -15,10 +15,12 @@ class TestBinanceSymbol(BinanceWrapper):
 
     def test_get_symbol_info(self) -> None:
         symbol_info = self._gateway.get_symbol_info(symbol=self._SYMBOL)
+        assert symbol_info is not None, "Symbol info should not be None"
         self._assert_symbol_info_is_valid(symbol_info=symbol_info)
 
     def test_get_trading_fees(self) -> None:
         trading_fees = self._gateway.get_trading_fees(symbol=self._SYMBOL)
+        assert trading_fees is not None, "Trading fees should not be None"
         self._assert_trading_fees_is_valid(trading_fees=trading_fees)
 
     def test_get_leverage_info(self) -> None:
@@ -28,6 +30,7 @@ class TestBinanceSymbol(BinanceWrapper):
         assert order is not None, "Order should not be None"
         assert order.id != "", "Order ID should not be empty"
         leverage_info = self._gateway.get_leverage_info(symbol=self._SYMBOL)
+        assert leverage_info is not None, "Leverage info should not be None"
         self._assert_leverage_info_is_valid(leverage_info=leverage_info)
         self._close_position(symbol=self._SYMBOL, order=order)
 
@@ -35,10 +38,11 @@ class TestBinanceSymbol(BinanceWrapper):
         result = self._gateway.set_leverage(symbol=self._SYMBOL, leverage=20)
         assert result is True, f"Set leverage should return True, got {result}"
 
-    def _assert_symbol_info_is_valid(self, symbol_info, expected_symbol: Optional[str] = None) -> None:
+    def _assert_symbol_info_is_valid(
+        self, symbol_info: GatewaySymbolInfoModel, expected_symbol: Optional[str] = None
+    ) -> None:
         if expected_symbol is None:
             expected_symbol = self._SYMBOL
-        assert symbol_info is not None, "Symbol info should not be None"
         assert isinstance(symbol_info, GatewaySymbolInfoModel), "Symbol info should be a GatewaySymbolInfoModel"
         assert symbol_info.symbol == expected_symbol, f"Symbol should be {expected_symbol}, got {symbol_info.symbol}"
         assert symbol_info.base_asset != "", f"Base asset should not be empty, got {symbol_info.base_asset}"
@@ -49,10 +53,11 @@ class TestBinanceSymbol(BinanceWrapper):
         )
         assert symbol_info.response is not None, "Response should not be None"
 
-    def _assert_trading_fees_is_valid(self, trading_fees, expected_symbol: Optional[str] = None) -> None:
+    def _assert_trading_fees_is_valid(
+        self, trading_fees: GatewayTradingFeesModel, expected_symbol: Optional[str] = None
+    ) -> None:
         if expected_symbol is None:
             expected_symbol = self._SYMBOL
-        assert trading_fees is not None, "Trading fees should not be None"
         assert isinstance(trading_fees, GatewayTradingFeesModel), "Trading fees should be a GatewayTradingFeesModel"
         assert trading_fees.symbol == expected_symbol, f"Symbol should be {expected_symbol}, got {trading_fees.symbol}"
         assert trading_fees.maker_commission is not None, "Maker commission should not be None"
@@ -65,10 +70,11 @@ class TestBinanceSymbol(BinanceWrapper):
         )
         assert trading_fees.response is not None, "Response should not be None"
 
-    def _assert_leverage_info_is_valid(self, leverage_info, expected_symbol: Optional[str] = None) -> None:
+    def _assert_leverage_info_is_valid(
+        self, leverage_info: GatewayLeverageInfoModel, expected_symbol: Optional[str] = None
+    ) -> None:
         if expected_symbol is None:
             expected_symbol = self._SYMBOL
-        assert leverage_info is not None, "Leverage info should not be None"
         assert isinstance(leverage_info, GatewayLeverageInfoModel), "Leverage info should be a GatewayLeverageInfoModel"
         assert leverage_info.symbol == expected_symbol, (
             f"Symbol should be {expected_symbol}, got {leverage_info.symbol}"

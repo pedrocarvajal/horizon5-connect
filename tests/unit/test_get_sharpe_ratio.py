@@ -17,34 +17,49 @@ class TestGetSharpeRatio(unittest.TestCase):
 
     def test_get_sharpe_ratio_minimal_data_returns_float(self) -> None:
         result = get_sharpe_ratio(self._NAV_MINIMAL)
+
         assert isinstance(result, float)
 
     def test_get_sharpe_ratio_positive_returns_positive_value(self) -> None:
         result = get_sharpe_ratio(self._NAV_INCREASING)
+
         assert result > 0
 
     def test_get_sharpe_ratio_negative_returns_negative_value(self) -> None:
         result = get_sharpe_ratio(self._NAV_DECLINING)
+
         assert result < 0
 
     def test_get_sharpe_ratio_with_risk_free_rate(self) -> None:
-        result_with_rf = get_sharpe_ratio(self._NAV_INCREASING, risk_free_rate=self._RISK_FREE_RATE_WITH)
-        result_without_rf = get_sharpe_ratio(self._NAV_INCREASING, risk_free_rate=self._RISK_FREE_RATE_WITHOUT)
+        result_with_rf = get_sharpe_ratio(
+            self._NAV_INCREASING,
+            risk_free_rate=self._RISK_FREE_RATE_WITH,
+        )
+        result_without_rf = get_sharpe_ratio(
+            self._NAV_INCREASING,
+            risk_free_rate=self._RISK_FREE_RATE_WITHOUT,
+        )
+
         assert result_with_rf < result_without_rf
 
     def test_get_sharpe_ratio_insufficient_data_returns_zero(self) -> None:
         result = get_sharpe_ratio([self._NAV_INITIAL])
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_sharpe_ratio_empty_list_returns_zero(self) -> None:
         nav_history: list[float] = []
+
         result = get_sharpe_ratio(nav_history)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_sharpe_ratio_zero_volatility_returns_zero(self) -> None:
         result = get_sharpe_ratio(self._NAV_CONSTANT)
+
         assert result == self._EXPECTED_ZERO
 
     def test_get_sharpe_ratio_with_zero_nav(self) -> None:
         result = get_sharpe_ratio(self._NAV_WITH_ZERO)
+
         assert isinstance(result, float)

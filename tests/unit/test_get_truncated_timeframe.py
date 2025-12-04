@@ -17,28 +17,44 @@ class TestGetTruncatedTimeframe(unittest.TestCase):
     _EXPECTED_WEEKDAY_MONDAY: int = 0
 
     def test_get_truncated_timeframe_one_minute_truncates_seconds(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_FULL, Timeframe.ONE_MINUTE)
+        result = get_truncated_timeframe(
+            self._DATETIME_FULL,
+            Timeframe.ONE_MINUTE,
+        )
+
         assert result.second == self._EXPECTED_ZERO
         assert result.microsecond == self._EXPECTED_ZERO
         assert result.minute == self._EXPECTED_MINUTE
         assert result.hour == self._EXPECTED_HOUR
 
     def test_get_truncated_timeframe_one_hour_truncates_minutes(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_FULL, Timeframe.ONE_HOUR)
+        result = get_truncated_timeframe(
+            self._DATETIME_FULL,
+            Timeframe.ONE_HOUR,
+        )
+
         assert result.minute == self._EXPECTED_ZERO
         assert result.second == self._EXPECTED_ZERO
         assert result.microsecond == self._EXPECTED_ZERO
         assert result.hour == self._EXPECTED_HOUR
 
     def test_get_truncated_timeframe_one_day_truncates_hours(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_FULL, Timeframe.ONE_DAY)
+        result = get_truncated_timeframe(
+            self._DATETIME_FULL,
+            Timeframe.ONE_DAY,
+        )
+
         assert result.hour == self._EXPECTED_ZERO
         assert result.minute == self._EXPECTED_ZERO
         assert result.second == self._EXPECTED_ZERO
         assert result.microsecond == self._EXPECTED_ZERO
 
     def test_get_truncated_timeframe_one_week_truncates_to_monday(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_WEEK_MID, Timeframe.ONE_WEEK)
+        result = get_truncated_timeframe(
+            self._DATETIME_WEEK_MID,
+            Timeframe.ONE_WEEK,
+        )
+
         assert result.weekday() == self._EXPECTED_WEEKDAY_MONDAY
         assert result.hour == self._EXPECTED_ZERO
         assert result.minute == self._EXPECTED_ZERO
@@ -46,7 +62,11 @@ class TestGetTruncatedTimeframe(unittest.TestCase):
         assert result.microsecond == self._EXPECTED_ZERO
 
     def test_get_truncated_timeframe_one_month_truncates_to_first_day(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_MONTH_MID, Timeframe.ONE_MONTH)
+        result = get_truncated_timeframe(
+            self._DATETIME_MONTH_MID,
+            Timeframe.ONE_MONTH,
+        )
+
         assert result.day == self._EXPECTED_DAY
         assert result.hour == self._EXPECTED_ZERO
         assert result.minute == self._EXPECTED_ZERO
@@ -54,5 +74,9 @@ class TestGetTruncatedTimeframe(unittest.TestCase):
         assert result.microsecond == self._EXPECTED_ZERO
 
     def test_get_truncated_timeframe_other_timeframe_returns_original(self) -> None:
-        result = get_truncated_timeframe(self._DATETIME_FULL, Timeframe.FIVE_MINUTES)
+        result = get_truncated_timeframe(
+            self._DATETIME_FULL,
+            Timeframe.FIVE_MINUTES,
+        )
+
         assert result == self._DATETIME_FULL

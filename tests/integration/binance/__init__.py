@@ -1,1 +1,1 @@
-
+"""Binance integration tests."""

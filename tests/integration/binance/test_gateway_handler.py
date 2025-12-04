@@ -16,7 +16,16 @@ class TestGatewayHandler(BinanceWrapper):
     _DEFAULT_ORDER_BACKTEST_ID: str = "test-123"
     _DEFAULT_ORDER_INVALID_SYMBOL: str = "INVALID_SYMBOL"
     _DEFAULT_ORDER_INVALID_VOLUME: float = 0.0
-    _handler: GatewayHandlerService
+
+    def __init__(self, method_name: str = "runTest") -> None:
+        """
+        Initialize the gateway handler test.
+
+        Args:
+            method_name: Name of the test method to run.
+        """
+        super().__init__(method_name)
+        self._handler: GatewayHandlerService
 
     def setUp(self) -> None:
         super().setUp()
@@ -25,8 +34,8 @@ class TestGatewayHandler(BinanceWrapper):
 
     def test_gateway_handler_initialization(self) -> None:
         assert self._handler is not None, "Handler should be initialized"
-        assert self._handler._gateway is not None, "Handler should have gateway"
-        assert self._handler._backtest is False, "Handler should not be in backtest mode"
+        assert self._handler.gateway is not None, "Handler should have gateway"
+        assert self._handler.backtest is False, "Handler should not be in backtest mode"
 
     def test_open_order_market_with_polling(self) -> None:
         order = self._build_order_model(
@@ -110,13 +119,12 @@ class TestGatewayHandler(BinanceWrapper):
         valid_closing_statuses = [OrderStatus.CLOSING, OrderStatus.CLOSED]
         status_message = f"Order status should be CLOSING or CLOSED, got {order.status}"
         assert order.status in valid_closing_statuses, status_message
-        if order.status != OrderStatus.CLOSED:
-            self._wait_for_order_status(
-                order=order,
-                target_status=OrderStatus.CLOSED,
-                timeout_seconds=self._POLLING_TIMEOUT_SECONDS,
-                handler=self._handler,
-            )
+        self._wait_for_order_status(
+            order=order,
+            target_status=OrderStatus.CLOSED,
+            timeout_seconds=self._POLLING_TIMEOUT_SECONDS,
+            handler=self._handler,
+        )
         assert order.status == OrderStatus.CLOSED, f"Order should be CLOSED, got {order.status}"
         assert order.updated_at is not None, "Order should have updated_at timestamp"
         if order.close_price == 0:
@@ -149,13 +157,12 @@ class TestGatewayHandler(BinanceWrapper):
         valid_closing_statuses = [OrderStatus.CLOSING, OrderStatus.CLOSED]
         status_message = f"Order status should be CLOSING or CLOSED, got {order.status}"
         assert order.status in valid_closing_statuses, status_message
-        if order.status != OrderStatus.CLOSED:
-            self._wait_for_order_status(
-                order=order,
-                target_status=OrderStatus.CLOSED,
-                timeout_seconds=self._POLLING_TIMEOUT_SECONDS,
-                handler=self._handler,
-            )
+        self._wait_for_order_status(
+            order=order,
+            target_status=OrderStatus.CLOSED,
+            timeout_seconds=self._POLLING_TIMEOUT_SECONDS,
+            handler=self._handler,
+        )
         assert order.status == OrderStatus.CLOSED, f"Order should be CLOSED, got {order.status}"
         assert order.updated_at is not None, "Order should have updated_at timestamp"
         if order.close_price == 0:

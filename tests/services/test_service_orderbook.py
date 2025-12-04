@@ -12,11 +12,11 @@ class TestServiceOrderbook(OrderbookWrapper):
 
     def test_initialization_leverage_defaults_to_one_when_zero(self) -> None:
         orderbook = self._create_orderbook(leverage=0)
-        assert orderbook._leverage == 1
+        assert orderbook.leverage == 1
 
     def test_initialization_leverage_defaults_to_one_when_negative(self) -> None:
         orderbook = self._create_orderbook(leverage=-5)
-        assert orderbook._leverage == 1
+        assert orderbook.leverage == 1
 
     def test_open_order_with_sufficient_margin_succeeds(self) -> None:
         tick = self._create_tick(50000.0)
@@ -86,7 +86,7 @@ class TestServiceOrderbook(OrderbookWrapper):
     def test_open_order_during_margin_call_is_cancelled(self) -> None:
         tick = self._create_tick(50000.0)
         self._orderbook.refresh(tick)
-        self._orderbook._margin_call_active = True
+        self._orderbook.margin_call_active = True
         order = self._create_order()
         self._orderbook.open(order)
         assert order.status == OrderStatus.CANCELLED
@@ -177,11 +177,11 @@ class TestServiceOrderbook(OrderbookWrapper):
         orderbook.refresh(tick)
         order = self._create_order(volume=0.01, price=50000.0)
         orderbook.open(order)
-        orderbook._margin_call_active = True
+        orderbook.margin_call_active = True
         orderbook.close(order)
         recovery_tick = self._create_tick(50000.0)
         orderbook.refresh(recovery_tick)
-        assert orderbook._margin_call_active is False
+        assert orderbook.margin_call_active is False
 
     def test_refresh_closes_order_when_take_profit_reached(self) -> None:
         tick = self._create_tick(50000.0)
