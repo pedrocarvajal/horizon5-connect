@@ -1,16 +1,26 @@
 """Base wrapper for Binance integration tests."""
 
+import importlib
+import os
 import unittest
 from typing import Dict, Optional, Tuple
 
-from enums.order_side import OrderSide
-from enums.order_type import OrderType
-from helpers.get_env import get_env
-from services.gateway import GatewayService
-from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
-from services.gateway.models.gateway_order import GatewayOrderModel
-from services.gateway.models.gateway_position import GatewayPositionModel
-from services.logging import LoggingService
+os.environ["BINANCE_TESTNET"] = "True"
+
+import configs.gateways
+import services.gateway
+
+importlib.reload(configs.gateways)
+importlib.reload(services.gateway)
+
+from enums.order_side import OrderSide  # noqa: E402
+from enums.order_type import OrderType  # noqa: E402
+from helpers.get_env import get_env  # noqa: E402
+from services.gateway import GatewayService  # noqa: E402
+from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus  # noqa: E402
+from services.gateway.models.gateway_order import GatewayOrderModel  # noqa: E402
+from services.gateway.models.gateway_position import GatewayPositionModel  # noqa: E402
+from services.logging import LoggingService  # noqa: E402
 
 
 class BinanceWrapper(unittest.TestCase):
@@ -80,11 +90,6 @@ class BinanceWrapper(unittest.TestCase):
         self._log.info(f"Order {order_id} cancelled successfully")
 
     def _validate_sandbox_configuration(self) -> None:
-        sandbox_env = get_env("BINANCE_TESTNET", default="True")
-        sandbox_enabled = sandbox_env.lower() in ("true", "1", "yes", "on") if sandbox_env else True
-        assert sandbox_enabled is True, (
-            "BINANCE_TESTNET must be enabled for tests. Set BINANCE_TESTNET=True in environment variables"
-        )
         testnet_api_key = get_env("BINANCE_TESTNET_API_KEY")
         testnet_api_secret = get_env("BINANCE_TESTNET_API_SECRET")
         assert testnet_api_key is not None, (
