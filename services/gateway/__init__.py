@@ -35,7 +35,7 @@ class GatewayService(GatewayInterface):
 
     _name: str
     _backtest: bool
-    _sandbox: bool
+    _sandbox: Optional[bool]
     _gateways: Dict[str, Any]
 
     _gateway: GatewayInterface
@@ -64,7 +64,7 @@ class GatewayService(GatewayInterface):
         self._gateways = GATEWAYS
         self._name = gateway
         self._backtest = kwargs.get("backtest", False)
-        self._sandbox_override = kwargs.get("sandbox", None)
+        self._sandbox = kwargs.get("sandbox")
 
         self._setup()
 
@@ -379,8 +379,7 @@ class GatewayService(GatewayInterface):
         gateway_config = self._gateways[self._name]
         gateway_kwargs = gateway_config["kwargs"].copy()
 
-        if self._sandbox_override is not None:
-            self._sandbox = self._sandbox_override
+        if self._sandbox is not None:
             if self._sandbox:
                 gateway_kwargs["api_key"] = get_env("BINANCE_TESTNET_API_KEY")
                 gateway_kwargs["api_secret"] = get_env("BINANCE_TESTNET_API_SECRET")
@@ -417,4 +416,4 @@ class GatewayService(GatewayInterface):
         Returns:
             True if the gateway is in sandbox mode, False otherwise.
         """
-        return self._sandbox
+        return self._sandbox or False
