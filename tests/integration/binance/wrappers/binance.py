@@ -1,26 +1,16 @@
 """Base wrapper for Binance integration tests."""
 
-import importlib
-import os
 import unittest
 from typing import Dict, Optional, Tuple
 
-os.environ["BINANCE_TESTNET"] = "True"
-
-import configs.gateways
-import services.gateway
-
-importlib.reload(configs.gateways)
-importlib.reload(services.gateway)
-
-from enums.order_side import OrderSide  # noqa: E402
-from enums.order_type import OrderType  # noqa: E402
-from helpers.get_env import get_env  # noqa: E402
-from services.gateway import GatewayService  # noqa: E402
-from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus  # noqa: E402
-from services.gateway.models.gateway_order import GatewayOrderModel  # noqa: E402
-from services.gateway.models.gateway_position import GatewayPositionModel  # noqa: E402
-from services.logging import LoggingService  # noqa: E402
+from enums.order_side import OrderSide
+from enums.order_type import OrderType
+from helpers.get_env import get_env
+from services.gateway import GatewayService
+from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
+from services.gateway.models.gateway_order import GatewayOrderModel
+from services.gateway.models.gateway_position import GatewayPositionModel
+from services.logging import LoggingService
 
 
 class BinanceWrapper(unittest.TestCase):
@@ -45,7 +35,7 @@ class BinanceWrapper(unittest.TestCase):
         """Set up the test environment."""
         self._log = LoggingService()
         self._validate_sandbox_configuration()
-        self._gateway = GatewayService(gateway="binance")
+        self._gateway = GatewayService(gateway="binance", sandbox=True)
         self._verification = self._gateway.get_verification()
         assert self._gateway.sandbox is True, "Sandbox must be enabled for tests"
         assert self._verification is not None, "Verification should not be None"

@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from configs.gateways import GATEWAYS
+from helpers.get_env import get_env
 from interfaces.gateway import GatewayInterface
 from services.gateway.models.gateway_account import GatewayAccountModel
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
@@ -63,6 +64,7 @@ class GatewayService(GatewayInterface):
         self._gateways = GATEWAYS
         self._name = gateway
         self._backtest = kwargs.get("backtest", False)
+        self._sandbox_override = kwargs.get("sandbox", None)
 
         self._setup()
 
@@ -376,7 +378,17 @@ class GatewayService(GatewayInterface):
 
         gateway_config = self._gateways[self._name]
         gateway_kwargs = gateway_config["kwargs"].copy()
-        self._sandbox = gateway_kwargs.get("sandbox", False)
+
+        if self._sandbox_override is not None:
+            self._sandbox = self._sandbox_override
+            if self._sandbox:
+                gateway_kwargs["api_key"] = get_env("BINANCE_TESTNET_API_KEY")
+                gateway_kwargs["api_secret"] = get_env("BINANCE_TESTNET_API_SECRET")
+            else:
+                gateway_kwargs["api_key"] = get_env("BINANCE_API_KEY")
+                gateway_kwargs["api_secret"] = get_env("BINANCE_API_SECRET")
+        else:
+            self._sandbox = gateway_kwargs.get("sandbox", False)
 
         if self._backtest:
             gateway_kwargs["sandbox"] = False
