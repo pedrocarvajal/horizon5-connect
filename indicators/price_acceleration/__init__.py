@@ -28,6 +28,8 @@ class PriceAccelerationIndicator(IndicatorInterface):
     _velocities: List[float]
     _accelerations: List[float]
 
+    _log: LoggingService
+
     def __init__(
         self,
         key: str,

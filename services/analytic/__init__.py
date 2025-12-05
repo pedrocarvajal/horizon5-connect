@@ -127,37 +127,21 @@ class AnalyticService(AnalyticInterface):
             ulcer_index=0,
         )
 
-    def on_transaction(self, order: OrderModel) -> None:
+    def on_end(self) -> None:
         """
-        Handle a transaction event (order status change).
+        Handle the end of analytics tracking.
 
-        When an order is closed, this method updates the executed orders count,
-        records the profit in the snapshot's profit history, and stores the order
-        via the commands queue.
-
-        Args:
-            order: The order model representing the transaction.
+        Records the end timestamp, performs final calculations, stores the
+        final snapshot, updates the backtest status to completed, and generates
+        the final report.
         """
-        if order.status.is_closed():
-            self._executed_orders += 1
-            self._snapshot.profit_history.append(order.profit)
+        if self._tick is None:
+            self._log.error("Tick must be set before ending analytics.")
+            return
 
-    def on_tick(self, tick: TickModel) -> None:
-        """
-        Handle a new market tick event.
-
-        Updates the current tick, refreshes snapshot data, and if this is the
-        first tick, initializes the analytics tracking and stores the start snapshot.
-
-        Args:
-            tick: The current market tick data.
-        """
-        self._tick = tick
-        self._refresh()
-
-        if not self._started:
-            self._started = True
-            self._started_at = self._tick.date
+        self._ended_at = self._tick.date
+        self._perform_calculations()
+        self._report()
 
     def on_new_day(self) -> None:
         """
@@ -188,49 +172,46 @@ class AnalyticService(AnalyticInterface):
             )
             self._log.info(message)
 
-    def on_end(self) -> None:
+    def on_tick(self, tick: TickModel) -> None:
         """
-        Handle the end of analytics tracking.
+        Handle a new market tick event.
 
-        Records the end timestamp, performs final calculations, stores the
-        final snapshot, updates the backtest status to completed, and generates
-        the final report.
+        Updates the current tick, refreshes snapshot data, and if this is the
+        first tick, initializes the analytics tracking and stores the start snapshot.
+
+        Args:
+            tick: The current market tick data.
         """
-        if self._tick is None:
-            self._log.error("Tick must be set before ending analytics.")
-            return
+        self._tick = tick
+        self._refresh()
 
-        self._ended_at = self._tick.date
-        self._perform_calculations()
-        self._report()
+        if not self._started:
+            self._started = True
+            self._started_at = self._tick.date
 
-    def _report(self) -> None:
+    def on_transaction(self, order: OrderModel) -> None:
         """
-        Generate and log the final analytics report.
+        Handle a transaction event (order status change).
 
-        Logs backtest ID and strategy ID, then outputs a detailed JSON report
-        containing all snapshot metrics, timestamps, and elapsed days.
+        When an order is closed, this method updates the executed orders count,
+        records the profit in the snapshot's profit history, and stores the order
+        via the commands queue.
+
+        Args:
+            order: The order model representing the transaction.
         """
-        self._log.info(f"Backtest ID: {self._backtest_id}")
-        self._log.info(f"Strategy: {self._strategy_id}")
+        if order.status.is_closed():
+            self._executed_orders += 1
+            self._snapshot.profit_history.append(order.profit)
 
-        days_elapsed = (self._ended_at - self._started_at).days
+    def _is_running_in_live_mode(self) -> bool:
+        """
+        Check if the service is running in live (non-simulated) mode.
 
-        self._log.debug(
-            json.dumps(
-                {
-                    **self._snapshot.to_dict(),
-                    "started_at": self._started_at,
-                    "ended_at": self._ended_at,
-                    "days_elapsed": days_elapsed,
-                    # "performance_history": self._snapshot.performance_history,
-                    # "nav_history": self._snapshot.nav_history,
-                    # "profit_history": self._snapshot.profit_history,
-                },
-                indent=4,
-                default=str,
-            )
-        )
+        Returns:
+            True if tick exists and is not simulated, False otherwise.
+        """
+        return self._tick is not None and not self._tick.is_simulated
 
     def _perform_calculations(self) -> None:
         """
@@ -276,14 +257,30 @@ class AnalyticService(AnalyticInterface):
                 self._snapshot.drawdown,
             )
 
-    def _is_running_in_live_mode(self) -> bool:
+    def _report(self) -> None:
         """
-        Check if the service is running in live (non-simulated) mode.
+        Generate and log the final analytics report.
 
-        Returns:
-            True if tick exists and is not simulated, False otherwise.
+        Logs backtest ID and strategy ID, then outputs a detailed JSON report
+        containing all snapshot metrics, timestamps, and elapsed days.
         """
-        return self._tick is not None and not self._tick.is_simulated
+        self._log.info(f"Backtest ID: {self._backtest_id}")
+        self._log.info(f"Strategy: {self._strategy_id}")
+
+        days_elapsed = (self._ended_at - self._started_at).days
+
+        self._log.debug(
+            json.dumps(
+                {
+                    **self._snapshot.to_dict(),
+                    "started_at": self._started_at,
+                    "ended_at": self._ended_at,
+                    "days_elapsed": days_elapsed,
+                },
+                indent=4,
+                default=str,
+            )
+        )
 
     @property
     def _elapsed_days(self) -> int:

@@ -14,7 +14,8 @@ class MAValueModel(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the value model to dictionary representation."""
-        return {
-            "date": self.date,
-            "value": self.value,
-        }
+        return self.model_dump()
+
+    def to_json(self) -> str:
+        """Convert the value model to JSON string representation."""
+        return self.model_dump_json()

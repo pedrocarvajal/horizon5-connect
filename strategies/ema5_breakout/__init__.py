@@ -75,7 +75,7 @@ class EMA5BreakoutStrategy(StrategyService):
                         key="ema5",
                         period=5,
                         price_to_use="close_price",
-                        exponential=True,
+                        is_exponential=True,
                     ),
                 ],
             )

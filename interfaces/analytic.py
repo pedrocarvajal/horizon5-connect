@@ -7,33 +7,34 @@ from models.tick import TickModel
 
 
 class AnalyticInterface(ABC):
-    """Abstract interface (see implementations for details)."""
+    """Interface defining the contract for analytics services that track performance metrics."""
 
     @abstractmethod
-    def on_tick(self, tick: TickModel) -> None:
-        """Abstract method."""
-        pass
-
-    def on_new_hour(self) -> None:  # noqa: B027
-        """Abstract method."""
+    def on_end(self) -> None:
+        """Handle the end of analytics tracking."""
         pass
 
     def on_new_day(self) -> None:  # noqa: B027
-        """Abstract method."""
+        """Handle a new day event."""
         pass
 
-    def on_new_week(self) -> None:  # noqa: B027
-        """Abstract method."""
+    def on_new_hour(self) -> None:  # noqa: B027
+        """Handle a new hour event."""
         pass
 
     def on_new_month(self) -> None:  # noqa: B027
-        """Abstract method."""
+        """Handle a new month event."""
+        pass
+
+    def on_new_week(self) -> None:  # noqa: B027
+        """Handle a new week event."""
+        pass
+
+    @abstractmethod
+    def on_tick(self, tick: TickModel) -> None:
+        """Handle a new market tick event."""
         pass
 
     def on_transaction(self, order: OrderModel) -> None:  # noqa: B027
-        """Abstract method."""
-        pass
-
-    def on_end(self) -> None:  # noqa: B027
-        """Abstract method."""
+        """Handle a transaction event."""
         pass

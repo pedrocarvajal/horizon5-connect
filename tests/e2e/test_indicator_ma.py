@@ -42,13 +42,13 @@ class TestIndicatorMA(WrapperIndicator):
                     key="sma5",
                     period=5,
                     price_to_use="close_price",
-                    exponential=False,
+                    is_exponential=False,
                 ),
                 MAIndicator(
                     key="ema5",
                     period=5,
                     price_to_use="close_price",
-                    exponential=True,
+                    is_exponential=True,
                 ),
             ],
         )

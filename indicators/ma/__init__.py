@@ -14,28 +14,30 @@ class MAIndicator(IndicatorInterface):
     """Simple and Exponential Moving Average indicator for price analysis."""
 
     _MULTIPLIER_COEFFICIENT: int = 2
+    _NAME: str = "Moving Average"
 
-    _name: str = "Moving Average"
     _key: str
     _period: int
     _price_to_use: str
-    _exponential: bool
+    _is_exponential: bool
     _candles: List[Dict[str, Any]]
     _values: List[MAValueModel]
+
+    _log: LoggingService
 
     def __init__(
         self,
         key: str,
         period: int = 5,
         price_to_use: str = "close_price",
-        exponential: bool = False,
+        is_exponential: bool = False,
         candles: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """Initialize the Moving Average indicator with configuration parameters."""
         self._key = key
         self._period = period
         self._price_to_use = price_to_use
-        self._exponential = exponential
+        self._is_exponential = is_exponential
         self._candles = candles if candles is not None else []
         self._values = []
 
@@ -65,20 +67,20 @@ class MAIndicator(IndicatorInterface):
         if len(prices) < self._period:
             return
 
-        value = MAValueModel()
-        value.date = self._candles[-1]["close_time"]
+        moving_average_value = MAValueModel()
+        moving_average_value.date = self._candles[-1]["close_time"]
 
-        if self._exponential:
+        if self._is_exponential:
             if len(self._values) == 0:
-                value.value = self._compute_exponential(prices)
+                moving_average_value.value = self._compute_exponential(prices)
             else:
                 multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
                 current_price = self._candles[-1][self._price_to_use]
-                value.value = (current_price * multiplier) + (self._values[-1].value * (1 - multiplier))
+                moving_average_value.value = (current_price * multiplier) + (self._values[-1].value * (1 - multiplier))
         else:
-            value.value = self._compute_simple(prices)
+            moving_average_value.value = self._compute_simple(prices)
 
-        self._values.append(value)
+        self._values.append(moving_average_value)
 
     def _compute_exponential(self, prices: List[float]) -> float:
         multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
