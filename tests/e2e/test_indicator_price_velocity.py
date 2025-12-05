@@ -56,12 +56,11 @@ class TestIndicatorPriceVelocity(WrapperIndicator):
             expected_values,
             strict=True,
         ):
-            assert "i" in candle
-            assert "pv5" in candle["i"]
+            assert "pv5" in candle.indicators
 
-            candle_close_price = candle["close_price"]
+            candle_close_price = candle.close_price
             expected_close_price = expected["close"]
-            pv5_value = candle["i"]["pv5"]["value"]
+            pv5_value = candle.indicators["pv5"]["value"]
             expected_pv5_value = expected["pv5"]
 
             assert abs(candle_close_price - expected_close_price) < self._PRICE_TOLERANCE

@@ -56,12 +56,11 @@ class TestIndicatorVolatility(WrapperIndicator):
             expected_values,
             strict=True,
         ):
-            assert "i" in candle
-            assert "vol20" in candle["i"]
+            assert "vol20" in candle.indicators
 
-            candle_close_price = candle["close_price"]
+            candle_close_price = candle.close_price
             expected_close_price = expected["close"]
-            vol20_value = candle["i"]["vol20"]["value"]
+            vol20_value = candle.indicators["vol20"]["value"]
             expected_vol20_value = expected["vol20"]
 
             assert abs(candle_close_price - expected_close_price) < self._PRICE_TOLERANCE

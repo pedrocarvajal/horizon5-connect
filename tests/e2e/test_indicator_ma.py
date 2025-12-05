@@ -63,14 +63,13 @@ class TestIndicatorMA(WrapperIndicator):
             expected_values,
             strict=True,
         ):
-            assert "i" in candle
-            assert "sma5" in candle["i"]
-            assert "ema5" in candle["i"]
+            assert "sma5" in candle.indicators
+            assert "ema5" in candle.indicators
 
-            candle_close_price = candle["close_price"]
+            candle_close_price = candle.close_price
             expected_close_price = expected["close"]
-            sma5_value = candle["i"]["sma5"]["value"]
-            ema5_value = candle["i"]["ema5"]["value"]
+            sma5_value = candle.indicators["sma5"]["value"]
+            ema5_value = candle.indicators["ema5"]["value"]
             expected_sma5_value = expected["sma5"]
             expected_ema5_value = expected["ema5"]
 

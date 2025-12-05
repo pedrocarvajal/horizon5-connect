@@ -1,9 +1,10 @@
 """Price Acceleration indicator measuring rate of velocity change over time."""
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from interfaces.indicator import IndicatorInterface
+from models.candle import CandleModel
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -21,7 +22,7 @@ class PriceAccelerationIndicator(IndicatorInterface):
     _name: str = "Price Acceleration"
     _key: str
     _window_size: int
-    _candles: List[Dict[str, Any]]
+    _candles: List[CandleModel]
     _price_to_use: str
     _values: List[PriceAccelerationValueModel]
     _prices: List[float]
@@ -35,7 +36,7 @@ class PriceAccelerationIndicator(IndicatorInterface):
         key: str,
         window_size: int = 5,
         price_to_use: str = "close_price",
-        candles: Optional[List[Dict[str, Any]]] = None,
+        candles: Optional[List[CandleModel]] = None,
     ) -> None:
         """Initialize the Price Acceleration indicator with configuration parameters."""
         self._key = key
@@ -58,8 +59,8 @@ class PriceAccelerationIndicator(IndicatorInterface):
 
         if (
             len(self._candles) > 0
-            and tick.date >= self._candles[-1]["close_time"]
-            and self._should_refresh(self._candles[-1]["close_time"])
+            and tick.date >= self._candles[-1].close_time
+            and self._should_refresh(self._candles[-1].close_time)
         ):
             self.refresh()
 
@@ -68,12 +69,12 @@ class PriceAccelerationIndicator(IndicatorInterface):
         if len(self._candles) < self.MIN_TICKS_REQUIRED:
             return
 
-        current_price = self._candles[-1][self._price_to_use]
+        current_price = getattr(self._candles[-1], self._price_to_use)
         self._prices.append(current_price)
 
         if len(self._prices) < self.MIN_PRICES_FOR_VELOCITY:
             value = PriceAccelerationValueModel()
-            value.date = self._candles[-1]["close_time"]
+            value.date = self._candles[-1].close_time
             value.value = self.INITIAL_ACCELERATION
             self._values.append(value)
             return
@@ -83,7 +84,7 @@ class PriceAccelerationIndicator(IndicatorInterface):
 
         if len(self._velocities) < self.MIN_VELOCITIES_FOR_ACCELERATION:
             value = PriceAccelerationValueModel()
-            value.date = self._candles[-1]["close_time"]
+            value.date = self._candles[-1].close_time
             value.value = self.INITIAL_ACCELERATION
             self._values.append(value)
             return
@@ -95,7 +96,7 @@ class PriceAccelerationIndicator(IndicatorInterface):
         window_accelerations = self._accelerations[window_start:]
 
         value = PriceAccelerationValueModel()
-        value.date = self._candles[-1]["close_time"]
+        value.date = self._candles[-1].close_time
         value.value = sum(window_accelerations) / len(window_accelerations)
 
         self._values.append(value)

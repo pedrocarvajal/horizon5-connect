@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from enums.timeframe import Timeframe
 from interfaces.indicator import IndicatorInterface
+from models.candle import CandleModel
 from services.candle import CandleService
 from services.ticks import TicksService
 from tests.e2e.assets.btcusdt import BTCUSDT
@@ -61,7 +62,7 @@ class WrapperIndicator(unittest.TestCase):
         from_date: datetime.datetime,
         to_date: datetime.datetime,
         indicators: Optional[List[IndicatorInterface]] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[CandleModel]:
         """
         Generate candles with optional indicators for a date range.
 
@@ -75,7 +76,7 @@ class WrapperIndicator(unittest.TestCase):
             indicators: Optional list of indicators to attach to candles.
 
         Returns:
-            List of candle dictionaries with indicator values.
+            List of CandleModel instances with indicator values.
         """
         service = CandleService(
             timeframe=timeframe,

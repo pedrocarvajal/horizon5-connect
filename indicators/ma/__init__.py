@@ -1,9 +1,10 @@
 """Moving Average indicator implementation."""
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from interfaces.indicator import IndicatorInterface
+from models.candle import CandleModel
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -20,7 +21,7 @@ class MAIndicator(IndicatorInterface):
     _period: int
     _price_to_use: str
     _is_exponential: bool
-    _candles: List[Dict[str, Any]]
+    _candles: List[CandleModel]
     _values: List[MAValueModel]
 
     _log: LoggingService
@@ -31,7 +32,7 @@ class MAIndicator(IndicatorInterface):
         period: int = 5,
         price_to_use: str = "close_price",
         is_exponential: bool = False,
-        candles: Optional[List[Dict[str, Any]]] = None,
+        candles: Optional[List[CandleModel]] = None,
     ) -> None:
         """Initialize the Moving Average indicator with configuration parameters."""
         self._key = key
@@ -52,8 +53,8 @@ class MAIndicator(IndicatorInterface):
 
         if (
             len(self._candles) > 0
-            and tick.date >= self._candles[-1]["close_time"]
-            and self._should_refresh(self._candles[-1]["close_time"])
+            and tick.date >= self._candles[-1].close_time
+            and self._should_refresh(self._candles[-1].close_time)
         ):
             self.refresh()
 
@@ -62,20 +63,20 @@ class MAIndicator(IndicatorInterface):
         if len(self._candles) < self._period:
             return
 
-        prices = [candle[self._price_to_use] for candle in self._candles[-self._period :]]
+        prices = [getattr(candle, self._price_to_use) for candle in self._candles[-self._period :]]
 
         if len(prices) < self._period:
             return
 
         moving_average_value = MAValueModel()
-        moving_average_value.date = self._candles[-1]["close_time"]
+        moving_average_value.date = self._candles[-1].close_time
 
         if self._is_exponential:
             if len(self._values) == 0:
                 moving_average_value.value = self._compute_exponential(prices)
             else:
                 multiplier = self._MULTIPLIER_COEFFICIENT / (self._period + 1)
-                current_price = self._candles[-1][self._price_to_use]
+                current_price = getattr(self._candles[-1], self._price_to_use)
                 moving_average_value.value = (current_price * multiplier) + (self._values[-1].value * (1 - multiplier))
         else:
             moving_average_value.value = self._compute_simple(prices)

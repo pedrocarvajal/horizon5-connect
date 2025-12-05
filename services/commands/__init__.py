@@ -1,20 +1,22 @@
 """Commands service for inter-process communication and command handling."""
 
-import datetime
 from multiprocessing import Queue
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from enums.command import Command
+from interfaces.commands import CommandsInterface
+from models.command import CommandModel
 from services.logging import LoggingService
 
 
-class CommandsService:
+class CommandsService(CommandsInterface):
     """Service that processes commands from the command queue."""
 
     _commands_queue: Optional["Queue[Any]"]
     _events_queue: Optional["Queue[Any]"]
-    _commands: Dict[str, Any]
-    _ping_made_at: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
+    _commands: Dict[Command, None]
+
+    _log: LoggingService
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the commands service with queue connections."""
@@ -29,31 +31,11 @@ class CommandsService:
             Command.EXECUTE: None,
         }
 
-        self._check_commands_queue()
+        self.start()
 
-    def _check_commands_queue(self) -> None:
-        if self._commands_queue is None:
-            self._log.error("Commands queue is not set")
-            return
-
-        if self._events_queue is None:
-            self._log.error("Events queue is not set")
-            return
-
-        while True:
-            command = self._commands_queue.get()
-            success, kill = self._process_command(command)
-
-            if not success:
-                self._log.error(f"Failed to process command {command}")
-                continue
-
-            if kill:
-                self._log.info("Shutdown commands handler")
-                break
-
-    def _process_command(self, command: Dict[str, Any]) -> tuple[bool, bool]:
-        command_type = command.get("command")
+    def process_command(self, command: CommandModel) -> Tuple[bool, bool]:
+        """Process a single command from the queue."""
+        command_type = command.command
 
         if command_type not in self._commands:
             self._log.error(f"Command {command_type} not found")
@@ -64,8 +46,8 @@ class CommandsService:
             return True, True
 
         if command_type.is_execute():
-            function: Optional[Callable[..., Any]] = command.get("function")
-            args: Optional[Dict[str, Any]] = command.get("args")
+            function: Optional[Callable[..., Any]] = command.function
+            args: Optional[Dict[str, Any]] = command.args
 
             if function is None:
                 self._log.error("Function is not set in command")
@@ -83,9 +65,32 @@ class CommandsService:
 
                 return True, False
 
-            except Exception as e:
+            except Exception as exception:
                 self._log.error("Failed to execute command")
-                self._log.error(str(e))
+                self._log.error(str(exception))
                 return False, False
 
         return True, False
+
+    def start(self) -> None:
+        """Start processing commands from the queue."""
+        if self._commands_queue is None:
+            self._log.error("Commands queue is not set")
+            return
+
+        if self._events_queue is None:
+            self._log.error("Events queue is not set")
+            return
+
+        while True:
+            command_data = self._commands_queue.get()
+            command = CommandModel(**command_data)
+            success, kill = self.process_command(command)
+
+            if not success:
+                self._log.error(f"Failed to process command {command}")
+                continue
+
+            if kill:
+                self._log.info("Shutdown commands handler")
+                break

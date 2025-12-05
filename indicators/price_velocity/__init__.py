@@ -1,9 +1,10 @@
 """Price Velocity indicator measuring rate of price change over time."""
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from interfaces.indicator import IndicatorInterface
+from models.candle import CandleModel
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -19,7 +20,7 @@ class PriceVelocityIndicator(IndicatorInterface):
     _name: str = "Price Velocity"
     _key: str
     _window_size: int
-    _candles: List[Dict[str, Any]]
+    _candles: List[CandleModel]
     _price_to_use: str
     _values: List[PriceVelocityValueModel]
     _prices: List[float]
@@ -30,7 +31,7 @@ class PriceVelocityIndicator(IndicatorInterface):
         key: str,
         window_size: int = 5,
         price_to_use: str = "close_price",
-        candles: Optional[List[Dict[str, Any]]] = None,
+        candles: Optional[List[CandleModel]] = None,
     ) -> None:
         """Initialize the Price Velocity indicator with configuration parameters."""
         self._key = key
@@ -52,8 +53,8 @@ class PriceVelocityIndicator(IndicatorInterface):
 
         if (
             len(self._candles) > 0
-            and tick.date >= self._candles[-1]["close_time"]
-            and self._should_refresh(self._candles[-1]["close_time"])
+            and tick.date >= self._candles[-1].close_time
+            and self._should_refresh(self._candles[-1].close_time)
         ):
             self.refresh()
 
@@ -62,12 +63,12 @@ class PriceVelocityIndicator(IndicatorInterface):
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
             return
 
-        current_price = self._candles[-1][self._price_to_use]
+        current_price = getattr(self._candles[-1], self._price_to_use)
         self._prices.append(current_price)
 
         if len(self._prices) < self._MIN_TICKS_REQUIRED:
             value = PriceVelocityValueModel()
-            value.date = self._candles[-1]["close_time"]
+            value.date = self._candles[-1].close_time
             value.value = self._INITIAL_VELOCITY
             self._values.append(value)
             return
@@ -79,7 +80,7 @@ class PriceVelocityIndicator(IndicatorInterface):
         window_velocities = self._velocities[window_start:]
 
         value = PriceVelocityValueModel()
-        value.date = self._candles[-1]["close_time"]
+        value.date = self._candles[-1].close_time
         value.value = sum(window_velocities) / len(window_velocities)
 
         self._values.append(value)

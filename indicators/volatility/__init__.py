@@ -1,9 +1,10 @@
 """Volatility indicator implementation using standard deviation of returns."""
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from interfaces.indicator import IndicatorInterface
+from models.candle import CandleModel
 from models.tick import TickModel
 from services.logging import LoggingService
 
@@ -19,7 +20,7 @@ class VolatilityIndicator(IndicatorInterface):
     _name: str = "Volatility"
     _key: str
     _window_size: int
-    _candles: List[Dict[str, Any]]
+    _candles: List[CandleModel]
     _price_to_use: str
     _values: List[VolatilityValueModel]
     _prices: List[float]
@@ -32,7 +33,7 @@ class VolatilityIndicator(IndicatorInterface):
         key: str,
         window_size: int = 20,
         price_to_use: str = "close_price",
-        candles: Optional[List[Dict[str, Any]]] = None,
+        candles: Optional[List[CandleModel]] = None,
     ) -> None:
         """Initialize the Volatility indicator with configuration parameters."""
         self._key = key
@@ -53,8 +54,8 @@ class VolatilityIndicator(IndicatorInterface):
 
         if (
             len(self._candles) > 0
-            and tick.date >= self._candles[-1]["close_time"]
-            and self._should_refresh(self._candles[-1]["close_time"])
+            and tick.date >= self._candles[-1].close_time
+            and self._should_refresh(self._candles[-1].close_time)
         ):
             self.refresh()
 
@@ -63,12 +64,12 @@ class VolatilityIndicator(IndicatorInterface):
         if len(self._candles) < self._MIN_TICKS_REQUIRED:
             return
 
-        current_price = self._candles[-1][self._price_to_use]
+        current_price = getattr(self._candles[-1], self._price_to_use)
         self._prices.append(current_price)
 
         if len(self._prices) < self._MIN_TICKS_REQUIRED:
             value = VolatilityValueModel()
-            value.date = self._candles[-1]["close_time"]
+            value.date = self._candles[-1].close_time
             value.value = self._INITIAL_VOLATILITY
             self._values.append(value)
             return
@@ -80,7 +81,7 @@ class VolatilityIndicator(IndicatorInterface):
         window_returns = self._returns[window_start:]
 
         value = VolatilityValueModel()
-        value.date = self._candles[-1]["close_time"]
+        value.date = self._candles[-1].close_time
         value.value = self._compute_std(window_returns)
 
         self._values.append(value)

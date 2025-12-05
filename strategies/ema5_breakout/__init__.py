@@ -169,8 +169,8 @@ class EMA5BreakoutStrategy(StrategyService):
         candle_service = self._candles[Timeframe.ONE_HOUR]
         assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
-        current_ema5 = candles[-1]["i"]["ema5"]["value"]
-        previous_ema5 = candles[-2]["i"]["ema5"]["value"]
+        current_ema5 = candles[-1].indicators["ema5"]["value"]
+        previous_ema5 = candles[-2].indicators["ema5"]["value"]
 
         if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
             if self.is_live:
@@ -209,9 +209,7 @@ class EMA5BreakoutStrategy(StrategyService):
         candle_service = self._candles[Timeframe.ONE_HOUR]
         assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
-        ema5s = [
-            candle["i"]["ema5"] for candle in candles[-min_candles_required:] if "i" in candle and "ema5" in candle["i"]
-        ]
+        ema5s = [candle.indicators["ema5"] for candle in candles[-min_candles_required:] if "ema5" in candle.indicators]
 
         if len(ema5s) < min_candles_required:
             self._log.warning(f"Not enough EMA5 values ({len(ema5s)}) to calculate.")

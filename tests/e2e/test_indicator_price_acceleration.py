@@ -56,12 +56,11 @@ class TestIndicatorPriceAcceleration(WrapperIndicator):
             expected_values,
             strict=True,
         ):
-            assert "i" in candle
-            assert "pa5" in candle["i"]
+            assert "pa5" in candle.indicators
 
-            candle_close_price = candle["close_price"]
+            candle_close_price = candle.close_price
             expected_close_price = expected["close"]
-            pa5_value = candle["i"]["pa5"]["value"]
+            pa5_value = candle.indicators["pa5"]["value"]
             expected_pa5_value = expected["pa5"]
 
             assert abs(candle_close_price - expected_close_price) < self._PRICE_TOLERANCE
