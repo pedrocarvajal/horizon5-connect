@@ -25,6 +25,8 @@ class VolatilityIndicator(IndicatorInterface):
     _prices: List[float]
     _returns: List[float]
 
+    _log: LoggingService
+
     def __init__(
         self,
         key: str,
@@ -40,7 +42,6 @@ class VolatilityIndicator(IndicatorInterface):
         self._values = []
         self._prices = []
         self._returns = []
-
         self._log = LoggingService()
 
     def on_tick(self, tick: TickModel) -> None:

@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from enums.order_side import OrderSide
 from enums.order_type import OrderType
-from helpers.parse import parse_optional_float, parse_timestamp_ms
+from helpers.parse_optional_float import parse_optional_float
+from helpers.parse_timestamp_ms import parse_timestamp_ms
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.gateways.binance.components.symbol import SymbolComponent
 from services.gateway.gateways.binance.enums.binance_order_status import BinanceOrderStatus

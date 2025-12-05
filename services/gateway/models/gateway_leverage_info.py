@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from helpers.parse import parse_int as parse_int_helper
+from helpers.parse_int import parse_int as parse_int_helper
 
 
 class GatewayLeverageInfoModel(BaseModel):

@@ -9,7 +9,7 @@ import requests
 
 from configs.timezone import TIMEZONE
 from enums.http_status import HttpStatus
-from helpers.parse import parse_timestamp_ms
+from helpers.parse_timestamp_ms import parse_timestamp_ms
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_kline import GatewayKlineModel

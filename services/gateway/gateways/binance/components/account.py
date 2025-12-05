@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from helpers.parse import parse_optional_float
+from helpers.parse_optional_float import parse_optional_float
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.gateways.binance.components.position import PositionComponent
 from services.gateway.gateways.binance.components.symbol import SymbolComponent

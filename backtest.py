@@ -10,7 +10,7 @@ from typing import Any
 
 from configs.timezone import TIMEZONE
 from helpers.get_portfolio_by_path import get_portfolio_by_path
-from helpers.parse import parse_date
+from helpers.parse_date import parse_date
 from services.authentication import AuthenticationService
 from services.backtest import BacktestService
 from services.commands import CommandsService

@@ -5,16 +5,8 @@ import unicodedata
 from typing import Dict, Optional
 
 
-def ascii(text: str) -> str:
-    """
-    Remove accentuated characters, converting to ASCII.
-
-    Args:
-        text: Text with potentially accented characters
-
-    Returns:
-        ASCII version of text with accents removed
-    """
+def _normalize_to_ascii(text: str) -> str:
+    """Remove accentuated characters, converting to ASCII."""
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
 
@@ -37,7 +29,7 @@ def get_slug(
     if dictionary is None:
         dictionary = {"@": "at"}
 
-    title = ascii(title)
+    title = _normalize_to_ascii(title)
     flip = "_" if separator == "-" else "-"
     title = re.sub(rf"[{re.escape(flip)}]+", separator, title)
     dict_with_separators = {k: f"{separator}{v}{separator}" for k, v in dictionary.items()}

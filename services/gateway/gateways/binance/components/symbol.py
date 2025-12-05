@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, cast
 import requests
 
 from enums.http_status import HttpStatus
-from helpers.parse import parse_optional_float
+from helpers.parse_optional_float import parse_optional_float
 from services.gateway.gateways.binance.components.base import BaseComponent
 from services.gateway.helpers import has_api_error
 from services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel

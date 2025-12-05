@@ -8,7 +8,7 @@ from typing import ClassVar, Dict, List
 import websockets
 
 from configs.timezone import TIMEZONE
-from helpers.parse import parse_optional_float
+from helpers.parse_optional_float import parse_optional_float
 from models.tick import TickModel
 from services.gateway.gateways.binance.components.base import BaseComponent
 
