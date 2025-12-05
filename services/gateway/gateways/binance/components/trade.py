@@ -54,12 +54,8 @@ class TradeComponent(BaseComponent):
             >>> print(f"Found {len(trades)} trades")
         """
         if not self._validate_trades_params(
-            _symbol=symbol,
-            _pair=pair,
-            _order_id=order_id,
             start_time=start_time,
             end_time=end_time,
-            _from_id=from_id,
             limit=limit,
         ):
             return []
@@ -85,40 +81,79 @@ class TradeComponent(BaseComponent):
             order_id=order_id,
         )
 
-    def _validate_trades_params(
+    def _adapt_trade_response(
         self,
-        _symbol: Optional[str],
-        _pair: Optional[str],
-        _order_id: Optional[str],
-        start_time: Optional[datetime],
-        end_time: Optional[datetime],
-        _from_id: Optional[int],
-        limit: int,
-    ) -> bool:
+        response: Dict[str, Any],
+    ) -> Optional[GatewayTradeModel]:
         """
-        Validate parameters for get_trades method.
+        Adapt a single trade response from Binance API to GatewayTradeModel.
 
         Args:
-            symbol: Trading symbol to validate.
-            pair: Trading pair to validate.
-            order_id: Order ID to validate.
-            start_time: Start datetime to validate.
-            end_time: End datetime to validate.
-            from_id: Trade ID to validate.
-            limit: Limit value to validate.
+            response: Dictionary containing trade data from Binance API.
 
         Returns:
-            bool: True if all validations pass, False otherwise.
+            Optional[GatewayTradeModel]: Adapted trade model or None if
+                response is invalid or contains errors.
         """
-        if start_time and end_time and start_time > end_time:
-            self._log.error("start_time must be before end_time")
-            return False
+        if not response:
+            return None
 
-        if limit <= 0:
-            self._log.error("limit must be greater than 0")
-            return False
+        has_error, error_msg, error_code = has_api_error(response=response)
 
-        return True
+        if has_error:
+            self._log.error(f"API Error: {error_msg} (code: {error_code})")
+            return None
+
+        trade_id = str(response.get("id", ""))
+        order_id = str(response.get("orderId", ""))
+        symbol = response.get("symbol", "").upper()
+        side_str = response.get("side", "").upper()
+        side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
+        price = parse_optional_float(value=response.get("price", 0))
+        volume = parse_optional_float(value=response.get("qty", 0))
+        commission = parse_optional_float(value=response.get("commission", 0))
+        commission_asset = response.get("commissionAsset", "")
+        timestamp = response.get("time")
+
+        return GatewayTradeModel(
+            id=trade_id,
+            order_id=order_id,
+            symbol=symbol,
+            side=side,
+            price=price or 0.0,
+            volume=volume or 0.0,
+            commission=commission or 0.0,
+            commission_asset=commission_asset,
+            timestamp=timestamp,
+            response=response,
+        )
+
+    def _adapt_trades_batch(
+        self,
+        response: List[Dict[str, Any]],
+    ) -> List[GatewayTradeModel]:
+        """
+        Adapt a batch of trade responses from Binance API to GatewayTradeModel list.
+
+        Args:
+            response: List of dictionaries containing trade data from Binance API.
+
+        Returns:
+            List[GatewayTradeModel]: List of adapted trade models. Returns empty
+                list if response is invalid or empty.
+        """
+        trades: List[GatewayTradeModel] = []
+
+        if not response:
+            return trades
+
+        for trade_data in response:
+            adapted_trade = self._adapt_trade_response(response=trade_data)
+
+            if adapted_trade:
+                trades.append(adapted_trade)
+
+        return trades
 
     def _build_trades_params(
         self,
@@ -201,76 +236,29 @@ class TradeComponent(BaseComponent):
 
         return trades
 
-    def _adapt_trade_response(
+    def _validate_trades_params(
         self,
-        response: Dict[str, Any],
-    ) -> Optional[GatewayTradeModel]:
+        start_time: Optional[datetime],
+        end_time: Optional[datetime],
+        limit: int,
+    ) -> bool:
         """
-        Adapt a single trade response from Binance API to GatewayTradeModel.
+        Validate parameters for get_trades method.
 
         Args:
-            response: Dictionary containing trade data from Binance API.
+            start_time: Start datetime to validate.
+            end_time: End datetime to validate.
+            limit: Limit value to validate.
 
         Returns:
-            Optional[GatewayTradeModel]: Adapted trade model or None if
-                response is invalid or contains errors.
+            bool: True if all validations pass, False otherwise.
         """
-        if not response:
-            return None
+        if start_time and end_time and start_time > end_time:
+            self._log.error("start_time must be before end_time")
+            return False
 
-        has_error, error_msg, error_code = has_api_error(response=response)
+        if limit <= 0:
+            self._log.error("limit must be greater than 0")
+            return False
 
-        if has_error:
-            self._log.error(f"API Error: {error_msg} (code: {error_code})")
-            return None
-
-        trade_id = str(response.get("id", ""))
-        order_id = str(response.get("orderId", ""))
-        symbol = response.get("symbol", "").upper()
-        side_str = response.get("side", "").upper()
-        side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
-        price = parse_optional_float(value=response.get("price", 0))
-        volume = parse_optional_float(value=response.get("qty", 0))
-        commission = parse_optional_float(value=response.get("commission", 0))
-        commission_asset = response.get("commissionAsset", "")
-        timestamp = response.get("time")
-
-        return GatewayTradeModel(
-            id=trade_id,
-            order_id=order_id,
-            symbol=symbol,
-            side=side,
-            price=price or 0.0,
-            volume=volume or 0.0,
-            commission=commission or 0.0,
-            commission_asset=commission_asset,
-            timestamp=timestamp,
-            response=response,
-        )
-
-    def _adapt_trades_batch(
-        self,
-        response: List[Dict[str, Any]],
-    ) -> List[GatewayTradeModel]:
-        """
-        Adapt a batch of trade responses from Binance API to GatewayTradeModel list.
-
-        Args:
-            response: List of dictionaries containing trade data from Binance API.
-
-        Returns:
-            List[GatewayTradeModel]: List of adapted trade models. Returns empty
-                list if response is invalid or empty.
-        """
-        trades: List[GatewayTradeModel] = []
-
-        if not response:
-            return trades
-
-        for trade_data in response:
-            adapted_trade = self._adapt_trade_response(response=trade_data)
-
-            if adapted_trade:
-                trades.append(adapted_trade)
-
-        return trades
+        return True

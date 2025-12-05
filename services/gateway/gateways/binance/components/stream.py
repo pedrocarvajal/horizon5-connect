@@ -58,9 +58,6 @@ class StreamComponent(BaseComponent):
         if not self._validate_streams(streams=streams):
             return
 
-        if not self._validate_callback(_callback=callback):
-            return
-
         if not self._validate_supported_streams(streams=streams):
             return
 
@@ -74,68 +71,36 @@ class StreamComponent(BaseComponent):
                     callback=callback,
                 )
 
-    def _validate_streams(
+    def _adapt_tick_from_stream(
         self,
-        streams: List[str],
-    ) -> bool:
+        response: Dict[str, str],
+    ) -> TickModel:
         """
-        Validate the streams parameter.
+        Adapt Binance stream response to TickModel.
+
+        Extracts bid and ask prices from the Binance bookTicker stream response,
+        calculates the mid price, and creates a TickModel instance with the current
+        timestamp.
 
         Args:
-            streams: List of stream names to validate.
+            response: Dictionary containing Binance stream data with keys:
+                - "b": Best bid price (string)
+                - "a": Best ask price (string)
 
         Returns:
-            bool: True if streams are valid, False otherwise.
+            TickModel: Instance containing price, bid, ask, and timestamp data.
         """
-        if not streams:
-            self._log.error("streams is required")
-            return False
+        best_bid = parse_optional_float(value=response.get("b", "0.0")) or 0.0
+        best_ask = parse_optional_float(value=response.get("a", "0.0")) or 0.0
+        price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
-        if len(streams) == 0:
-            self._log.error("streams must not be empty")
-            return False
-
-        for stream in streams:
-            if not stream:
-                self._log.error("stream item cannot be empty")
-                return False
-
-        return True
-
-    def _validate_callback(
-        self,
-        _callback: Callable[[TickModel], Awaitable[None]],
-    ) -> bool:
-        """
-        Validate the callback parameter.
-
-        Args:
-            callback: Callback function to validate.
-
-        Returns:
-            bool: True if callback is valid, False otherwise.
-        """
-        return True
-
-    def _validate_supported_streams(
-        self,
-        streams: List[str],
-    ) -> bool:
-        """
-        Validate that all streams are supported types.
-
-        Args:
-            streams: List of stream names to validate.
-
-        Returns:
-            bool: True if all streams are supported, False otherwise.
-        """
-        for stream in streams:
-            if not any(stream.endswith(suffix) for suffix in self.SUPPORTED_STREAM_TYPES):
-                self._log.error(f"Unsupported stream: {stream}")
-                return False
-
-        return True
+        return TickModel(
+            is_simulated=False,
+            price=price,
+            bid_price=best_bid,
+            ask_price=best_ask,
+            date=datetime.datetime.now(tz=TIMEZONE),
+        )
 
     def _build_stream_url(
         self,
@@ -182,33 +147,50 @@ class StreamComponent(BaseComponent):
         tick = self._adapt_tick_from_stream(response=data)
         await callback(tick)
 
-    def _adapt_tick_from_stream(
+    def _validate_streams(
         self,
-        response: Dict[str, str],
-    ) -> TickModel:
+        streams: List[str],
+    ) -> bool:
         """
-        Adapt Binance stream response to TickModel.
-
-        Extracts bid and ask prices from the Binance bookTicker stream response,
-        calculates the mid price, and creates a TickModel instance with the current
-        timestamp.
+        Validate the streams parameter.
 
         Args:
-            response: Dictionary containing Binance stream data with keys:
-                - "b": Best bid price (string)
-                - "a": Best ask price (string)
+            streams: List of stream names to validate.
 
         Returns:
-            TickModel: Instance containing price, bid, ask, and timestamp data.
+            bool: True if streams are valid, False otherwise.
         """
-        best_bid = parse_optional_float(value=response.get("b", "0.0")) or 0.0
-        best_ask = parse_optional_float(value=response.get("a", "0.0")) or 0.0
-        price = (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
+        if not streams:
+            self._log.error("streams is required")
+            return False
 
-        return TickModel(
-            is_simulated=False,
-            price=price,
-            bid_price=best_bid,
-            ask_price=best_ask,
-            date=datetime.datetime.now(tz=TIMEZONE),
-        )
+        if len(streams) == 0:
+            self._log.error("streams must not be empty")
+            return False
+
+        for stream in streams:
+            if not stream:
+                self._log.error("stream item cannot be empty")
+                return False
+
+        return True
+
+    def _validate_supported_streams(
+        self,
+        streams: List[str],
+    ) -> bool:
+        """
+        Validate that all streams are supported types.
+
+        Args:
+            streams: List of stream names to validate.
+
+        Returns:
+            bool: True if all streams are supported, False otherwise.
+        """
+        for stream in streams:
+            if not any(stream.endswith(suffix) for suffix in self.SUPPORTED_STREAM_TYPES):
+                self._log.error(f"Unsupported stream: {stream}")
+                return False
+
+        return True

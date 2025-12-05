@@ -25,6 +25,55 @@ class SymbolComponent(BaseComponent):
         _log: Logging service instance for logging operations.
     """
 
+    def get_leverage_info(
+        self,
+        symbol: str,
+    ) -> Optional[GatewayLeverageInfoModel]:
+        """
+        Retrieve leverage information for a symbol with an open position.
+
+        Returns leverage details for the symbol if there is an active position.
+        If no position exists, returns None.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewayLeverageInfoModel containing leverage and symbol information,
+            or None if no position exists or request fails.
+
+        Example:
+            >>> component = SymbolComponent(config)
+            >>> leverage_info = component.get_leverage_info("BTCUSDT")
+            >>> if leverage_info:
+            ...     print(f"Current leverage: {leverage_info.leverage}x")
+        """
+        if not self._validate_symbol(symbol=symbol):
+            return None
+
+        url = f"{self._config.fapi_v2_url}/positionRisk"
+        params = {"symbol": symbol.upper()}
+
+        response = self._execute(
+            method="GET",
+            url=url,
+            params=params,
+        )
+
+        if not response:
+            return None
+
+        has_error, error_msg, error_code = has_api_error(response=response)
+
+        if has_error:
+            self._log.error(f"Failed to get leverage info: {error_msg} (code: {error_code})")
+            return None
+
+        return self._adapt_leverage_info(
+            symbol=symbol,
+            response=response,
+        )
+
     def get_symbol_info(
         self,
         symbol: str,
@@ -109,55 +158,6 @@ class SymbolComponent(BaseComponent):
 
         return self._adapt_trading_fees(response=response)
 
-    def get_leverage_info(
-        self,
-        symbol: str,
-    ) -> Optional[GatewayLeverageInfoModel]:
-        """
-        Retrieve leverage information for a symbol with an open position.
-
-        Returns leverage details for the symbol if there is an active position.
-        If no position exists, returns None.
-
-        Args:
-            symbol: Trading pair symbol (e.g., "BTCUSDT").
-
-        Returns:
-            GatewayLeverageInfoModel containing leverage and symbol information,
-            or None if no position exists or request fails.
-
-        Example:
-            >>> component = SymbolComponent(config)
-            >>> leverage_info = component.get_leverage_info("BTCUSDT")
-            >>> if leverage_info:
-            ...     print(f"Current leverage: {leverage_info.leverage}x")
-        """
-        if not self._validate_symbol(symbol=symbol):
-            return None
-
-        url = f"{self._config.fapi_v2_url}/positionRisk"
-        params = {"symbol": symbol.upper()}
-
-        response = self._execute(
-            method="GET",
-            url=url,
-            params=params,
-        )
-
-        if not response:
-            return None
-
-        has_error, error_msg, error_code = has_api_error(response=response)
-
-        if has_error:
-            self._log.error(f"Failed to get leverage info: {error_msg} (code: {error_code})")
-            return None
-
-        return self._adapt_leverage_info(
-            symbol=symbol,
-            response=response,
-        )
-
     def set_leverage(
         self,
         symbol: str,
@@ -211,69 +211,44 @@ class SymbolComponent(BaseComponent):
 
         return True
 
-    def _validate_symbol(
+    def _adapt_leverage_info(
         self,
         symbol: str,
-    ) -> bool:
+        response: Any,
+    ) -> Optional[GatewayLeverageInfoModel]:
         """
-        Validate that symbol parameter is a non-empty string.
+        Adapt Binance position risk response to GatewayLeverageInfoModel.
 
-        Args:
-            symbol: Symbol to validate.
-
-        Returns:
-            True if symbol is valid, False otherwise.
-        """
-        if not symbol:
-            self._log.error("symbol is required")
-            return False
-
-        return True
-
-    def _validate_leverage_params(
-        self,
-        symbol: str,
-        leverage: int,
-    ) -> bool:
-        """
-        Validate symbol and leverage parameters for set_leverage method.
-
-        Args:
-            symbol: Trading pair symbol to validate.
-            leverage: Leverage value to validate.
-
-        Returns:
-            True if both parameters are valid, False otherwise.
-        """
-        if not self._validate_symbol(symbol=symbol):
-            return False
-
-        if leverage <= 0:
-            self._log.error("leverage must be greater than 0")
-            return False
-
-        return True
-
-    def _get_trading_fees(
-        self,
-        symbol: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Execute API request to retrieve trading fees.
+        Finds the first position with non-zero amount and extracts leverage info.
 
         Args:
             symbol: Trading pair symbol.
+            response: API response list containing position data.
 
         Returns:
-            API response dictionary or None if request fails.
+            GatewayLeverageInfoModel if position found, None otherwise.
         """
-        return self._execute(
-            method="GET",
-            url=f"{self._config.fapi_url}/commissionRate",
-            params={
-                "symbol": symbol.upper(),
-            },
-        )
+        if not response:
+            return None
+
+        if not isinstance(response, list):
+            return None
+
+        position_list = cast(List[Dict[str, Any]], response)
+
+        if len(position_list) == 0:
+            return None
+
+        for position_data in position_list:
+            leverage = int(position_data.get("leverage", 1))
+
+            return GatewayLeverageInfoModel(
+                symbol=symbol.upper(),
+                leverage=leverage,
+                response=position_data,
+            )
+
+        return None
 
     def _adapt_symbol_info(
         self,
@@ -314,6 +289,70 @@ class SymbolComponent(BaseComponent):
             status=symbol_info.get("status", "TRADING"),
             margin_percent=margin_percent,
             response=symbol_info,
+        )
+
+    def _adapt_trading_fees(
+        self,
+        response: Any,
+    ) -> Optional[GatewayTradingFeesModel]:
+        """
+        Adapt Binance commission rate response to GatewayTradingFeesModel.
+
+        Handles both list and dictionary response formats from the API.
+
+        Args:
+            response: API response (can be list or dict) containing fee information.
+
+        Returns:
+            GatewayTradingFeesModel instance or None if response is invalid.
+        """
+        if not response:
+            return None
+
+        if isinstance(response, list):
+            response_list = cast(List[Dict[str, Any]], response)
+            if len(response_list) > 0:
+                fees_data = response_list[0]
+            else:
+                return None
+        elif isinstance(response, dict):
+            fees_data = cast(Dict[str, Any], response)
+        else:
+            return None
+
+        if not fees_data:
+            return None
+
+        symbol_name: str = str(fees_data.get("symbol", ""))
+        maker_commission: Optional[float] = fees_data.get("makerCommissionRate")
+        taker_commission: Optional[float] = fees_data.get("takerCommissionRate")
+
+        return GatewayTradingFeesModel(
+            symbol=symbol_name,
+            maker_commission=maker_commission,
+            taker_commission=taker_commission,
+            response=fees_data,
+        )
+
+    def _get_trading_fees(
+        self,
+        symbol: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Execute API request to retrieve trading fees.
+
+        Args:
+            symbol: Trading pair symbol.
+
+        Returns:
+            API response dictionary or None if request fails.
+        """
+        return self._execute(
+            method="GET",
+            url=f"{self._config.fapi_url}/commissionRate",
+            params={
+                "symbol": symbol.upper(),
+            },
         )
 
     def _parse_filters(
@@ -409,84 +448,45 @@ class SymbolComponent(BaseComponent):
 
         return None
 
-    def _adapt_leverage_info(
+    def _validate_leverage_params(
         self,
         symbol: str,
-        response: Any,
-    ) -> Optional[GatewayLeverageInfoModel]:
+        leverage: int,
+    ) -> bool:
         """
-        Adapt Binance position risk response to GatewayLeverageInfoModel.
-
-        Finds the first position with non-zero amount and extracts leverage info.
+        Validate symbol and leverage parameters for set_leverage method.
 
         Args:
-            symbol: Trading pair symbol.
-            response: API response list containing position data.
+            symbol: Trading pair symbol to validate.
+            leverage: Leverage value to validate.
 
         Returns:
-            GatewayLeverageInfoModel if position found, None otherwise.
+            True if both parameters are valid, False otherwise.
         """
-        if not response:
-            return None
+        if not self._validate_symbol(symbol=symbol):
+            return False
 
-        if not isinstance(response, list):
-            return None
+        if leverage <= 0:
+            self._log.error("leverage must be greater than 0")
+            return False
 
-        position_list = cast(List[Dict[str, Any]], response)
+        return True
 
-        if len(position_list) == 0:
-            return None
-
-        for position_data in position_list:
-            leverage = int(position_data.get("leverage", 1))
-
-            return GatewayLeverageInfoModel(
-                symbol=symbol.upper(),
-                leverage=leverage,
-                response=position_data,
-            )
-
-        return None
-
-    def _adapt_trading_fees(
+    def _validate_symbol(
         self,
-        response: Any,
-    ) -> Optional[GatewayTradingFeesModel]:
+        symbol: str,
+    ) -> bool:
         """
-        Adapt Binance commission rate response to GatewayTradingFeesModel.
-
-        Handles both list and dictionary response formats from the API.
+        Validate that symbol parameter is a non-empty string.
 
         Args:
-            response: API response (can be list or dict) containing fee information.
+            symbol: Symbol to validate.
 
         Returns:
-            GatewayTradingFeesModel instance or None if response is invalid.
+            True if symbol is valid, False otherwise.
         """
-        if not response:
-            return None
+        if not symbol:
+            self._log.error("symbol is required")
+            return False
 
-        if isinstance(response, list):
-            response_list = cast(List[Dict[str, Any]], response)
-            if len(response_list) > 0:
-                fees_data = response_list[0]
-            else:
-                return None
-        elif isinstance(response, dict):
-            fees_data = cast(Dict[str, Any], response)
-        else:
-            return None
-
-        if not fees_data:
-            return None
-
-        symbol_name: str = str(fees_data.get("symbol", ""))
-        maker_commission: Optional[float] = fees_data.get("makerCommissionRate")
-        taker_commission: Optional[float] = fees_data.get("takerCommissionRate")
-
-        return GatewayTradingFeesModel(
-            symbol=symbol_name,
-            maker_commission=maker_commission,
-            taker_commission=taker_commission,
-            response=fees_data,
-        )
+        return True

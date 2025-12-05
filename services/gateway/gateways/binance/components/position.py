@@ -21,58 +21,6 @@ class PositionComponent(BaseComponent):
         _log: Logging service instance for logging operations.
     """
 
-    def get_positions(
-        self,
-        symbol: Optional[str] = None,
-        pair: Optional[str] = None,
-    ) -> List[GatewayPositionModel]:
-        """
-        Retrieve positions from Binance Futures API.
-
-        Fetches position information for all symbols or filters by symbol or pair.
-        Returns a list of position models containing symbol, side, volume, entry price,
-        and unrealized PnL. Returns empty list if request fails or no positions exist.
-
-        Args:
-            symbol: Optional trading pair symbol to filter positions (e.g., "BTCUSDT").
-            pair: Optional trading pair to filter positions (e.g., "BTCUSDT").
-
-        Returns:
-            List of GatewayPositionModel instances. Empty list if request fails,
-            validation fails, or no positions exist.
-
-        Example:
-            >>> component = PositionComponent(config)
-            >>> positions = component.get_positions(symbol="BTCUSDT")
-            >>> for position in positions:
-            ...     print(f"{position.symbol}: {position.volume} @ {position.open_price}")
-        """
-        if not self._validate_symbol_or_pair(_symbol=symbol, _pair=pair):
-            return []
-
-        params = self._build_position_params(symbol=symbol, pair=pair)
-
-        response = self._execute(
-            method="GET",
-            url=f"{self._config.fapi_v2_url}/positionRisk",
-            params=params if params else None,
-        )
-
-        if not response:
-            return []
-
-        has_error, error_msg, error_code = has_api_error(response=response)
-
-        if has_error:
-            self._log.error(f"Failed to get positions: {error_msg} (code: {error_code})")
-            return []
-
-        if not isinstance(response, list):
-            self._log.error(f"Unexpected response type for positionRisk: {type(response)}")
-            return []
-
-        return self._adapt_positions_batch(response=response)
-
     def get_position_mode(
         self,
     ) -> Optional[bool]:
@@ -112,70 +60,54 @@ class PositionComponent(BaseComponent):
         dual_side_position = response.get("dualSidePosition", False)
         return bool(dual_side_position)
 
-    def _validate_symbol_or_pair(
+    def get_positions(
         self,
-        _symbol: Optional[str],
-        _pair: Optional[str],
-    ) -> bool:
+        symbol: Optional[str] = None,
+        pair: Optional[str] = None,
+    ) -> List[GatewayPositionModel]:
         """
-        Validate that symbol and pair parameters are strings if provided.
+        Retrieve positions from Binance Futures API.
+
+        Fetches position information for all symbols or filters by symbol or pair.
+        Returns a list of position models containing symbol, side, volume, entry price,
+        and unrealized PnL. Returns empty list if request fails or no positions exist.
 
         Args:
-            symbol: Optional symbol parameter to validate.
-            pair: Optional pair parameter to validate.
+            symbol: Optional trading pair symbol to filter positions (e.g., "BTCUSDT").
+            pair: Optional trading pair to filter positions (e.g., "BTCUSDT").
 
         Returns:
-            True if both parameters are valid (None or string), False otherwise.
+            List of GatewayPositionModel instances. Empty list if request fails,
+            validation fails, or no positions exist.
+
+        Example:
+            >>> component = PositionComponent(config)
+            >>> positions = component.get_positions(symbol="BTCUSDT")
+            >>> for position in positions:
+            ...     print(f"{position.symbol}: {position.volume} @ {position.open_price}")
         """
-        return True
+        params = self._build_position_params(symbol=symbol, pair=pair)
 
-    def _build_position_params(
-        self,
-        symbol: Optional[str],
-        pair: Optional[str],
-    ) -> Dict[str, str]:
-        """
-        Build query parameters dictionary for position API request.
+        response = self._execute(
+            method="GET",
+            url=f"{self._config.fapi_v2_url}/positionRisk",
+            params=params if params else None,
+        )
 
-        Args:
-            symbol: Optional symbol to include in parameters (will be uppercased).
-            pair: Optional pair to include in parameters (will be uppercased).
+        if not response:
+            return []
 
-        Returns:
-            Dictionary with query parameters. Empty dict if both are None.
-        """
-        params: Dict[str, str] = {}
+        has_error, error_msg, error_code = has_api_error(response=response)
 
-        if symbol:
-            params["symbol"] = symbol.upper()
+        if has_error:
+            self._log.error(f"Failed to get positions: {error_msg} (code: {error_code})")
+            return []
 
-        if pair:
-            params["pair"] = pair.upper()
+        if not isinstance(response, list):
+            self._log.error(f"Unexpected response type for positionRisk: {type(response)}")
+            return []
 
-        return params
-
-    def _determine_position_side(
-        self,
-        position_amt: Optional[float],
-    ) -> Optional[OrderSide]:
-        """
-        Determine the position side based on position amount.
-
-        Args:
-            position_amt: Position amount. Positive values indicate long (BUY),
-                negative values indicate short (SELL), zero or None indicates no position.
-
-        Returns:
-            OrderSide.BUY if position_amt > 0, OrderSide.SELL if position_amt < 0,
-            None if position_amt is zero or None.
-        """
-        if position_amt and position_amt > 0:
-            return OrderSide.BUY
-
-        if position_amt and position_amt < 0:
-            return OrderSide.SELL
-
-        return None
+        return self._adapt_positions_batch(response=response)
 
     def _adapt_position_response(
         self,
@@ -244,3 +176,51 @@ class PositionComponent(BaseComponent):
                     positions.append(adapted_position)
 
         return positions
+
+    def _build_position_params(
+        self,
+        symbol: Optional[str],
+        pair: Optional[str],
+    ) -> Dict[str, str]:
+        """
+        Build query parameters dictionary for position API request.
+
+        Args:
+            symbol: Optional symbol to include in parameters (will be uppercased).
+            pair: Optional pair to include in parameters (will be uppercased).
+
+        Returns:
+            Dictionary with query parameters. Empty dict if both are None.
+        """
+        params: Dict[str, str] = {}
+
+        if symbol:
+            params["symbol"] = symbol.upper()
+
+        if pair:
+            params["pair"] = pair.upper()
+
+        return params
+
+    def _determine_position_side(
+        self,
+        position_amt: Optional[float],
+    ) -> Optional[OrderSide]:
+        """
+        Determine the position side based on position amount.
+
+        Args:
+            position_amt: Position amount. Positive values indicate long (BUY),
+                negative values indicate short (SELL), zero or None indicates no position.
+
+        Returns:
+            OrderSide.BUY if position_amt > 0, OrderSide.SELL if position_amt < 0,
+            None if position_amt is zero or None.
+        """
+        if position_amt and position_amt > 0:
+            return OrderSide.BUY
+
+        if position_amt and position_amt < 0:
+            return OrderSide.SELL
+
+        return None

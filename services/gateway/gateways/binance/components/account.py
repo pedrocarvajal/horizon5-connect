@@ -226,48 +226,6 @@ class AccountComponent(BaseComponent):
         """
         return bool(self._config.api_key and self._config.api_secret)
 
-    def _check_leverage(
-        self,
-        symbol: str,
-    ) -> bool:
-        """
-        Check if leverage is configured correctly for the symbol.
-
-        Verifies that the leverage setting for the given symbol is >= 1.
-
-        Args:
-            symbol: Trading pair symbol to check.
-
-        Returns:
-            True if leverage >= 1, False otherwise.
-        """
-        leverage_info = self._symbol_component.get_leverage_info(
-            symbol=symbol,
-        )
-
-        if leverage_info:
-            return leverage_info.leverage >= 1
-
-        return False
-
-    def _check_usdt_balance(
-        self,
-    ) -> bool:
-        """
-        Check if account has USDT balance > 0.
-
-        Returns:
-            True if USDT balance exists and is > 0, False otherwise.
-        """
-        account = self.get_account()
-
-        if account:
-            for balance in account.balances:
-                if balance.asset == "USDT":
-                    return balance.balance > 0
-
-        return False
-
     def _check_cross_margin(
         self,
     ) -> bool:
@@ -294,6 +252,30 @@ class AccountComponent(BaseComponent):
 
             return "cross" in margin_types and len(margin_types) == 1
         return True
+
+    def _check_leverage(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        Check if leverage is configured correctly for the symbol.
+
+        Verifies that the leverage setting for the given symbol is >= 1.
+
+        Args:
+            symbol: Trading pair symbol to check.
+
+        Returns:
+            True if leverage >= 1, False otherwise.
+        """
+        leverage_info = self._symbol_component.get_leverage_info(
+            symbol=symbol,
+        )
+
+        if leverage_info:
+            return leverage_info.leverage >= 1
+
+        return False
 
     def _check_one_way_mode(
         self,
@@ -325,5 +307,23 @@ class AccountComponent(BaseComponent):
 
         if account and account.response:
             return account.response.get("canTrade", False)
+
+        return False
+
+    def _check_usdt_balance(
+        self,
+    ) -> bool:
+        """
+        Check if account has USDT balance > 0.
+
+        Returns:
+            True if USDT balance exists and is > 0, False otherwise.
+        """
+        account = self.get_account()
+
+        if account:
+            for balance in account.balances:
+                if balance.asset == "USDT":
+                    return balance.balance > 0
 
         return False

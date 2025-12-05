@@ -112,117 +112,6 @@ class Binance(GatewayInterface):
             config=self._config,
         )
 
-    def get_klines(
-        self,
-        **kwargs: Any,
-    ) -> None:
-        """
-        Get klines (candlestick data) from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for klines retrieval. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-                - interval: Kline interval (e.g., "1m", "5m", "1h", "1d").
-                - start_time: Start time in milliseconds (optional).
-                - end_time: End time in milliseconds (optional).
-                - limit: Number of klines to retrieve (optional, default: 500).
-        """
-        self._kline_component.get_klines(**kwargs)
-
-    def get_symbol_info(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewaySymbolInfoModel]:
-        """
-        Get symbol information from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for symbol info retrieval. Typically includes:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-
-        Returns:
-            GatewaySymbolInfoModel instance containing symbol information,
-            or None if the symbol is not found or an error occurs.
-        """
-        return self._symbol_component.get_symbol_info(**kwargs)
-
-    def get_trading_fees(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayTradingFeesModel]:
-        """
-        Get trading fees information from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for trading fees retrieval. Typically includes:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-
-        Returns:
-            GatewayTradingFeesModel instance containing trading fees information,
-            or None if the information cannot be retrieved or an error occurs.
-        """
-        return self._symbol_component.get_trading_fees(**kwargs)
-
-    def get_leverage_info(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayLeverageInfoModel]:
-        """
-        Get leverage information from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for leverage info retrieval. Typically includes:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-
-        Returns:
-            GatewayLeverageInfoModel instance containing leverage information,
-            or None if the information cannot be retrieved or an error occurs.
-        """
-        return self._symbol_component.get_leverage_info(**kwargs)
-
-    async def stream(
-        self,
-        **kwargs: Any,
-    ) -> None:
-        """
-        Stream real-time data from Binance via WebSocket.
-
-        This is an async method that establishes a WebSocket connection
-        to stream market data, order updates, or other real-time information.
-
-        Args:
-            **kwargs: Keyword arguments for streaming. Common arguments include:
-                - symbols: List of trading symbols to stream.
-                - streams: List of stream names to subscribe to.
-                - callbacks: Callback functions for handling stream events.
-
-        Note:
-            This method should be awaited and will run until the stream
-            is closed or an error occurs.
-        """
-        await self._stream_component.stream(**kwargs)
-
-    def place_order(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayOrderModel]:
-        """
-        Place a new order on Binance.
-
-        Args:
-            **kwargs: Keyword arguments for order placement. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-                - side: Order side (BUY or SELL).
-                - order_type: Order type (MARKET).
-                - volume: Order volume/quantity.
-                - client_order_id: Optional client-side order identifier.
-
-        Returns:
-            GatewayOrderModel instance containing the placed order information,
-            or None if the order placement fails or an error occurs.
-        """
-        return self._order_component.place_order(**kwargs)
-
     def cancel_order(
         self,
         **kwargs: Any,
@@ -241,6 +130,187 @@ class Binance(GatewayInterface):
             or None if the cancellation fails or an error occurs.
         """
         return self._order_component.cancel_order(**kwargs)
+
+    def get_account(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayAccountModel]:
+        """
+        Get account information from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for account retrieval. Typically empty,
+                but may include additional parameters for filtering.
+
+        Returns:
+            GatewayAccountModel instance containing account information,
+            or None if the information cannot be retrieved or an error occurs.
+        """
+        return self._account_component.get_account(**kwargs)
+
+    def get_klines(
+        self,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Get klines (candlestick data) from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for klines retrieval. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+                - interval: Kline interval (e.g., "1m", "5m", "1h", "1d").
+                - start_time: Start time in milliseconds (optional).
+                - end_time: End time in milliseconds (optional).
+                - limit: Number of klines to retrieve (optional, default: 500).
+        """
+        self._kline_component.get_klines(**kwargs)
+
+    def get_leverage_info(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayLeverageInfoModel]:
+        """
+        Get leverage information from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for leverage info retrieval. Typically includes:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewayLeverageInfoModel instance containing leverage information,
+            or None if the information cannot be retrieved or an error occurs.
+        """
+        return self._symbol_component.get_leverage_info(**kwargs)
+
+    def get_order(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Get a specific order from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for order retrieval. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+                - order_id: Binance order ID.
+                - client_order_id: Client-side order identifier.
+
+        Returns:
+            GatewayOrderModel instance containing order information,
+            or None if the order is not found or an error occurs.
+        """
+        return self._order_component.get_order(**kwargs)
+
+    def get_orders(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayOrderModel]:
+        """
+        Get list of orders from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for orders retrieval. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT") to filter orders.
+                - order_id: Optional order ID to filter.
+                - start_time: Start time in milliseconds (optional).
+                - end_time: End time in milliseconds (optional).
+                - limit: Maximum number of orders to retrieve (optional).
+
+        Returns:
+            List of GatewayOrderModel instances containing order information.
+            Returns empty list if no orders are found or an error occurs.
+        """
+        return self._order_component.get_orders(**kwargs)
+
+    def get_positions(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayPositionModel]:
+        """
+        Get open positions from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for positions retrieval. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT") to filter positions.
+                If not provided, returns all open positions.
+
+        Returns:
+            List of GatewayPositionModel instances containing position information.
+            Returns empty list if no positions are found or an error occurs.
+        """
+        return self._position_component.get_positions(**kwargs)
+
+    def get_symbol_info(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewaySymbolInfoModel]:
+        """
+        Get symbol information from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for symbol info retrieval. Typically includes:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewaySymbolInfoModel instance containing symbol information,
+            or None if the symbol is not found or an error occurs.
+        """
+        return self._symbol_component.get_symbol_info(**kwargs)
+
+    def get_trades(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayTradeModel]:
+        """
+        Get trade history from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for trades retrieval. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT") to filter trades.
+                - start_time: Start time in milliseconds (optional).
+                - end_time: End time in milliseconds (optional).
+                - limit: Maximum number of trades to retrieve (optional).
+
+        Returns:
+            List of GatewayTradeModel instances containing trade information.
+            Returns empty list if no trades are found or an error occurs.
+        """
+        return self._trade_component.get_trades(**kwargs)
+
+    def get_trading_fees(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayTradingFeesModel]:
+        """
+        Get trading fees information from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for trading fees retrieval. Typically includes:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+
+        Returns:
+            GatewayTradingFeesModel instance containing trading fees information,
+            or None if the information cannot be retrieved or an error occurs.
+        """
+        return self._symbol_component.get_trading_fees(**kwargs)
+
+    def get_verification(
+        self,
+        **kwargs: Any,
+    ) -> Dict[str, bool]:
+        """
+        Get account verification status from Binance.
+
+        Args:
+            **kwargs: Keyword arguments for verification retrieval. Common arguments include:
+                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
+
+        Returns:
+            Dictionary containing verification status information with boolean values.
+            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
+            'cross_margin', 'one_way_mode', and 'trading_permissions'.
+        """
+        return self._account_component.get_verification(**kwargs)
 
     def modify_order(
         self,
@@ -264,6 +334,27 @@ class Binance(GatewayInterface):
         """
         return self._order_component.modify_order(**kwargs)
 
+    def place_order(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Place a new order on Binance.
+
+        Args:
+            **kwargs: Keyword arguments for order placement. Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT").
+                - side: Order side (BUY or SELL).
+                - order_type: Order type (MARKET).
+                - volume: Order volume/quantity.
+                - client_order_id: Optional client-side order identifier.
+
+        Returns:
+            GatewayOrderModel instance containing the placed order information,
+            or None if the order placement fails or an error occurs.
+        """
+        return self._order_component.place_order(**kwargs)
+
     def set_leverage(
         self,
         **kwargs: Any,
@@ -281,118 +372,27 @@ class Binance(GatewayInterface):
         """
         return self._symbol_component.set_leverage(**kwargs)
 
-    def get_account(
+    async def stream(
         self,
         **kwargs: Any,
-    ) -> Optional[GatewayAccountModel]:
+    ) -> None:
         """
-        Get account information from Binance.
+        Stream real-time data from Binance via WebSocket.
+
+        This is an async method that establishes a WebSocket connection
+        to stream market data, order updates, or other real-time information.
 
         Args:
-            **kwargs: Keyword arguments for account retrieval. Typically empty,
-                but may include additional parameters for filtering.
+            **kwargs: Keyword arguments for streaming. Common arguments include:
+                - symbols: List of trading symbols to stream.
+                - streams: List of stream names to subscribe to.
+                - callbacks: Callback functions for handling stream events.
 
-        Returns:
-            GatewayAccountModel instance containing account information,
-            or None if the information cannot be retrieved or an error occurs.
+        Note:
+            This method should be awaited and will run until the stream
+            is closed or an error occurs.
         """
-        return self._account_component.get_account(**kwargs)
-
-    def get_orders(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayOrderModel]:
-        """
-        Get list of orders from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for orders retrieval. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT") to filter orders.
-                - order_id: Optional order ID to filter.
-                - start_time: Start time in milliseconds (optional).
-                - end_time: End time in milliseconds (optional).
-                - limit: Maximum number of orders to retrieve (optional).
-
-        Returns:
-            List of GatewayOrderModel instances containing order information.
-            Returns empty list if no orders are found or an error occurs.
-        """
-        return self._order_component.get_orders(**kwargs)
-
-    def get_order(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayOrderModel]:
-        """
-        Get a specific order from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for order retrieval. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT").
-                - order_id: Binance order ID.
-                - client_order_id: Client-side order identifier.
-
-        Returns:
-            GatewayOrderModel instance containing order information,
-            or None if the order is not found or an error occurs.
-        """
-        return self._order_component.get_order(**kwargs)
-
-    def get_trades(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayTradeModel]:
-        """
-        Get trade history from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for trades retrieval. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT") to filter trades.
-                - start_time: Start time in milliseconds (optional).
-                - end_time: End time in milliseconds (optional).
-                - limit: Maximum number of trades to retrieve (optional).
-
-        Returns:
-            List of GatewayTradeModel instances containing trade information.
-            Returns empty list if no trades are found or an error occurs.
-        """
-        return self._trade_component.get_trades(**kwargs)
-
-    def get_positions(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayPositionModel]:
-        """
-        Get open positions from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for positions retrieval. Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT") to filter positions.
-                If not provided, returns all open positions.
-
-        Returns:
-            List of GatewayPositionModel instances containing position information.
-            Returns empty list if no positions are found or an error occurs.
-        """
-        return self._position_component.get_positions(**kwargs)
-
-    def get_verification(
-        self,
-        **kwargs: Any,
-    ) -> Dict[str, bool]:
-        """
-        Get account verification status from Binance.
-
-        Args:
-            **kwargs: Keyword arguments for verification retrieval. Common arguments include:
-                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
-
-        Returns:
-            Dictionary containing verification status information with boolean values.
-            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
-            'cross_margin', 'one_way_mode', and 'trading_permissions'.
-        """
-        return self._account_component.get_verification(**kwargs)
+        await self._stream_component.stream(**kwargs)
 
     def _build_urls(
         self,

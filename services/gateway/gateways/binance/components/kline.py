@@ -101,42 +101,44 @@ class KlineComponent(BaseComponent):
 
             callback(klines)
 
-    def _validate_get_klines_params(
+    def _adapt_klines_batch(
         self,
+        response: List[Any],
         symbol: str,
-        timeframe: str,
-        from_date: Optional[int],
-        to_date: Optional[int],
-    ) -> bool:
+    ) -> List[GatewayKlineModel]:
         """
-        Validate parameters for get_klines method.
+        Adapt a batch of kline responses from Binance API to GatewayKlineModel list.
+
+        Converts Binance kline array format to internal GatewayKlineModel instances.
+        Each kline array contains: [open_time, open, high, low, close, volume,
+        close_time, quote_volume, trades, taker_buy_base, taker_buy_quote].
 
         Args:
-            symbol: Trading symbol to validate.
-            timeframe: Timeframe string to validate.
-            from_date: Start timestamp to validate.
-            to_date: End timestamp to validate.
+            response: List of kline arrays from Binance API.
+            symbol: Trading symbol to include in models.
 
         Returns:
-            bool: True if all validations pass, False otherwise.
+            List[GatewayKlineModel]: List of adapted kline models.
         """
-        if not symbol:
-            self._log.error("symbol is required")
-            return False
-
-        if not timeframe:
-            self._log.error("timeframe is required")
-            return False
-
-        if from_date is None:
-            self._log.error("from_date is required")
-            return False
-
-        if to_date is None:
-            self._log.error("to_date is required")
-            return False
-
-        return True
+        return [
+            GatewayKlineModel(
+                source="binance",
+                symbol=symbol,
+                open_time=int(float(item[0]) / 1000),
+                open_price=float(item[1]),
+                high_price=float(item[2]),
+                low_price=float(item[3]),
+                close_price=float(item[4]),
+                volume=float(item[5]),
+                close_time=int(float(item[6]) / 1000),
+                quote_asset_volume=float(item[7]),
+                number_of_trades=int(item[8]),
+                taker_buy_base_asset_volume=float(item[9]),
+                taker_buy_quote_asset_volume=float(item[10]),
+                response=item,
+            )
+            for item in response
+        ]
 
     def _convert_dates_to_milliseconds(
         self,
@@ -248,41 +250,39 @@ class KlineComponent(BaseComponent):
             symbol=symbol,
         )
 
-    def _adapt_klines_batch(
+    def _validate_get_klines_params(
         self,
-        response: List[Any],
         symbol: str,
-    ) -> List[GatewayKlineModel]:
+        timeframe: str,
+        from_date: Optional[int],
+        to_date: Optional[int],
+    ) -> bool:
         """
-        Adapt a batch of kline responses from Binance API to GatewayKlineModel list.
-
-        Converts Binance kline array format to internal GatewayKlineModel instances.
-        Each kline array contains: [open_time, open, high, low, close, volume,
-        close_time, quote_volume, trades, taker_buy_base, taker_buy_quote].
+        Validate parameters for get_klines method.
 
         Args:
-            response: List of kline arrays from Binance API.
-            symbol: Trading symbol to include in models.
+            symbol: Trading symbol to validate.
+            timeframe: Timeframe string to validate.
+            from_date: Start timestamp to validate.
+            to_date: End timestamp to validate.
 
         Returns:
-            List[GatewayKlineModel]: List of adapted kline models.
+            bool: True if all validations pass, False otherwise.
         """
-        return [
-            GatewayKlineModel(
-                source="binance",
-                symbol=symbol,
-                open_time=int(float(item[0]) / 1000),
-                open_price=float(item[1]),
-                high_price=float(item[2]),
-                low_price=float(item[3]),
-                close_price=float(item[4]),
-                volume=float(item[5]),
-                close_time=int(float(item[6]) / 1000),
-                quote_asset_volume=float(item[7]),
-                number_of_trades=int(item[8]),
-                taker_buy_base_asset_volume=float(item[9]),
-                taker_buy_quote_asset_volume=float(item[10]),
-                response=item,
-            )
-            for item in response
-        ]
+        if not symbol:
+            self._log.error("symbol is required")
+            return False
+
+        if not timeframe:
+            self._log.error("timeframe is required")
+            return False
+
+        if from_date is None:
+            self._log.error("from_date is required")
+            return False
+
+        if to_date is None:
+            self._log.error("to_date is required")
+            return False
+
+        return True

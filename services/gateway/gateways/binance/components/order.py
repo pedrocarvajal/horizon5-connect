@@ -49,6 +49,233 @@ class OrderComponent(BaseComponent):
             config=config,
         )
 
+    def cancel_order(
+        self,
+        symbol: str,
+        order: GatewayOrderModel,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Cancel an existing order on Binance Futures.
+
+        Cancels an order by its ID. Validates the symbol and order parameters before
+        sending the cancellation request to Binance API.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+            order: GatewayOrderModel instance containing the order to cancel.
+
+        Returns:
+            GatewayOrderModel with updated status if cancellation was successful, None otherwise.
+
+        Example:
+            >>> component = OrderComponent(config, symbol_component)
+            >>> cancelled_order = component.cancel_order(
+            ...     symbol="BTCUSDT",
+            ...     order=existing_order
+            ... )
+            >>> if cancelled_order:
+            ...     print(f"Order cancelled: {cancelled_order.id}")
+        """
+        if not self._validate_symbol(symbol=symbol):
+            return None
+
+        if not self._validate_order(order=order):
+            return None
+
+        url = f"{self._config.fapi_url}/order"
+        params = {"symbol": symbol.upper(), "orderId": order.id}
+        response = self._execute(
+            method="DELETE",
+            url=url,
+            params=params,
+        )
+
+        if not response:
+            return None
+
+        has_error, error_msg, error_code = has_api_error(response=response)
+
+        if has_error:
+            self._log.error(f"Failed to cancel order: {error_msg} (code: {error_code})")
+            return None
+
+        return self._adapt_order_response(
+            response=response,
+            symbol=symbol.upper(),
+        )
+
+    def get_order(
+        self,
+        symbol: str,
+        order_id: Optional[str] = None,
+        client_order_id: Optional[str] = None,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Retrieve a single order by ID from Binance Futures.
+
+        Fetches order details by either Binance order ID or client order ID.
+        At least one of order_id or client_order_id must be provided.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+            order_id: Optional Binance order ID.
+            client_order_id: Optional client order ID (custom ID provided when placing order).
+
+        Returns:
+            GatewayOrderModel if order was found, None otherwise.
+
+        Example:
+            >>> component = OrderComponent(config, symbol_component)
+            >>> order = component.get_order(
+            ...     symbol="BTCUSDT",
+            ...     order_id="12345678"
+            ... )
+            >>> if order:
+            ...     print(f"Order status: {order.status}")
+        """
+        if not self._validate_get_order_params(
+            symbol=symbol,
+            order_id=order_id,
+            client_order_id=client_order_id,
+        ):
+            return None
+
+        url = f"{self._config.fapi_url}/order"
+        params = {"symbol": symbol.upper()}
+
+        if order_id:
+            params["orderId"] = order_id
+        elif client_order_id:
+            params["origClientOrderId"] = client_order_id
+
+        response = self._execute(
+            method="GET",
+            url=url,
+            params=params,
+        )
+
+        if not response:
+            return None
+
+        has_error, error_msg, error_code = has_api_error(response=response)
+
+        if has_error:
+            self._log.error(f"Failed to get order: {error_msg} (code: {error_code})")
+            return None
+
+        return self._adapt_order_response(
+            response=response,
+            symbol=symbol.upper(),
+        )
+
+    def get_orders(
+        self,
+        symbol: str,
+        pair: str,
+        order_id: int,
+        start_time: datetime,
+        end_time: datetime,
+        limit: int = 500,
+    ) -> List[GatewayOrderModel]:
+        """
+        Retrieve multiple orders from Binance Futures.
+
+        Fetches orders matching the specified criteria. Supports querying by order ID
+        or by time range. When querying by time range, automatically splits large date
+        ranges into smaller chunks to comply with Binance API limits (7 days per request).
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+            pair: Trading pair for filtering (e.g., "BTCUSDT").
+            order_id: Order ID to start querying from (use 1 to query all).
+            start_time: Start datetime for order query.
+            end_time: End datetime for order query.
+            limit: Maximum number of orders to return (default: 500, max: 1000).
+
+        Returns:
+            List of GatewayOrderModel instances matching the query criteria.
+
+        Example:
+            >>> component = OrderComponent(config, symbol_component)
+            >>> orders = component.get_orders(
+            ...     symbol="BTCUSDT",
+            ...     pair="BTCUSDT",
+            ...     order_id=1,
+            ...     start_time=datetime.now() - timedelta(days=30),
+            ...     end_time=datetime.now(),
+            ...     limit=100
+            ... )
+            >>> print(f"Found {len(orders)} orders")
+        """
+        if not self._validate_get_orders_params(
+            symbol=symbol,
+            pair=pair,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+        ):
+            return []
+
+        orders: List[GatewayOrderModel] = []
+        url = f"{self._config.fapi_url}/allOrders"
+        params: Dict[str, Any] = {
+            "symbol": symbol.upper(),
+            "pair": pair.upper(),
+            "limit": min(limit, 1000),
+        }
+
+        if order_id:
+            params["orderId"] = order_id
+
+        if start_time and end_time and not order_id:
+            orders = self._fetch_orders_by_time_range(
+                url=url,
+                params=params,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        else:
+            response = self._execute(
+                method="GET",
+                url=url,
+                params=params,
+            )
+
+            if response and isinstance(response, list):
+                orders.extend(self._adapt_orders_batch(response=response))
+
+        return orders
+
+    def modify_order(
+        self,
+        symbol: str,
+        order: GatewayOrderModel,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Modify an existing order on Binance Futures.
+
+        Note: This method is not yet implemented. Binance Futures API requires
+        cancelling and placing a new order to modify an existing order.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTCUSDT").
+            order: GatewayOrderModel instance containing the order to modify.
+
+        Returns:
+            GatewayOrderModel if modification was successful, None otherwise.
+
+        Raises:
+            NotImplementedError: This method is not yet implemented.
+        """
+        if not self._validate_symbol(symbol=symbol):
+            return None
+
+        if not self._validate_order(order=order):
+            return None
+
+        self._log.warning("modify_order is not yet implemented. Use cancel_order and place_order instead.")
+        return None
+
     def place_order(
         self,
         symbol: str,
@@ -131,385 +358,123 @@ class OrderComponent(BaseComponent):
             symbol=symbol.upper(),
         )
 
-    def cancel_order(
+    def _adapt_order_response(
         self,
+        response: Dict[str, Any],
         symbol: str,
-        order: GatewayOrderModel,
     ) -> Optional[GatewayOrderModel]:
         """
-        Cancel an existing order on Binance Futures.
+        Adapt Binance API response to GatewayOrderModel.
 
-        Cancels an order by its ID. Validates the symbol and order parameters before
-        sending the cancellation request to Binance API.
+        Transforms the raw API response into the internal order model format,
+        extracting order details, status, and execution information.
 
         Args:
-            symbol: Trading pair symbol (e.g., "BTCUSDT").
-            order: GatewayOrderModel instance containing the order to cancel.
+            response: Raw API response dictionary from Binance.
+            symbol: Trading pair symbol.
 
         Returns:
-            GatewayOrderModel with updated status if cancellation was successful, None otherwise.
-
-        Example:
-            >>> component = OrderComponent(config, symbol_component)
-            >>> cancelled_order = component.cancel_order(
-            ...     symbol="BTCUSDT",
-            ...     order=existing_order
-            ... )
-            >>> if cancelled_order:
-            ...     print(f"Order cancelled: {cancelled_order.id}")
+            GatewayOrderModel instance with adapted data, or None if response is invalid.
         """
-        if not self._validate_symbol(symbol=symbol):
-            return None
-
-        if not self._validate_order(order=order):
-            return None
-
-        url = f"{self._config.fapi_url}/order"
-        params = {"symbol": symbol.upper(), "orderId": order.id}
-        response = self._execute(
-            method="DELETE",
-            url=url,
-            params=params,
-        )
-
         if not response:
             return None
 
         has_error, error_msg, error_code = has_api_error(response=response)
 
         if has_error:
-            self._log.error(f"Failed to cancel order: {error_msg} (code: {error_code})")
+            self._log.error(f"API Error: {error_msg} (code: {error_code})")
             return None
 
-        return self._adapt_order_response(
+        order_id = str(response.get("orderId", ""))
+        side_str = response.get("side", "").upper()
+        type_str = response.get("type", "").upper()
+        status_str = response.get("status", "").upper()
+        side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
+
+        if type_str and type_str != "MARKET":
+            self._log.warning(f"Order {order_id} has non-MARKET type '{type_str}', treating as MARKET")
+
+        order_type = OrderType.MARKET
+
+        status = self._adapt_order_status(status_str=status_str)
+        price = parse_optional_float(value=response.get("price", 0))
+        executed_qty = parse_optional_float(value=response.get("executedQty", 0))
+        orig_qty = parse_optional_float(value=response.get("origQty", 0))
+
+        return GatewayOrderModel(
+            id=order_id,
+            symbol=symbol,
+            side=side,
+            order_type=order_type,
+            status=status,
+            volume=orig_qty or 0.0,
+            executed_volume=executed_qty or 0.0,
+            price=price or 0.0,
             response=response,
-            symbol=symbol.upper(),
         )
 
-    def modify_order(
+    def _adapt_order_status(
         self,
-        symbol: str,
-        order: GatewayOrderModel,
-    ) -> Optional[GatewayOrderModel]:
+        status_str: str,
+    ) -> GatewayOrderStatus:
         """
-        Modify an existing order on Binance Futures.
+        Adapt Binance order status to GatewayOrderStatus enum.
 
-        Note: This method is not yet implemented. Binance Futures API requires
-        cancelling and placing a new order to modify an existing order.
+        Maps Binance-specific order statuses to the internal gateway order status enum.
 
         Args:
-            symbol: Trading pair symbol (e.g., "BTCUSDT").
-            order: GatewayOrderModel instance containing the order to modify.
+            status_str: Binance order status string.
 
         Returns:
-            GatewayOrderModel if modification was successful, None otherwise.
-
-        Raises:
-            NotImplementedError: This method is not yet implemented.
+            GatewayOrderStatus enum value.
         """
-        if not self._validate_symbol(symbol=symbol):
-            return None
-
-        if not self._validate_order(order=order):
-            return None
-
-        self._log.warning("modify_order is not yet implemented. Use cancel_order and place_order instead.")
-        return None
-
-    def get_orders(
-        self,
-        symbol: str,
-        pair: str,
-        order_id: int,
-        start_time: datetime,
-        end_time: datetime,
-        limit: int = 500,
-    ) -> List[GatewayOrderModel]:
-        """
-        Retrieve multiple orders from Binance Futures.
-
-        Fetches orders matching the specified criteria. Supports querying by order ID
-        or by time range. When querying by time range, automatically splits large date
-        ranges into smaller chunks to comply with Binance API limits (7 days per request).
-
-        Args:
-            symbol: Trading pair symbol (e.g., "BTCUSDT").
-            pair: Trading pair for filtering (e.g., "BTCUSDT").
-            order_id: Order ID to start querying from (use 1 to query all).
-            start_time: Start datetime for order query.
-            end_time: End datetime for order query.
-            limit: Maximum number of orders to return (default: 500, max: 1000).
-
-        Returns:
-            List of GatewayOrderModel instances matching the query criteria.
-
-        Example:
-            >>> component = OrderComponent(config, symbol_component)
-            >>> orders = component.get_orders(
-            ...     symbol="BTCUSDT",
-            ...     pair="BTCUSDT",
-            ...     order_id=1,
-            ...     start_time=datetime.now() - timedelta(days=30),
-            ...     end_time=datetime.now(),
-            ...     limit=100
-            ... )
-            >>> print(f"Found {len(orders)} orders")
-        """
-        if not self._validate_get_orders_params(
-            symbol=symbol,
-            pair=pair,
-            _order_id=order_id,
-            start_time=start_time,
-            end_time=end_time,
-            limit=limit,
-        ):
-            return []
-
-        orders: List[GatewayOrderModel] = []
-        url = f"{self._config.fapi_url}/allOrders"
-        params: Dict[str, Any] = {
-            "symbol": symbol.upper(),
-            "pair": pair.upper(),
-            "limit": min(limit, 1000),
+        status_map = {
+            BinanceOrderStatus.NEW: GatewayOrderStatus.PENDING,
+            BinanceOrderStatus.PARTIALLY_FILLED: GatewayOrderStatus.PENDING,
+            BinanceOrderStatus.FILLED: GatewayOrderStatus.EXECUTED,
+            BinanceOrderStatus.CANCELED: GatewayOrderStatus.CANCELLED,
+            BinanceOrderStatus.PENDING_CANCEL: GatewayOrderStatus.CANCELLED,
+            BinanceOrderStatus.REJECTED: GatewayOrderStatus.CANCELLED,
+            BinanceOrderStatus.EXPIRED: GatewayOrderStatus.CANCELLED,
         }
 
-        if order_id:
-            params["orderId"] = order_id
+        try:
+            binance_status = BinanceOrderStatus(status_str.upper())
+            return status_map.get(binance_status, GatewayOrderStatus.PENDING)
+        except ValueError:
+            return GatewayOrderStatus.PENDING
 
-        if start_time and end_time and not order_id:
-            orders = self._fetch_orders_by_time_range(
-                url=url,
-                params=params,
-                start_time=start_time,
-                end_time=end_time,
-            )
-        else:
-            response = self._execute(
-                method="GET",
-                url=url,
-                params=params,
-            )
-
-            if response and isinstance(response, list):
-                orders.extend(self._adapt_orders_batch(response=response))
-
-        return orders
-
-    def get_order(
+    def _adapt_orders_batch(
         self,
-        symbol: str,
-        order_id: Optional[str] = None,
-        client_order_id: Optional[str] = None,
-    ) -> Optional[GatewayOrderModel]:
+        response: List[Dict[str, Any]],
+    ) -> List[GatewayOrderModel]:
         """
-        Retrieve a single order by ID from Binance Futures.
+        Adapt a batch of Binance API responses to GatewayOrderModel list.
 
-        Fetches order details by either Binance order ID or client order ID.
-        At least one of order_id or client_order_id must be provided.
+        Processes a list of order responses and converts each to the internal
+        order model format, filtering out invalid entries.
 
         Args:
-            symbol: Trading pair symbol (e.g., "BTCUSDT").
-            order_id: Optional Binance order ID.
-            client_order_id: Optional client order ID (custom ID provided when placing order).
+            response: List of raw API response dictionaries from Binance.
 
         Returns:
-            GatewayOrderModel if order was found, None otherwise.
-
-        Example:
-            >>> component = OrderComponent(config, symbol_component)
-            >>> order = component.get_order(
-            ...     symbol="BTCUSDT",
-            ...     order_id="12345678"
-            ... )
-            >>> if order:
-            ...     print(f"Order status: {order.status}")
+            List of GatewayOrderModel instances.
         """
-        if not self._validate_get_order_params(
-            symbol=symbol,
-            order_id=order_id,
-            client_order_id=client_order_id,
-        ):
-            return None
-
-        url = f"{self._config.fapi_url}/order"
-        params = {"symbol": symbol.upper()}
-
-        if order_id:
-            params["orderId"] = order_id
-        elif client_order_id:
-            params["origClientOrderId"] = client_order_id
-
-        response = self._execute(
-            method="GET",
-            url=url,
-            params=params,
-        )
+        orders: List[GatewayOrderModel] = []
 
         if not response:
-            return None
+            return orders
 
-        has_error, error_msg, error_code = has_api_error(response=response)
+        for order_data in response:
+            adapted_order = self._adapt_order_response(
+                response=order_data,
+                symbol=str(order_data.get("symbol", "")).upper(),
+            )
 
-        if has_error:
-            self._log.error(f"Failed to get order: {error_msg} (code: {error_code})")
-            return None
+            if adapted_order:
+                orders.append(adapted_order)
 
-        return self._adapt_order_response(
-            response=response,
-            symbol=symbol.upper(),
-        )
-
-    def _validate_symbol(
-        self,
-        symbol: str,
-    ) -> bool:
-        """
-        Validate that symbol parameter is a non-empty string.
-
-        Args:
-            symbol: Symbol to validate.
-
-        Returns:
-            True if symbol is valid, False otherwise.
-        """
-        if not symbol:
-            self._log.error("symbol is required")
-            return False
-
-        return True
-
-    def _validate_order(
-        self,
-        order: GatewayOrderModel,
-    ) -> bool:
-        """
-        Validate that order parameter is a valid GatewayOrderModel with an ID.
-
-        Args:
-            order: Order to validate.
-
-        Returns:
-            True if order is valid, False otherwise.
-        """
-        if not order:
-            self._log.error("order is required")
-            return False
-
-        if not order.id:
-            self._log.error("order.id is required")
-            return False
-
-        return True
-
-    def _validate_place_order_params(
-        self,
-        symbol: str,
-        side: OrderSide,
-        order_type: OrderType,
-        volume: float,
-    ) -> bool:
-        """
-        Validate all parameters for place_order method.
-
-        Args:
-            symbol: Trading pair symbol.
-            side: Order side enum.
-            order_type: Order type enum.
-            volume: Order volume.
-
-        Returns:
-            True if all parameters are valid, False otherwise.
-        """
-        if not self._validate_symbol(symbol=symbol):
-            return False
-
-        if not side:
-            self._log.error("side is required")
-            return False
-
-        if not order_type:
-            self._log.error("order_type is required")
-            return False
-
-        if volume <= 0:
-            self._log.error("volume must be greater than 0")
-            return False
-
-        return True
-
-    def _validate_get_orders_params(
-        self,
-        symbol: str,
-        pair: str,
-        _order_id: int,
-        start_time: datetime,
-        end_time: datetime,
-        limit: int,
-    ) -> bool:
-        """
-        Validate all parameters for get_orders method.
-
-        Args:
-            symbol: Trading pair symbol.
-            pair: Trading pair for filtering.
-            order_id: Order ID to start from.
-            start_time: Start datetime.
-            end_time: End datetime.
-            limit: Maximum number of orders.
-
-        Returns:
-            True if all parameters are valid, False otherwise.
-        """
-        if not self._validate_symbol(symbol=symbol):
-            return False
-
-        if not pair:
-            self._log.error("pair is required")
-            return False
-
-        if not start_time:
-            self._log.error("start_time is required")
-            return False
-
-        if not end_time:
-            self._log.error("end_time is required")
-            return False
-
-        if start_time > end_time:
-            self._log.error("start_time must be before end_time")
-            return False
-
-        if limit <= 0:
-            self._log.error("limit must be greater than 0")
-            return False
-
-        return True
-
-    def _validate_get_order_params(
-        self,
-        symbol: str,
-        order_id: Optional[str],
-        client_order_id: Optional[str],
-    ) -> bool:
-        """
-        Validate all parameters for get_order method.
-
-        Args:
-            symbol: Trading pair symbol.
-            order_id: Optional Binance order ID.
-            client_order_id: Optional client order ID.
-
-        Returns:
-            True if all parameters are valid, False otherwise.
-        """
-        if not self._validate_symbol(symbol=symbol):
-            return False
-
-        if not order_id and not client_order_id:
-            self._log.error("Either order_id or client_order_id must be provided")
-            return False
-
-        return True
+        return orders
 
     def _build_order_params(
         self,
@@ -646,120 +611,152 @@ class OrderComponent(BaseComponent):
 
         return volume_formatted
 
-    def _adapt_order_response(
+    def _validate_get_order_params(
         self,
-        response: Dict[str, Any],
         symbol: str,
-    ) -> Optional[GatewayOrderModel]:
+        order_id: Optional[str],
+        client_order_id: Optional[str],
+    ) -> bool:
         """
-        Adapt Binance API response to GatewayOrderModel.
-
-        Transforms the raw API response into the internal order model format,
-        extracting order details, status, and execution information.
+        Validate all parameters for get_order method.
 
         Args:
-            response: Raw API response dictionary from Binance.
             symbol: Trading pair symbol.
+            order_id: Optional Binance order ID.
+            client_order_id: Optional client order ID.
 
         Returns:
-            GatewayOrderModel instance with adapted data, or None if response is invalid.
+            True if all parameters are valid, False otherwise.
         """
-        if not response:
-            return None
+        if not self._validate_symbol(symbol=symbol):
+            return False
 
-        has_error, error_msg, error_code = has_api_error(response=response)
+        if not order_id and not client_order_id:
+            self._log.error("Either order_id or client_order_id must be provided")
+            return False
 
-        if has_error:
-            self._log.error(f"API Error: {error_msg} (code: {error_code})")
-            return None
+        return True
 
-        order_id = str(response.get("orderId", ""))
-        side_str = response.get("side", "").upper()
-        type_str = response.get("type", "").upper()
-        status_str = response.get("status", "").upper()
-        side = OrderSide.BUY if side_str == "BUY" else OrderSide.SELL
-
-        if type_str and type_str != "MARKET":
-            self._log.warning(f"Order {order_id} has non-MARKET type '{type_str}', treating as MARKET")
-
-        order_type = OrderType.MARKET
-
-        status = self._adapt_order_status(status_str=status_str)
-        price = parse_optional_float(value=response.get("price", 0))
-        executed_qty = parse_optional_float(value=response.get("executedQty", 0))
-        orig_qty = parse_optional_float(value=response.get("origQty", 0))
-
-        return GatewayOrderModel(
-            id=order_id,
-            symbol=symbol,
-            side=side,
-            order_type=order_type,
-            status=status,
-            volume=orig_qty or 0.0,
-            executed_volume=executed_qty or 0.0,
-            price=price or 0.0,
-            response=response,
-        )
-
-    def _adapt_orders_batch(
+    def _validate_get_orders_params(
         self,
-        response: List[Dict[str, Any]],
-    ) -> List[GatewayOrderModel]:
+        symbol: str,
+        pair: str,
+        start_time: datetime,
+        end_time: datetime,
+        limit: int,
+    ) -> bool:
         """
-        Adapt a batch of Binance API responses to GatewayOrderModel list.
-
-        Processes a list of order responses and converts each to the internal
-        order model format, filtering out invalid entries.
+        Validate all parameters for get_orders method.
 
         Args:
-            response: List of raw API response dictionaries from Binance.
+            symbol: Trading pair symbol.
+            pair: Trading pair for filtering.
+            start_time: Start datetime.
+            end_time: End datetime.
+            limit: Maximum number of orders.
 
         Returns:
-            List of GatewayOrderModel instances.
+            True if all parameters are valid, False otherwise.
         """
-        orders: List[GatewayOrderModel] = []
+        if not self._validate_symbol(symbol=symbol):
+            return False
 
-        if not response:
-            return orders
+        if not pair:
+            self._log.error("pair is required")
+            return False
 
-        for order_data in response:
-            adapted_order = self._adapt_order_response(
-                response=order_data,
-                symbol=str(order_data.get("symbol", "")).upper(),
-            )
+        if not start_time:
+            self._log.error("start_time is required")
+            return False
 
-            if adapted_order:
-                orders.append(adapted_order)
+        if not end_time:
+            self._log.error("end_time is required")
+            return False
 
-        return orders
+        if start_time > end_time:
+            self._log.error("start_time must be before end_time")
+            return False
 
-    def _adapt_order_status(
+        if limit <= 0:
+            self._log.error("limit must be greater than 0")
+            return False
+
+        return True
+
+    def _validate_order(
         self,
-        status_str: str,
-    ) -> GatewayOrderStatus:
+        order: GatewayOrderModel,
+    ) -> bool:
         """
-        Adapt Binance order status to GatewayOrderStatus enum.
-
-        Maps Binance-specific order statuses to the internal gateway order status enum.
+        Validate that order parameter is a valid GatewayOrderModel with an ID.
 
         Args:
-            status_str: Binance order status string.
+            order: Order to validate.
 
         Returns:
-            GatewayOrderStatus enum value.
+            True if order is valid, False otherwise.
         """
-        status_map = {
-            BinanceOrderStatus.NEW: GatewayOrderStatus.PENDING,
-            BinanceOrderStatus.PARTIALLY_FILLED: GatewayOrderStatus.PENDING,
-            BinanceOrderStatus.FILLED: GatewayOrderStatus.EXECUTED,
-            BinanceOrderStatus.CANCELED: GatewayOrderStatus.CANCELLED,
-            BinanceOrderStatus.PENDING_CANCEL: GatewayOrderStatus.CANCELLED,
-            BinanceOrderStatus.REJECTED: GatewayOrderStatus.CANCELLED,
-            BinanceOrderStatus.EXPIRED: GatewayOrderStatus.CANCELLED,
-        }
+        if not order:
+            self._log.error("order is required")
+            return False
 
-        try:
-            binance_status = BinanceOrderStatus(status_str.upper())
-            return status_map.get(binance_status, GatewayOrderStatus.PENDING)
-        except ValueError:
-            return GatewayOrderStatus.PENDING
+        if not order.id:
+            self._log.error("order.id is required")
+            return False
+
+        return True
+
+    def _validate_place_order_params(
+        self,
+        symbol: str,
+        side: OrderSide,
+        order_type: OrderType,
+        volume: float,
+    ) -> bool:
+        """
+        Validate all parameters for place_order method.
+
+        Args:
+            symbol: Trading pair symbol.
+            side: Order side enum.
+            order_type: Order type enum.
+            volume: Order volume.
+
+        Returns:
+            True if all parameters are valid, False otherwise.
+        """
+        if not self._validate_symbol(symbol=symbol):
+            return False
+
+        if not side:
+            self._log.error("side is required")
+            return False
+
+        if not order_type:
+            self._log.error("order_type is required")
+            return False
+
+        if volume <= 0:
+            self._log.error("volume must be greater than 0")
+            return False
+
+        return True
+
+    def _validate_symbol(
+        self,
+        symbol: str,
+    ) -> bool:
+        """
+        Validate that symbol parameter is a non-empty string.
+
+        Args:
+            symbol: Symbol to validate.
+
+        Returns:
+            True if symbol is valid, False otherwise.
+        """
+        if not symbol:
+            self._log.error("symbol is required")
+            return False
+
+        return True
