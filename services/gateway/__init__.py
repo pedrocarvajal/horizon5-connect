@@ -66,6 +66,47 @@ class GatewayService(GatewayInterface):
 
         self._setup()
 
+    def cancel_order(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Cancel an existing order on the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's cancel_order method.
+                Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - order_id: Gateway order ID
+                - client_order_id: Client-side order identifier
+
+        Returns:
+            GatewayOrderModel instance containing the cancelled order information,
+            or None if the cancellation fails or an error occurs.
+        """
+        return self._gateway.cancel_order(**kwargs)
+
+    def get_account(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayAccountModel]:
+        """
+        Get account information from the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's get_account method.
+                Typically no arguments are required, but gateway-specific
+                parameters may be supported.
+
+        Returns:
+            GatewayAccountModel instance containing account information
+            (balance, positions, etc.), or None if the information cannot
+            be retrieved or an error occurs.
+        """
+        return self._gateway.get_account(
+            **kwargs,
+        )
+
     def get_klines(
         self,
         **kwargs: Any,
@@ -81,40 +122,6 @@ class GatewayService(GatewayInterface):
                 Common arguments include symbol, interval, start_time, end_time, limit.
         """
         self._gateway.get_klines(**kwargs)
-
-    def get_symbol_info(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewaySymbolInfoModel]:
-        """
-        Get symbol information from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_symbol_info method.
-                Typically includes 'symbol' parameter.
-
-        Returns:
-            GatewaySymbolInfoModel instance containing symbol information,
-            or None if the symbol is not found or an error occurs.
-        """
-        return self._gateway.get_symbol_info(**kwargs)
-
-    def get_trading_fees(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayTradingFeesModel]:
-        """
-        Get trading fees information from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_trading_fees method.
-                Typically includes 'symbol' parameter.
-
-        Returns:
-            GatewayTradingFeesModel instance containing trading fees information,
-            or None if the information cannot be retrieved or an error occurs.
-        """
-        return self._gateway.get_trading_fees(**kwargs)
 
     def get_leverage_info(
         self,
@@ -150,67 +157,122 @@ class GatewayService(GatewayInterface):
         """
         return self._gateway.get_order(**kwargs)
 
-    async def stream(
+    def get_orders(
         self,
         **kwargs: Any,
-    ) -> None:
+    ) -> List[GatewayOrderModel]:
         """
-        Stream real-time data from the gateway.
-
-        This is an async method that establishes a WebSocket connection
-        to stream market data, order updates, or other real-time information.
+        Get multiple orders from the gateway.
 
         Args:
-            **kwargs: Keyword arguments passed to the gateway's stream method.
-                Common arguments include symbols, streams, callbacks.
-
-        Note:
-            This method should be awaited and will run until the stream
-            is closed or an error occurs.
-        """
-        await self._gateway.stream(**kwargs)
-
-    def place_order(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayOrderModel]:
-        """
-        Place a new order on the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's place_order method.
+            **kwargs: Keyword arguments passed to the gateway's get_orders method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
-                - side: Order side (BUY or SELL)
-                - order_type: Order type (MARKET)
-                - volume: Order volume/quantity
-                - client_order_id: Optional client-side order identifier
+                - symbol: Trading symbol to filter orders (e.g., "BTCUSDT")
+                - start_time: Start timestamp for order filtering
+                - end_time: End timestamp for order filtering
+                - limit: Maximum number of orders to return
 
         Returns:
-            GatewayOrderModel instance containing the placed order information,
-            or None if the order placement fails or an error occurs.
+            List of GatewayOrderModel instances containing order information.
+            Returns an empty list if no orders are found or an error occurs.
         """
-        return self._gateway.place_order(**kwargs)
+        return self._gateway.get_orders(**kwargs)
 
-    def cancel_order(
+    def get_positions(
         self,
         **kwargs: Any,
-    ) -> Optional[GatewayOrderModel]:
+    ) -> List[GatewayPositionModel]:
         """
-        Cancel an existing order on the gateway.
+        Get open positions from the gateway.
 
         Args:
-            **kwargs: Keyword arguments passed to the gateway's cancel_order method.
+            **kwargs: Keyword arguments passed to the gateway's get_positions method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
-                - order_id: Gateway order ID
-                - client_order_id: Client-side order identifier
+                - symbol: Trading symbol to filter positions (e.g., "BTCUSDT").
+                    If not provided, returns all positions.
 
         Returns:
-            GatewayOrderModel instance containing the cancelled order information,
-            or None if the cancellation fails or an error occurs.
+            List of GatewayPositionModel instances containing position information.
+            Returns an empty list if no positions are open or an error occurs.
         """
-        return self._gateway.cancel_order(**kwargs)
+        return self._gateway.get_positions(**kwargs)
+
+    def get_symbol_info(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewaySymbolInfoModel]:
+        """
+        Get symbol information from the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's get_symbol_info method.
+                Typically includes 'symbol' parameter.
+
+        Returns:
+            GatewaySymbolInfoModel instance containing symbol information,
+            or None if the symbol is not found or an error occurs.
+        """
+        return self._gateway.get_symbol_info(**kwargs)
+
+    def get_trades(
+        self,
+        **kwargs: Any,
+    ) -> List[GatewayTradeModel]:
+        """
+        Get trade history from the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's get_trades method.
+                Common arguments include:
+                - symbol: Trading symbol to filter trades (e.g., "BTCUSDT")
+                - start_time: Start timestamp for trade filtering
+                - end_time: End timestamp for trade filtering
+                - limit: Maximum number of trades to return
+
+        Returns:
+            List of GatewayTradeModel instances containing trade information.
+            Returns an empty list if no trades are found or an error occurs.
+        """
+        return self._gateway.get_trades(**kwargs)
+
+    def get_trading_fees(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayTradingFeesModel]:
+        """
+        Get trading fees information from the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's get_trading_fees method.
+                Typically includes 'symbol' parameter.
+
+        Returns:
+            GatewayTradingFeesModel instance containing trading fees information,
+            or None if the information cannot be retrieved or an error occurs.
+        """
+        return self._gateway.get_trading_fees(**kwargs)
+
+    def get_verification(
+        self,
+        **kwargs: Any,
+    ) -> Dict[str, bool]:
+        """
+        Get verification status from the gateway.
+
+        This method checks API credentials validity, account configuration,
+        and trading requirements.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's get_verification method.
+                Common arguments include:
+                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
+
+        Returns:
+            Dictionary containing verification status information with boolean values.
+            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
+            'cross_margin', 'one_way_mode', and 'trading_permissions'.
+        """
+        return self._gateway.get_verification(**kwargs)
 
     def modify_order(
         self,
@@ -235,6 +297,28 @@ class GatewayService(GatewayInterface):
         """
         return self._gateway.modify_order(**kwargs)
 
+    def place_order(
+        self,
+        **kwargs: Any,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Place a new order on the gateway.
+
+        Args:
+            **kwargs: Keyword arguments passed to the gateway's place_order method.
+                Common arguments include:
+                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - side: Order side (BUY or SELL)
+                - order_type: Order type (MARKET)
+                - volume: Order volume/quantity
+                - client_order_id: Optional client-side order identifier
+
+        Returns:
+            GatewayOrderModel instance containing the placed order information,
+            or None if the order placement fails or an error occurs.
+        """
+        return self._gateway.place_order(**kwargs)
+
     def set_leverage(
         self,
         **kwargs: Any,
@@ -253,109 +337,25 @@ class GatewayService(GatewayInterface):
         """
         return self._gateway.set_leverage(**kwargs)
 
-    def get_account(
+    async def stream(
         self,
         **kwargs: Any,
-    ) -> Optional[GatewayAccountModel]:
+    ) -> None:
         """
-        Get account information from the gateway.
+        Stream real-time data from the gateway.
+
+        This is an async method that establishes a WebSocket connection
+        to stream market data, order updates, or other real-time information.
 
         Args:
-            **kwargs: Keyword arguments passed to the gateway's get_account method.
-                Typically no arguments are required, but gateway-specific
-                parameters may be supported.
+            **kwargs: Keyword arguments passed to the gateway's stream method.
+                Common arguments include symbols, streams, callbacks.
 
-        Returns:
-            GatewayAccountModel instance containing account information
-            (balance, positions, etc.), or None if the information cannot
-            be retrieved or an error occurs.
+        Note:
+            This method should be awaited and will run until the stream
+            is closed or an error occurs.
         """
-        return self._gateway.get_account(
-            **kwargs,
-        )
-
-    def get_verification(
-        self,
-        **kwargs: Any,
-    ) -> Dict[str, bool]:
-        """
-        Get verification status from the gateway.
-
-        This method checks API credentials validity, account configuration,
-        and trading requirements.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_verification method.
-                Common arguments include:
-                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
-
-        Returns:
-            Dictionary containing verification status information with boolean values.
-            Keys include 'credentials_configured', 'required_leverage', 'usdt_balance',
-            'cross_margin', 'one_way_mode', and 'trading_permissions'.
-        """
-        return self._gateway.get_verification(**kwargs)
-
-    def get_orders(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayOrderModel]:
-        """
-        Get multiple orders from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_orders method.
-                Common arguments include:
-                - symbol: Trading symbol to filter orders (e.g., "BTCUSDT")
-                - start_time: Start timestamp for order filtering
-                - end_time: End timestamp for order filtering
-                - limit: Maximum number of orders to return
-
-        Returns:
-            List of GatewayOrderModel instances containing order information.
-            Returns an empty list if no orders are found or an error occurs.
-        """
-        return self._gateway.get_orders(**kwargs)
-
-    def get_trades(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayTradeModel]:
-        """
-        Get trade history from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_trades method.
-                Common arguments include:
-                - symbol: Trading symbol to filter trades (e.g., "BTCUSDT")
-                - start_time: Start timestamp for trade filtering
-                - end_time: End timestamp for trade filtering
-                - limit: Maximum number of trades to return
-
-        Returns:
-            List of GatewayTradeModel instances containing trade information.
-            Returns an empty list if no trades are found or an error occurs.
-        """
-        return self._gateway.get_trades(**kwargs)
-
-    def get_positions(
-        self,
-        **kwargs: Any,
-    ) -> List[GatewayPositionModel]:
-        """
-        Get open positions from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_positions method.
-                Common arguments include:
-                - symbol: Trading symbol to filter positions (e.g., "BTCUSDT").
-                    If not provided, returns all positions.
-
-        Returns:
-            List of GatewayPositionModel instances containing position information.
-            Returns an empty list if no positions are open or an error occurs.
-        """
-        return self._gateway.get_positions(**kwargs)
+        await self._gateway.stream(**kwargs)
 
     def _setup(self) -> None:
         """

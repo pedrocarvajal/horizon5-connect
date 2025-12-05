@@ -7,12 +7,7 @@ from interfaces.asset import AssetInterface
 
 
 class PortfolioInterface(ABC):
-    """Abstract interface for portfolio containing multiple trading assets.
-
-    Attributes:
-        _id: Portfolio identifier.
-        _assets: List of asset classes.
-    """
+    """Abstract interface for portfolio containing multiple trading assets."""
 
     _id: str
     _assets: List[Type[AssetInterface]]
@@ -24,6 +19,7 @@ class PortfolioInterface(ABC):
         pass
 
     @property
+    @abstractmethod
     def assets(self) -> List[Type[AssetInterface]]:
         """Get list of asset classes in portfolio."""
-        return self._assets
+        pass

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import sys
+import time
 from multiprocessing import Process, Queue
 from typing import Any
 
@@ -14,6 +15,7 @@ from helpers.parse_date import parse_date
 from services.authentication import AuthenticationService
 from services.backtest import BacktestService
 from services.commands import CommandsService
+from services.logging import LoggingService
 
 
 class Backtest(BacktestService):
@@ -78,6 +80,13 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    restore_ticks = args.restore_ticks == "true"
+
+    if restore_ticks:
+        log = LoggingService()
+        log.warning("Full data cleanup will be executed")
+        log.warning("Waiting 10 seconds before deleting existing data...")
+        time.sleep(10)
 
     from_date = parse_date(
         args.from_date,

@@ -89,7 +89,7 @@ Issues to check (based on documentation):
 After applying corrections, run validation:
 
 1. Run linter checks: `./scripts/make/run-linter-checks.sh --file [filepath]`
-2. Run tests: `./scripts/make/run-tests.sh`
+2. Run tests: `./scripts/make/run-tests.sh`, but before you should ask
 
 If any check fails, fix the issues before proceeding to Step 7.
 

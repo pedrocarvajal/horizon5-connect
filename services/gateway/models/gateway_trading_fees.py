@@ -26,6 +26,7 @@ class GatewayTradingFeesModel(BaseModel):
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
     )
+
     symbol: str = Field(
         default="",
         description="The symbol of the asset, like BTCUSDT",

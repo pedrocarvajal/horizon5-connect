@@ -10,12 +10,13 @@ import polars
 from configs.timezone import TIMEZONE
 from helpers.get_progress_between_dates import get_progress_between_dates
 from interfaces.asset import AssetInterface
+from interfaces.ticks import TicksInterface
 from models.tick import TickModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.logging import LoggingService
 
 
-class TicksService:
+class TicksService(TicksInterface):
     """Service for downloading and managing historical tick data."""
 
     _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
@@ -72,11 +73,80 @@ class TicksService:
 
         return response
 
+    def _download(self) -> None:
+        assert self._asset is not None
+        if self._disable_download:
+            return
+
+        ticks_folder = self._ticks_folder / self._asset.symbol
+        parquet_file = ticks_folder / "ticks.parquet"
+        download_from_date = self._get_download_start_date(parquet_file)
+        download_to_date = datetime.datetime.now(tz=TIMEZONE)
+
+        self._log.info(f"Downloading data for {self._asset.symbol}")
+        self._log.info(f"From date: {download_from_date}")
+        self._log.info(f"To date: {download_to_date}")
+
+        current_date = None
+        actual_start_timestamp: Optional[int] = None
+        end_timestamp = int(download_to_date.timestamp())
+        klines_list: List[GatewayKlineModel] = []
+        asset = self._asset
+        assert asset is not None
+
+        def _process_klines(klines: List[GatewayKlineModel]) -> None:
+            nonlocal current_date
+            nonlocal klines_list
+            nonlocal actual_start_timestamp
+
+            if not klines:
+                return
+
+            klines_list.extend(klines)
+
+            if actual_start_timestamp is None:
+                actual_start_timestamp = klines_list[0].close_time
+
+            current_date = klines_list[-1].close_time
+            progress = min(
+                get_progress_between_dates(
+                    start_date_in_timestamp=actual_start_timestamp,
+                    end_date_in_timestamp=end_timestamp,
+                    current_date_in_timestamp=current_date,
+                )
+                * 100,
+                100.0,
+            )
+
+            current_date_formatted = self._get_formatted_timestamp(current_date)
+            end_date_formatted = self._get_formatted_timestamp(end_timestamp)
+            start_date_formatted = self._get_formatted_timestamp(actual_start_timestamp)
+
+            times = f"Start: {start_date_formatted} | Current: {current_date_formatted} | End: {end_date_formatted}"
+            self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
+
+        try:
+            gateway = asset.gateway
+            gateway.get_klines(
+                symbol=asset.symbol,
+                timeframe="1m",
+                from_date=int(download_from_date.timestamp()),
+                to_date=int(download_to_date.timestamp()),
+                callback=_process_klines,
+            )
+
+        except Exception as e:
+            self._log.error(f"Error downloading data for {self._asset.symbol}: {e}")
+            if not klines_list:
+                raise
+
+        if not klines_list:
+            return
+
+        self._save_ticks(klines_list, parquet_file, ticks_folder)
+
     def _get_datetime_from_timestamp(self, timestamp: int) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(timestamp, tz=TIMEZONE)
-
-    def _get_formatted_timestamp(self, timestamp: int) -> str:
-        return self._get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
     def _get_download_start_date(self, parquet_file: Path) -> datetime.datetime:
         assert self._asset is not None
@@ -84,7 +154,6 @@ class TicksService:
 
         if self._restore_ticks:
             if parquet_file.exists():
-                self._log.info(f"Deleting existing data for {self._asset.symbol}")
                 parquet_file.unlink()
 
             return date
@@ -100,6 +169,9 @@ class TicksService:
 
         self._log.info("No existing data found, starting fresh download")
         return date
+
+    def _get_formatted_timestamp(self, timestamp: int) -> str:
+        return self._get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
     def _save_ticks(
         self,
@@ -132,73 +204,6 @@ class TicksService:
         self._log.info(f"Data saved to {parquet_file}")
         self._log.info(f"Total ticks: {final_ticks.height}")
         self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
-
-    def _download(self) -> None:
-        assert self._asset is not None
-        if self._disable_download:
-            return
-
-        ticks_folder = self._ticks_folder / self._asset.symbol
-        parquet_file = ticks_folder / "ticks.parquet"
-        download_from_date = self._get_download_start_date(parquet_file)
-        download_to_date = datetime.datetime.now(tz=TIMEZONE)
-
-        self._log.info(f"Downloading data for {self._asset.symbol}")
-        self._log.info(f"From date: {download_from_date}")
-        self._log.info(f"To date: {download_to_date}")
-
-        current_date = None
-        start_timestamp = int(download_from_date.timestamp())
-        end_timestamp = int(download_to_date.timestamp())
-        klines_list: List[GatewayKlineModel] = []
-        asset = self._asset
-        assert asset is not None
-
-        def _process_klines(klines: List[GatewayKlineModel]) -> None:
-            nonlocal current_date
-            nonlocal klines_list
-
-            if not klines:
-                return
-
-            klines_list.extend(klines)
-            current_date = klines_list[-1].close_time
-            progress = min(
-                get_progress_between_dates(
-                    start_date_in_timestamp=start_timestamp,
-                    end_date_in_timestamp=end_timestamp,
-                    current_date_in_timestamp=current_date,
-                )
-                * 100,
-                100.0,
-            )
-
-            current_date_formatted = self._get_formatted_timestamp(current_date)
-            end_date_formatted = self._get_formatted_timestamp(end_timestamp)
-            start_date_formatted = self._get_formatted_timestamp(start_timestamp)
-
-            times = f"Start: {start_date_formatted} | Current: {current_date_formatted} | End: {end_date_formatted}"
-            self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
-
-        try:
-            gateway = asset.gateway
-            gateway.get_klines(
-                symbol=asset.symbol,
-                timeframe="1m",
-                from_date=int(download_from_date.timestamp()),
-                to_date=int(download_to_date.timestamp()),
-                callback=_process_klines,
-            )
-
-        except Exception as e:
-            self._log.error(f"Error downloading data for {self._asset.symbol}: {e}")
-            if not klines_list:
-                raise
-
-        if not klines_list:
-            return
-
-        self._save_ticks(klines_list, parquet_file, ticks_folder)
 
     @property
     def folder(self) -> Path:

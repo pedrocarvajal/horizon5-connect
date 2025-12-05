@@ -34,7 +34,11 @@ class OrderbookWrapper(unittest.TestCase):
         self._transactions = []
         self._orderbook = self._create_orderbook()
 
-    def _create_orderbook(self, balance: float = _INITIAL_BALANCE, leverage: int = 10) -> OrderbookService:
+    def _create_orderbook(
+        self,
+        balance: float = _INITIAL_BALANCE,
+        leverage: int = 10,
+    ) -> OrderbookService:
         return OrderbookService(
             backtest=True,
             backtest_id="test-orderbook-123",
@@ -72,7 +76,13 @@ class OrderbookWrapper(unittest.TestCase):
             updated_at=datetime.datetime.now(tz=TIMEZONE),
         )
 
-    def _open_position(self, orderbook: OrderbookService, side: OrderSide, volume: float, price: float) -> OrderModel:
+    def _open_position(
+        self,
+        orderbook: OrderbookService,
+        side: OrderSide,
+        volume: float,
+        price: float,
+    ) -> OrderModel:
         tick = self._create_tick(price)
         orderbook.refresh(tick)
         order = self._create_order(side=side, price=price, volume=volume)

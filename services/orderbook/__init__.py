@@ -111,69 +111,51 @@ class OrderbookService(OrderbookInterface):
             backtest_id=backtest_id,
         )
 
-    def _cancel_order(self, order: OrderModel, reason: str) -> None:
+    def cancel(self, order: OrderModel) -> None:
         """
-        Cancel an order and record it in the orderbook.
+        Cancel an existing order.
+
+        Cancels a pending or open order, releasing the reserved margin back
+        to the balance. In production mode, delegates execution to the gateway
+        handler to cancel the order on the exchange.
 
         Args:
-            order: OrderModel instance to cancel.
-            reason: Reason for cancellation (for logging).
+            order: OrderModel instance representing the order to cancel.
         """
-        self._log.error(reason)
-        order.status = OrderStatus.CANCELLED
-        order.executed_volume = 0
+        if self._tick is None:
+            self._log.error("Tick must be set before cancelling orders.")
+            return
 
-        with self._orders_lock:
+        if not (order.status.is_opening() or order.status.is_open()):
+            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
+            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
+            return
+
+        margin_to_release = (order.volume * order.price) / self._leverage
+
+        with self._balance_lock, self._orders_lock:
+            if order.id not in self._orders:
+                self._log.error(f"Order {order.id} not found in orderbook")
+                return
+
+            if not self._backtest:
+                gateway_success = self._gateway_handler.cancel_order(order)
+
+                if not gateway_success:
+                    self._log.critical(
+                        f"Failed to cancel order {order.id} on gateway. Order remains {order.status.value}."
+                    )
+                    return
+
+            order.status = OrderStatus.CANCELLED
+            order.executed_volume = 0
+            order.updated_at = self._tick.date
+
+            self._balance += margin_to_release
             self._orders[order.id] = order
+            self._open_orders_index.discard(order.id)
 
         self._on_transaction(order)
-
-    def refresh(self, tick: TickModel) -> None:
-        """
-        Refresh orderbook state with new market tick.
-
-        Updates current tick, checks for margin calls, updates order prices,
-        and evaluates stop loss/take profit conditions for all open orders.
-
-        Args:
-            tick: Current market tick data.
-        """
-        self._tick = tick
-
-        if self.used_margin > 0 and self.margin_level < MARGIN_LIQUIDATION_RATIO:
-            if not self._margin_call_active:
-                self._margin_call_active = True
-                self._log.critical("Margin call triggered: closing all orders and blocking new operations.")
-
-            with self._orders_lock:
-                open_order_ids = list(self._open_orders_index)
-
-            for order_id in open_order_ids:
-                order = self._orders[order_id]
-                self._log.warning(f"Closing order {order.id}.")
-                self.close(order)
-
-        if self._margin_call_active and self.margin_level > MARGIN_RECOVERY_RATIO:
-            self._margin_call_active = False
-            self._log.info(
-                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. New operations allowed."
-            )
-
-        with self._orders_lock:
-            open_order_ids = list(self._open_orders_index)
-
-        for order_id in open_order_ids:
-            order = self._orders[order_id]
-            order.close_price = tick.price
-            order.updated_at = tick.date
-
-            ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)
-            ready_to_close_stop_loss = order.check_if_ready_to_close_stop_loss(tick)
-
-            if ready_to_close_take_profit or ready_to_close_stop_loss:
-                with self._orders_lock:
-                    self._orders[order.id].status = OrderStatus.CLOSING
-                self.close(order)
 
     def clean(self) -> None:
         """
@@ -190,6 +172,85 @@ class OrderbookService(OrderbookInterface):
                 ]:
                     del self._orders[order_id]
                     self._open_orders_index.discard(order_id)
+
+    def close(self, order: OrderModel) -> None:
+        """
+        Close an existing order.
+
+        Handles three scenarios based on order execution status:
+        1. Not executed (executed_volume = 0): Cancels the order entirely.
+        2. Partially executed (0 < executed_volume < volume): Cancels the
+           unfilled portion and closes the executed portion.
+        3. Fully executed (executed_volume = volume): Closes the order normally.
+
+        Updates order status to CLOSED, returns margin to balance, and applies
+        profit/loss. In production mode, delegates execution to the gateway handler.
+
+        Args:
+            order: OrderModel instance representing the order to close.
+        """
+        if self._tick is None:
+            self._log.error("Tick must be set before closing orders.")
+            return
+
+        if order.executed_volume == 0:
+            self._log.info(f"Order {order.id} not executed, cancelling instead of closing")
+            self.cancel(order)
+            return
+
+        if order.executed_volume < order.volume:
+            unexecuted_volume = order.volume - order.executed_volume
+            margin_to_free = (unexecuted_volume * order.price) / self._leverage
+
+            msg = f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}."
+            self._log.info(f"{msg} Cancelling unfilled portion and closing executed portion.")
+
+            if not self._backtest:
+                cancel_success = self._gateway_handler.cancel_order(order)
+
+                if not cancel_success:
+                    msg = f"Failed to cancel unfilled portion of order {order.id}."
+                    self._log.warning(f"{msg} Proceeding to close executed portion anyway.")
+
+            with self._balance_lock:
+                self._balance += margin_to_free
+
+            order.volume = order.executed_volume
+
+        margin_used = (order.executed_volume * order.price) / self._leverage
+        profit = order.profit
+
+        order.status = OrderStatus.CLOSED
+        order.close_price = self._tick.price
+        order.updated_at = self._tick.date
+
+        with self._balance_lock:
+            self._balance += margin_used
+            self._balance += profit
+
+            with self._orders_lock:
+                self._orders[order.id] = order
+                self._open_orders_index.discard(order.id)
+
+        if not self._backtest:
+            gateway_success = self._gateway_handler.close_order(order)
+
+            if not gateway_success:
+                with self._balance_lock:
+                    self._balance -= margin_used
+                    self._balance -= profit
+
+                    with self._orders_lock:
+                        self._open_orders_index.add(order.id)
+
+                order.status = OrderStatus.OPEN
+
+                self._log.critical(
+                    f"Failed to close order {order.id} on gateway. Reverted balance changes. Order remains OPEN."
+                )
+                return
+
+        self._on_transaction(order)
 
     def open(self, order: OrderModel) -> None:
         """
@@ -279,130 +340,52 @@ class OrderbookService(OrderbookInterface):
 
         self._on_transaction(order)
 
-    def close(self, order: OrderModel) -> None:
+    def refresh(self, tick: TickModel) -> None:
         """
-        Close an existing order.
+        Refresh orderbook state with new market tick.
 
-        Handles three scenarios based on order execution status:
-        1. Not executed (executed_volume = 0): Cancels the order entirely.
-        2. Partially executed (0 < executed_volume < volume): Cancels the
-           unfilled portion and closes the executed portion.
-        3. Fully executed (executed_volume = volume): Closes the order normally.
-
-        Updates order status to CLOSED, returns margin to balance, and applies
-        profit/loss. In production mode, delegates execution to the gateway handler.
+        Updates current tick, checks for margin calls, updates order prices,
+        and evaluates stop loss/take profit conditions for all open orders.
 
         Args:
-            order: OrderModel instance representing the order to close.
+            tick: Current market tick data.
         """
-        if self._tick is None:
-            self._log.error("Tick must be set before closing orders.")
-            return
+        self._tick = tick
 
-        if order.executed_volume == 0:
-            self._log.info(f"Order {order.id} not executed, cancelling instead of closing")
-            self.cancel(order)
-            return
-
-        if order.executed_volume < order.volume:
-            unexecuted_volume = order.volume - order.executed_volume
-            margin_to_free = (unexecuted_volume * order.price) / self._leverage
-
-            msg = f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}."
-            self._log.info(f"{msg} Cancelling unfilled portion and closing executed portion.")
-
-            if not self._backtest:
-                cancel_success = self._gateway_handler.cancel_order(order)
-
-                if not cancel_success:
-                    msg = f"Failed to cancel unfilled portion of order {order.id}."
-                    self._log.warning(f"{msg} Proceeding to close executed portion anyway.")
-
-            with self._balance_lock:
-                self._balance += margin_to_free
-
-            order.volume = order.executed_volume
-
-        margin_used = (order.executed_volume * order.price) / self._leverage
-        profit = order.profit
-
-        order.status = OrderStatus.CLOSED
-        order.close_price = self._tick.price
-        order.updated_at = self._tick.date
-
-        with self._balance_lock:
-            self._balance += margin_used
-            self._balance += profit
+        if self.used_margin > 0 and self.margin_level < MARGIN_LIQUIDATION_RATIO:
+            if not self._margin_call_active:
+                self._margin_call_active = True
+                self._log.critical("Margin call triggered: closing all orders and blocking new operations.")
 
             with self._orders_lock:
-                self._orders[order.id] = order
-                self._open_orders_index.discard(order.id)
+                open_order_ids = list(self._open_orders_index)
 
-        if not self._backtest:
-            gateway_success = self._gateway_handler.close_order(order)
+            for order_id in open_order_ids:
+                order = self._orders[order_id]
+                self._log.warning(f"Closing order {order.id}.")
+                self.close(order)
 
-            if not gateway_success:
-                with self._balance_lock:
-                    self._balance -= margin_used
-                    self._balance -= profit
+        if self._margin_call_active and self.margin_level > MARGIN_RECOVERY_RATIO:
+            self._margin_call_active = False
+            self._log.info(
+                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. New operations allowed."
+            )
 
-                    with self._orders_lock:
-                        self._open_orders_index.add(order.id)
+        with self._orders_lock:
+            open_order_ids = list(self._open_orders_index)
 
-                order.status = OrderStatus.OPEN
+        for order_id in open_order_ids:
+            order = self._orders[order_id]
+            order.close_price = tick.price
+            order.updated_at = tick.date
 
-                self._log.critical(
-                    f"Failed to close order {order.id} on gateway. Reverted balance changes. Order remains OPEN."
-                )
-                return
+            ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)
+            ready_to_close_stop_loss = order.check_if_ready_to_close_stop_loss(tick)
 
-        self._on_transaction(order)
-
-    def cancel(self, order: OrderModel) -> None:
-        """
-        Cancel an existing order.
-
-        Cancels a pending or open order, releasing the reserved margin back
-        to the balance. In production mode, delegates execution to the gateway
-        handler to cancel the order on the exchange.
-
-        Args:
-            order: OrderModel instance representing the order to cancel.
-        """
-        if self._tick is None:
-            self._log.error("Tick must be set before cancelling orders.")
-            return
-
-        if not (order.status.is_opening() or order.status.is_open()):
-            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
-            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
-            return
-
-        margin_to_release = (order.volume * order.price) / self._leverage
-
-        with self._balance_lock, self._orders_lock:
-            if order.id not in self._orders:
-                self._log.error(f"Order {order.id} not found in orderbook")
-                return
-
-            if not self._backtest:
-                gateway_success = self._gateway_handler.cancel_order(order)
-
-                if not gateway_success:
-                    self._log.critical(
-                        f"Failed to cancel order {order.id} on gateway. Order remains {order.status.value}."
-                    )
-                    return
-
-            order.status = OrderStatus.CANCELLED
-            order.executed_volume = 0
-            order.updated_at = self._tick.date
-
-            self._balance += margin_to_release
-            self._orders[order.id] = order
-            self._open_orders_index.discard(order.id)
-
-        self._on_transaction(order)
+            if ready_to_close_take_profit or ready_to_close_stop_loss:
+                with self._orders_lock:
+                    self._orders[order.id].status = OrderStatus.CLOSING
+                self.close(order)
 
     def where(
         self,
@@ -426,16 +409,22 @@ class OrderbookService(OrderbookInterface):
                 if (side is None or order.side == side) and (status is None or order.status == status)
             ]
 
-    @property
-    def orders(self) -> List[OrderModel]:
-        """Return all orders in the orderbook."""
-        with self._orders_lock:
-            return list(self._orders.values())
+    def _cancel_order(self, order: OrderModel, reason: str) -> None:
+        """
+        Cancel an order and record it in the orderbook.
 
-    @property
-    def balance(self) -> float:
-        """Return current cash balance."""
-        return self._balance
+        Args:
+            order: OrderModel instance to cancel.
+            reason: Reason for cancellation (for logging).
+        """
+        self._log.error(reason)
+        order.status = OrderStatus.CANCELLED
+        order.executed_volume = 0
+
+        with self._orders_lock:
+            self._orders[order.id] = order
+
+        self._on_transaction(order)
 
     @property
     def allocation(self) -> float:
@@ -443,9 +432,14 @@ class OrderbookService(OrderbookInterface):
         return self._allocation
 
     @property
-    def nav(self) -> float:
-        """Return net asset value (balance + used margin + unrealized PnL)."""
-        return self._balance + self.used_margin + self.pnl
+    def balance(self) -> float:
+        """Return current cash balance."""
+        return self._balance
+
+    @property
+    def equity(self) -> float:
+        """Calculate account equity as balance plus unrealized PnL."""
+        return self._balance + self.pnl
 
     @property
     def exposure(self) -> float:
@@ -458,42 +452,24 @@ class OrderbookService(OrderbookInterface):
             )
 
     @property
-    def pnl(self) -> float:
-        """Return unrealized profit and loss from open positions."""
-        with self._orders_lock:
-            return sum(
-                order.profit
-                for order_id in self._open_orders_index
-                if (order := self._orders.get(order_id)) is not None
-            )
-
-    @property
     def free_margin(self) -> float:
         """Return available margin for new positions."""
         return self.equity - self.used_margin
 
     @property
-    def used_margin(self) -> float:
-        """Return margin currently used by open positions."""
-        with self._orders_lock:
-            return sum(
-                (order.volume * order.price) / self._leverage
-                for order_id in self._open_orders_index
-                if (order := self._orders.get(order_id)) is not None
-            )
+    def gateway_handler(self) -> GatewayHandlerService:
+        """Return gateway handler service."""
+        return self._gateway_handler
 
     @property
-    def equity(self) -> float:
-        """Calculate account equity as balance plus unrealized PnL."""
-        return self._balance + self.pnl
+    def is_backtest(self) -> bool:
+        """Return whether running in backtest mode."""
+        return self._backtest
 
-    @property
-    def margin_level(self) -> float:
-        """Return margin level as ratio of equity to used margin."""
-        if self.used_margin == 0:
-            return float("inf")
-
-        return self.equity / self.used_margin
+    @is_backtest.setter
+    def is_backtest(self, value: bool) -> None:
+        """Set backtest mode."""
+        self._backtest = value
 
     @property
     def leverage(self) -> int:
@@ -511,22 +487,46 @@ class OrderbookService(OrderbookInterface):
         self._margin_call_active = value
 
     @property
+    def margin_level(self) -> float:
+        """Return margin level as ratio of equity to used margin."""
+        if self.used_margin == 0:
+            return float("inf")
+
+        return self.equity / self.used_margin
+
+    @property
+    def nav(self) -> float:
+        """Return net asset value (balance + used margin + unrealized PnL)."""
+        return self._balance + self.used_margin + self.pnl
+
+    @property
     def open_orders_index(self) -> Set[str]:
         """Return set of open order IDs."""
         with self._orders_lock:
             return self._open_orders_index.copy()
 
     @property
-    def is_backtest(self) -> bool:
-        """Return whether running in backtest mode."""
-        return self._backtest
-
-    @is_backtest.setter
-    def is_backtest(self, value: bool) -> None:
-        """Set backtest mode."""
-        self._backtest = value
+    def orders(self) -> List[OrderModel]:
+        """Return all orders in the orderbook."""
+        with self._orders_lock:
+            return list(self._orders.values())
 
     @property
-    def gateway_handler(self) -> GatewayHandlerService:
-        """Return gateway handler service."""
-        return self._gateway_handler
+    def pnl(self) -> float:
+        """Return unrealized profit and loss from open positions."""
+        with self._orders_lock:
+            return sum(
+                order.profit
+                for order_id in self._open_orders_index
+                if (order := self._orders.get(order_id)) is not None
+            )
+
+    @property
+    def used_margin(self) -> float:
+        """Return margin currently used by open positions."""
+        with self._orders_lock:
+            return sum(
+                (order.volume * order.price) / self._leverage
+                for order_id in self._open_orders_index
+                if (order := self._orders.get(order_id)) is not None
+            )

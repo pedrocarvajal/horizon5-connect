@@ -4,11 +4,11 @@ from services.analytic.helpers.get_cagr import get_cagr
 
 
 class TestGetCagr(unittest.TestCase):
-    _DEFAULT_INITIAL_NAV = 1000.0
-    _GROWTH_FINAL_NAV = 1100.0
-    _LOSS_FINAL_NAV = 900.0
-    _DEFAULT_ELAPSED_DAYS = 365
-    _SHORT_ELAPSED_DAYS = 30
+    _DEFAULT_INITIAL_NAV: float = 1000.0
+    _GROWTH_FINAL_NAV: float = 1100.0
+    _LOSS_FINAL_NAV: float = 900.0
+    _DEFAULT_ELAPSED_DAYS: int = 365
+    _SHORT_ELAPSED_DAYS: int = 30
 
     def test_get_cagr_positive_growth(self) -> None:
         result = get_cagr(

@@ -10,24 +10,28 @@ from enums.command import Command
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
+from interfaces.production import ProductionInterface
 from models.tick import TickModel
 from services.logging import LoggingService
 from services.ticks import TicksService
 
 
-class ProductionService:
+class ProductionService(ProductionInterface):
     """Service for live trading execution and stream management."""
 
-    _portfolio: Optional[PortfolioInterface] = None
-    _portfolio_path: Optional[str] = None
+    STREAM_TIMEOUT_SECONDS: int = 10
+    HISTORICAL_DATA_DAYS: int = 365
+
     _assets: List[AssetInterface]
-
-    _stream_started_at: datetime.datetime
-    _stream_last_updated_at: datetime.datetime
-    _stream_tasks: List[asyncio.Task[None]]
-
     _commands_queue: Optional["Queue[Command]"] = None
     _events_queue: Optional["Queue[Any]"] = None
+    _portfolio: Optional[PortfolioInterface] = None
+    _portfolio_path: Optional[str] = None
+    _stream_last_updated_at: datetime.datetime
+    _stream_started_at: datetime.datetime
+    _stream_tasks: List[asyncio.Task[None]]
+
+    _log: LoggingService
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize production service with queues and portfolio path."""
@@ -84,28 +88,6 @@ class ProductionService:
         self._log.info("Connecting to the streams")
         asyncio.run(self._run_tasks())
 
-    async def _run_tasks(self) -> None:
-        await asyncio.gather(
-            self._connect(),
-            self._supervisor(),
-        )
-
-    async def _supervisor(self) -> None:
-        while True:
-            await asyncio.sleep(10)
-
-            stream_last_updated_at = self._stream_last_updated_at
-            stream_time_diff = datetime.datetime.now(tz=TIMEZONE) - stream_last_updated_at
-
-            if stream_time_diff > datetime.timedelta(seconds=10):
-                self._log.error(
-                    f"Stream has not been updated in the last 10 seconds: {stream_time_diff}. Restarting stream..."
-                )
-
-                for task in self._stream_tasks:
-                    if not task.done():
-                        task.cancel()
-
     def _collect_historical(self) -> None:
         for asset in self._assets:
             tick_service = TicksService()
@@ -116,7 +98,7 @@ class ProductionService:
             )
 
             to_date = datetime.datetime.now(tz=TIMEZONE)
-            from_date = to_date - datetime.timedelta(days=365)
+            from_date = to_date - datetime.timedelta(days=self.HISTORICAL_DATA_DAYS)
 
             self._log.info(f"Collecting historical data for {asset.symbol} from {from_date} to {to_date}")
 
@@ -173,3 +155,24 @@ class ProductionService:
             self._log.error(
                 f"Error connecting to gateway stream: {e} | Asset: {asset.symbol} | Gateway: {gateway.name}"
             )
+
+    async def _run_tasks(self) -> None:
+        await asyncio.gather(
+            self._connect(),
+            self._supervisor(),
+        )
+
+    async def _supervisor(self) -> None:
+        while True:
+            await asyncio.sleep(self.STREAM_TIMEOUT_SECONDS)
+
+            stream_last_updated_at = self._stream_last_updated_at
+            stream_time_diff = datetime.datetime.now(tz=TIMEZONE) - stream_last_updated_at
+
+            if stream_time_diff > datetime.timedelta(seconds=self.STREAM_TIMEOUT_SECONDS):
+                timeout = self.STREAM_TIMEOUT_SECONDS
+                self._log.error(f"Stream not updated in {timeout}s: {stream_time_diff}. Restarting...")
+
+                for task in self._stream_tasks:
+                    if not task.done():
+                        task.cancel()

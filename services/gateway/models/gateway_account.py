@@ -69,6 +69,7 @@ class GatewayAccountModel(BaseModel):
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
     )
+
     balances: List[GatewayAccountBalanceModel] = Field(
         default_factory=lambda: [],
         description="List of account balances by asset",

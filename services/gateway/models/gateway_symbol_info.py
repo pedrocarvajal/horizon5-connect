@@ -103,36 +103,6 @@ class GatewaySymbolInfoModel(BaseModel):
     )
 
     @field_validator(
-        "price_precision",
-        "quantity_precision",
-        mode="before",
-    )
-    @classmethod
-    def parse_int(cls, value: Any) -> int:
-        """
-        Parse and convert value to integer for precision fields.
-
-        Converts various input formats (string, int, float) to an integer.
-        Returns 0 if conversion fails.
-
-        Args:
-            value: The value to parse. Can be None, empty string, float, int,
-                or string representation of a number.
-
-        Returns:
-            int: The parsed integer value, or 0 if conversion fails.
-
-        Example:
-            >>> GatewaySymbolInfoModel.parse_int("2")
-            2
-            >>> GatewaySymbolInfoModel.parse_int(3.5)
-            3
-            >>> GatewaySymbolInfoModel.parse_int(None)
-            0
-        """
-        return parse_int_helper(value=value)
-
-    @field_validator(
         "min_price",
         "max_price",
         "tick_size",
@@ -167,6 +137,36 @@ class GatewaySymbolInfoModel(BaseModel):
             None
         """
         return parse_optional_float_helper(value=value)
+
+    @field_validator(
+        "price_precision",
+        "quantity_precision",
+        mode="before",
+    )
+    @classmethod
+    def parse_int(cls, value: Any) -> int:
+        """
+        Parse and convert value to integer for precision fields.
+
+        Converts various input formats (string, int, float) to an integer.
+        Returns 0 if conversion fails.
+
+        Args:
+            value: The value to parse. Can be None, empty string, float, int,
+                or string representation of a number.
+
+        Returns:
+            int: The parsed integer value, or 0 if conversion fails.
+
+        Example:
+            >>> GatewaySymbolInfoModel.parse_int("2")
+            2
+            >>> GatewaySymbolInfoModel.parse_int(3.5)
+            3
+            >>> GatewaySymbolInfoModel.parse_int(None)
+            0
+        """
+        return parse_int_helper(value=value)
 
     @field_validator(
         "margin_percent",
