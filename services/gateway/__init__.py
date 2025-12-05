@@ -380,7 +380,7 @@ class GatewayService(GatewayInterface):
         self._sandbox = gateway_kwargs.get("sandbox", False)
 
         if self._backtest:
-            gateway_kwargs["sandbox"] = True
+            gateway_kwargs["sandbox"] = False
             gateway_kwargs["api_key"] = None
             gateway_kwargs["api_secret"] = None
         else:
