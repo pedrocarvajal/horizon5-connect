@@ -45,9 +45,9 @@ class Commands(CommandsService):
 
 
 if __name__ == "__main__":
-    auth = AuthenticationService()
+    authentication_service = AuthenticationService()
 
-    if not auth.setup():
+    if not authentication_service.setup():
         sys.exit(1)
 
     commands_queue: Queue[Any] = Queue()
