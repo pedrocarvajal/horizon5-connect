@@ -49,7 +49,6 @@ class TestStrategy(StrategyService):
         """
         super().__init__(**kwargs)
         self._log = LoggingService()
-        self._log.setup("test_strategy")
 
         self._settings = kwargs.get(
             "settings",

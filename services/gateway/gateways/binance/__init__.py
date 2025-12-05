@@ -69,7 +69,6 @@ class Binance(GatewayInterface):
                 - api_secret: Binance API secret (optional, None for backtest mode).
         """
         self._log = LoggingService()
-        self._log.setup("gateway_binance")
 
         sandbox = kwargs.get("sandbox", False)
         api_key = kwargs.get("api_key")

@@ -46,7 +46,6 @@ class BaseProvider(ABC):
         self._timeout = timeout
 
         self._logger = LoggingService()
-        self._logger.setup("provider")
 
         self._validate_configuration()
 

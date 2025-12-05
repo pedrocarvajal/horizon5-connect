@@ -21,7 +21,6 @@ class TestIndicatorPriceAcceleration(WrapperIndicator):
         super().setUp()
 
         self._log = LoggingService()
-        self._log.setup("test_indicator_price_acceleration")
 
     def test_indicator_price_acceleration(self) -> None:
         candles = self.candles(

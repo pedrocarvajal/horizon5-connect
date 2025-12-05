@@ -11,7 +11,6 @@ from tests.integration.binance.wrappers.binance import BinanceWrapper
 class TestBinanceSymbol(BinanceWrapper):
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_symbol")
 
     def test_get_symbol_info(self) -> None:
         symbol_info = self._gateway.get_symbol_info(symbol=self._SYMBOL)

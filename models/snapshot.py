@@ -62,7 +62,6 @@ class SnapshotModel(BaseModel):
         super().__init__(**kwargs)
 
         self._log = LoggingService()
-        self._log.setup("snapshot_model")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert snapshot to dictionary representation.

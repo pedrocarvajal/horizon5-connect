@@ -21,7 +21,6 @@ class TestIndicatorVolatility(WrapperIndicator):
         super().setUp()
 
         self._log = LoggingService()
-        self._log.setup("test_indicator_volatility")
 
     def test_indicator_volatility(self) -> None:
         candles = self.candles(

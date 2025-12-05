@@ -42,7 +42,6 @@ class VolatilityIndicator(IndicatorInterface):
         self._returns = []
 
         self._log = LoggingService()
-        self._log.setup("volatility_indicator")
 
     def on_tick(self, tick: TickModel) -> None:
         """Process incoming tick and refresh indicator if candle closed."""

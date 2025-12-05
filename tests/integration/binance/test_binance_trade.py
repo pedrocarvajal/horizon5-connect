@@ -6,7 +6,6 @@ from tests.integration.binance.wrappers.binance import BinanceWrapper
 class TestBinanceTrade(BinanceWrapper):
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_trade")
 
     def test_get_trades(self) -> None:
         trades = self._gateway.get_trades()

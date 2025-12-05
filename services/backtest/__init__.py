@@ -87,7 +87,6 @@ class BacktestService:
         self._events_queue = events_queue
 
         self._log = LoggingService()
-        self._log.setup("backtest")
         self._log.info("Backtesting service started")
 
         self._asset = asset()

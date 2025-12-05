@@ -52,7 +52,6 @@ class EMA5BreakoutStrategy(StrategyService):
         """
         super().__init__(**kwargs)
         self._log = LoggingService()
-        self._log.setup("ema5_breakout_strategy")
 
         self._settings = kwargs.get(
             "settings",

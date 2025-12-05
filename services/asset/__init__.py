@@ -31,7 +31,6 @@ class AssetService(AssetInterface):
     def __init__(self) -> None:
         """Initialize the asset service with default configuration."""
         self._log = LoggingService()
-        self._log.setup("asset_service")
 
         self._strategies = []
         self._commands_queue = None

@@ -27,7 +27,6 @@ class TicksService:
     def __init__(self) -> None:
         """Initialize ticks service with logging."""
         self._log = LoggingService()
-        self._log.setup("ticks_service")
 
     def setup(self, **kwargs: Any) -> None:
         """Configure ticks service with asset and download options."""

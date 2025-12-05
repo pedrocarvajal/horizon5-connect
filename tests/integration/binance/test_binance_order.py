@@ -15,7 +15,6 @@ class TestBinanceOrder(BinanceWrapper):
 
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_order")
 
     def test_place_order_market(self) -> None:
         order = self._place_test_order(symbol=self._SYMBOL, side=OrderSide.BUY, volume=self._DEFAULT_VOLUME)

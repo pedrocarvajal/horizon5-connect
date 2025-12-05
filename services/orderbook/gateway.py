@@ -123,7 +123,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
             ValueError: If gateway configuration is invalid for production trading.
         """
         self._log = LoggingService()
-        self._log.setup("gateway_handler_service")
 
         self._gateway = gateway
 

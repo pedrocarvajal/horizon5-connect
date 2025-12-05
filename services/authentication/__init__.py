@@ -51,7 +51,6 @@ class AuthenticationService(AuthenticationInterface):
         self._email = None
         self._password = None
         self._log = LoggingService()
-        self._log.setup("authentication")
 
     def setup(self) -> bool:
         """Load session and authenticate if needed.

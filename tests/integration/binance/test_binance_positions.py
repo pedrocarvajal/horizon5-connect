@@ -6,7 +6,6 @@ from tests.integration.binance.wrappers.binance import BinanceWrapper
 class TestBinancePositions(BinanceWrapper):
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_positions")
 
     def test_get_positions(self) -> None:
         self._log.info("Getting all positions")

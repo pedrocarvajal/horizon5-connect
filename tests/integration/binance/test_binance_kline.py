@@ -9,7 +9,6 @@ from tests.integration.binance.wrappers.binance import BinanceWrapper
 class TestBinanceKline(BinanceWrapper):
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_kline")
 
     def test_get_klines(self) -> None:
         self._log.info("Getting klines for BTCUSDT")

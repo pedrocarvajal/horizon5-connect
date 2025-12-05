@@ -13,7 +13,7 @@ run-tests-unit:
 	./scripts/make/run-tests-unit.sh
 
 run-linter-checks:
-	./scripts/make/run-linter-checks.sh
+	./scripts/make/run-linter-checks.sh $(if $(FILE),--file $(FILE)) $(if $(FOLDER),--folder $(FOLDER))
 
 run-linter-fixes:
 	./scripts/make/run-linter-fixes.sh

@@ -90,7 +90,6 @@ class AnalyticService(AnalyticInterface):
             ValueError: If strategy_id is None or empty.
         """
         self._log = LoggingService()
-        self._log.setup("analytic_service")
 
         self._backtest = backtest
         self._backtest_id = backtest_id

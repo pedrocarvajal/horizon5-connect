@@ -89,7 +89,6 @@ class OrderbookService(OrderbookInterface):
             on_transaction: Callback function called on order status changes.
         """
         self._log = LoggingService()
-        self._log.setup("orderbook_service")
 
         self._backtest = backtest
         self._backtest_id = backtest_id

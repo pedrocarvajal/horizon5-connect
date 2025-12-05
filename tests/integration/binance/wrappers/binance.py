@@ -34,7 +34,6 @@ class BinanceWrapper(unittest.TestCase):
     def setUp(self) -> None:
         """Set up the test environment."""
         self._log = LoggingService()
-        self._log.setup(name=self.__class__.__name__)
         self._validate_sandbox_configuration()
         self._gateway = GatewayService(gateway="binance")
         self._verification = self._gateway.get_verification()

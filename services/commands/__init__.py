@@ -19,7 +19,6 @@ class CommandsService:
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the commands service with queue connections."""
         self._log = LoggingService()
-        self._log.setup("commands_service")
         self._log.info("Commands service started")
 
         self._commands_queue = kwargs.get("commands_queue")

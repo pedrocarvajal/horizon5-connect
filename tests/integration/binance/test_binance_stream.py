@@ -12,7 +12,6 @@ class TestBinanceStream(BinanceWrapper):
 
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_stream")
 
     def test_stream(self) -> None:
         all_ticks: List[TickModel] = []

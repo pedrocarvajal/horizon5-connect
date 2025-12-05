@@ -78,7 +78,6 @@ class OrderModel(BaseModel):
         super().__init__(**kwargs)
 
         self._log = LoggingService()
-        self._log.setup("order_model")
         self._log.setup_prefix(f"[{self.id}]")
 
     def __setattr__(self, name: str, value: Any) -> None:

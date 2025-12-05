@@ -20,13 +20,6 @@ class BaseComponent:
         """Initialize the component with configuration."""
         self._config = config
         self._log = LoggingService()
-        self._log.setup(self._get_log_name())
-
-    def _get_log_name(self) -> str:
-        class_name = self.__class__.__name__
-        component_name = class_name.replace("Component", "").lower()
-
-        return f"gateway_binance_{component_name}"
 
     def _execute(
         self,

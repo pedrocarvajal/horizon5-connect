@@ -21,7 +21,6 @@ class TestIndicatorPriceVelocity(WrapperIndicator):
         super().setUp()
 
         self._log = LoggingService()
-        self._log.setup("test_indicator_price_velocity")
 
     def test_indicator_price_velocity(self) -> None:
         candles = self.candles(

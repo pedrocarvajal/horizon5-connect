@@ -32,7 +32,6 @@ class ProductionService:
     def __init__(self, **kwargs: Any) -> None:
         """Initialize production service with queues and portfolio path."""
         self._log = LoggingService()
-        self._log.setup("production_service")
 
         self._assets = []
         self._stream_started_at = datetime.datetime.now(tz=TIMEZONE)

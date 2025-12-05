@@ -12,7 +12,6 @@ class TestBinanceAccount(BinanceWrapper):
 
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_binance_account")
 
     def test_get_futures_account(self) -> None:
         account_info = self._gateway.get_account()

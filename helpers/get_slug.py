@@ -38,18 +38,16 @@ def get_slug(
         dictionary = {"@": "at"}
 
     title = ascii(title)
-
     flip = "_" if separator == "-" else "-"
     title = re.sub(rf"[{re.escape(flip)}]+", separator, title)
-
     dict_with_separators = {k: f"{separator}{v}{separator}" for k, v in dictionary.items()}
+
     for key, val in dict_with_separators.items():
         title = title.replace(key, val)
 
     title = title.lower()
     allowed = rf"[^{re.escape(separator)}\w\s]+"
     title = re.sub(allowed, "", title, flags=re.UNICODE)
-
     title = re.sub(rf"[{re.escape(separator)}\s]+", separator, title, flags=re.UNICODE)
 
     return title.strip(separator)

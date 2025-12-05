@@ -46,7 +46,6 @@ class PriceAccelerationIndicator(IndicatorInterface):
         self._accelerations = []
 
         self._log = LoggingService()
-        self._log.setup("price_acceleration_indicator")
 
     def on_tick(self, tick: TickModel) -> None:
         """Process incoming tick and refresh indicator if candle closed."""

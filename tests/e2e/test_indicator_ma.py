@@ -21,7 +21,6 @@ class TestIndicatorMA(WrapperIndicator):
         super().setUp()
 
         self._log = LoggingService()
-        self._log.setup("test_indicator_ma")
 
     def test_indicator_ma(self) -> None:
         candles = self.candles(

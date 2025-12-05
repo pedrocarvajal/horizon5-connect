@@ -26,7 +26,6 @@ def get_portfolio_by_path(
         ValueError: If unable to load module, no portfolio class found, or instantiation fails
     """
     log = LoggingService()
-    log.setup("get_portfolio_by_path")
 
     path_obj = Path(path)
     resolved_path = path_obj if path_obj.is_absolute() else Path.cwd() / path_obj

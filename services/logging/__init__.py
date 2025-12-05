@@ -10,8 +10,6 @@ from colorama import Fore, Style, just_fix_windows_console
 from rich.console import Console
 from rich.json import JSON
 
-from helpers.get_slug import get_slug
-
 SUCCESS_LEVEL = 25
 logging.addLevelName(SUCCESS_LEVEL, "SUCCESS")
 
@@ -39,10 +37,63 @@ class ColoredFormatter(logging.Formatter):
 class LoggingService:
     """Service for logging messages to console and file with formatting."""
 
-    _name: str = ""
     _prefix: str = ""
     _logs_folder: ClassVar[Path] = Path("logs")
-    logger: logging.Logger = logging.getLogger(__name__)
+    _initialized: ClassVar[bool] = False
+    _current_date: ClassVar[str] = ""
+    _shared_logger: ClassVar[logging.Logger] = logging.getLogger("horizon5")
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Get the shared logger, initializing if needed."""
+        self._ensure_initialized()
+        return LoggingService._shared_logger
+
+    def _ensure_initialized(self) -> None:
+        """Ensure logger is initialized with current day's log file."""
+        today = datetime.now(tz=UTC).strftime("%Y-%m-%d")
+
+        if not LoggingService._initialized or LoggingService._current_date != today:
+            self._initialize_logger(today)
+
+    def _initialize_logger(self, date: str) -> None:
+        """Initialize or reinitialize the logger for a new day."""
+        just_fix_windows_console()
+
+        self._logs_folder.mkdir(parents=True, exist_ok=True)
+
+        log_file_name = f"{date}.log"
+        log_file_path = self._logs_folder / log_file_name
+
+        for handler in LoggingService._shared_logger.handlers[:]:
+            handler.close()
+            LoggingService._shared_logger.removeHandler(handler)
+
+        file_formatter = logging.Formatter(
+            fmt="[%(asctime)s] [%(levelname)s] > %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        console_formatter = ColoredFormatter(
+            fmt="[%(asctime)s] [%(levelname)s] > %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        file_handler = logging.FileHandler(log_file_path)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(file_formatter)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(console_formatter)
+
+        LoggingService._shared_logger.setLevel(logging.DEBUG)
+        LoggingService._shared_logger.addHandler(file_handler)
+        LoggingService._shared_logger.addHandler(console_handler)
+        LoggingService._shared_logger.propagate = False
+
+        LoggingService._initialized = True
+        LoggingService._current_date = date
 
     def debug(self, message: Any) -> None:
         """Log a debug message, formatting dicts/lists as JSON."""
@@ -96,43 +147,6 @@ class LoggingService:
         formatted_message = f"{self._prefix} {message}" if self._prefix else message
         self.logger.critical(formatted_message)
 
-    def setup(self, name: str) -> None:
-        """Initialize the logger with console and file handlers."""
-        just_fix_windows_console()
-
-        self._logs_folder.mkdir(parents=True, exist_ok=True)
-
-        log_file_name = get_slug(name) + ".log"
-        log_file_path = self._logs_folder / log_file_name
-
-        self.logger = logging.getLogger(log_file_name)
-
-        if self.logger.hasHandlers():
-            return
-
-        file_formatter = logging.Formatter(
-            fmt="[%(asctime)s] [%(levelname)s] [%(name)s] > %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-
-        console_formatter = ColoredFormatter(
-            fmt="[%(asctime)s] [%(levelname)s] [%(name)s] > %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-
-        file_handler = logging.FileHandler(log_file_path)
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(file_formatter)
-
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(console_formatter)
-
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
-        self.logger.propagate = False
-
     def setup_prefix(self, prefix: str) -> None:
         """Set a prefix to prepend to all log messages."""
         self._prefix = prefix
@@ -140,4 +154,4 @@ class LoggingService:
     def prompt(self, label: str) -> str:
         """Generate a formatted prompt string with timestamp."""
         timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
-        return f"[{timestamp}] [INPUT] [{self.logger.name}] > {label}"
+        return f"[{timestamp}] [INPUT] > {label}"

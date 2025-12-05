@@ -42,7 +42,6 @@ class PriceVelocityIndicator(IndicatorInterface):
         self._velocities = []
 
         self._log = LoggingService()
-        self._log.setup("price_velocity_indicator")
 
     def on_tick(self, tick: TickModel) -> None:
         """Process incoming tick and refresh indicator if candle closed."""

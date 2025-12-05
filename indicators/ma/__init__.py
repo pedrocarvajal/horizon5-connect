@@ -40,7 +40,6 @@ class MAIndicator(IndicatorInterface):
         self._values = []
 
         self._log = LoggingService()
-        self._log.setup("ma_indicator")
 
     def on_tick(self, tick: TickModel) -> None:
         """Process incoming tick and refresh indicator if candle closed."""

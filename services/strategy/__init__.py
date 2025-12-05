@@ -94,7 +94,6 @@ class StrategyService(StrategyInterface):
                 enabled: Whether the strategy is enabled (default: True).
         """
         self._log = LoggingService()
-        self._log.setup("strategy_service")
 
         self._backtest = False
         self._backtest_id = None

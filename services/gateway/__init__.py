@@ -59,7 +59,6 @@ class GatewayService(GatewayInterface):
                 the GATEWAYS configuration.
         """
         self._log = LoggingService()
-        self._log.setup(name="gateway_service")
 
         self._gateways = GATEWAYS
         self._name = gateway

@@ -21,7 +21,6 @@ class Asset(AssetService):
         super().__init__()
 
         self._log = LoggingService()
-        self._log.setup("asset_btcusdt")
 
         self._strategies = [
             EMA5BreakoutStrategy(

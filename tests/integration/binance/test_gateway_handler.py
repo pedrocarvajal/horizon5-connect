@@ -29,7 +29,6 @@ class TestGatewayHandler(BinanceWrapper):
 
     def setUp(self) -> None:
         super().setUp()
-        self._log.setup(name="test_gateway_handler")
         self._handler = GatewayHandlerService(gateway=self._gateway, backtest=False)
 
     def test_gateway_handler_initialization(self) -> None:
