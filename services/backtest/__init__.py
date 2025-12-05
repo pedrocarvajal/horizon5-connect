@@ -17,6 +17,7 @@ from enums.command import Command
 from helpers.get_duration import get_duration
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
+from interfaces.backtest import BacktestInterface
 from models.backtest_settings import (
     AssetSettingsModel,
     BacktestSettingsModel,
@@ -28,7 +29,7 @@ from services.logging import LoggingService
 from services.ticks import TicksService
 
 
-class BacktestService:
+class BacktestService(BacktestInterface):
     """Backtest service for simulating trading strategies on historical data.
 
     Manages backtest lifecycle including setup, tick processing, and result collection.
@@ -155,25 +156,6 @@ class BacktestService:
 
         self._on_end()
 
-    def _on_end(self) -> None:
-        end_at = datetime.datetime.now(TIMEZONE)
-        duration = get_duration(self._start_at, end_at)
-
-        self._asset.on_end()
-        self._update_backtest(status=BacktestStatus.COMPLETED.value)
-        self._kill()
-
-        self._log.info(f"Backtest completed in: {duration}")
-
-    def _update_backtest(self, status: str) -> None:
-        if not self._id:
-            return
-
-        self._horizon_router.backtest_update(
-            backtest_id=self._id,
-            status=status,
-        )
-
     def _create_backtest(self) -> None:
         portfolio_id = ""
         strategies: List[StrategySettingsModel] = []
@@ -221,17 +203,6 @@ class BacktestService:
         self._id = response["data"]["id"]
         self._log.info(f"Backtest created: {self._id}")
 
-    def _setup_signal_handlers(self) -> None:
-        signal.signal(
-            signal.SIGINT,
-            self._handle_shutdown,
-        )
-
-        signal.signal(
-            signal.SIGTERM,
-            self._handle_shutdown,
-        )
-
     def _handle_shutdown(
         self,
         _signum: int,
@@ -254,3 +225,33 @@ class BacktestService:
                     "command": Command.KILL,
                 }
             )
+
+    def _on_end(self) -> None:
+        end_at = datetime.datetime.now(TIMEZONE)
+        duration = get_duration(self._start_at, end_at)
+
+        self._asset.on_end()
+        self._update_backtest(status=BacktestStatus.COMPLETED.value)
+        self._kill()
+
+        self._log.info(f"Backtest completed in: {duration}")
+
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(
+            signal.SIGINT,
+            self._handle_shutdown,
+        )
+
+        signal.signal(
+            signal.SIGTERM,
+            self._handle_shutdown,
+        )
+
+    def _update_backtest(self, status: str) -> None:
+        if not self._id:
+            return
+
+        self._horizon_router.backtest_update(
+            backtest_id=self._id,
+            status=status,
+        )

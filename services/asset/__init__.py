@@ -19,14 +19,17 @@ class AssetService(AssetInterface):
 
     _backtest: bool
     _backtest_id: Optional[str]
-    _portfolio: Optional[PortfolioInterface]
-    _strategies: List[StrategyInterface]
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
-    _gateway: GatewayService
     _gateway_name: str
-    _log: LoggingService
     _is_historical_filling: bool
+    _name: str
+    _portfolio: Optional[PortfolioInterface]
+    _strategies: List[StrategyInterface]
+    _symbol: str
+
+    _gateway: GatewayService
+    _log: LoggingService
 
     def __init__(self) -> None:
         """Initialize the asset service with default configuration."""
@@ -43,6 +46,21 @@ class AssetService(AssetInterface):
             gateway=self._gateway_name,
             sandbox=False,
         )
+
+    def on_end(self) -> None:
+        """Notify all strategies that execution has ended."""
+        for strategy in self._strategies:
+            strategy.on_end()
+
+    def on_tick(self, tick: TickModel) -> None:
+        """Propagate tick data to all enabled strategies."""
+        for strategy in self._strategies:
+            strategy.on_tick(tick)
+
+    def on_transaction(self, order: OrderModel) -> None:
+        """Propagate transaction events to all enabled strategies."""
+        for strategy in self._strategies:
+            strategy.on_transaction(order)
 
     def setup(self, **kwargs: Any) -> None:
         """Configure the asset with runtime parameters and initialize strategies."""
@@ -87,21 +105,6 @@ class AssetService(AssetInterface):
             strategy.setup(
                 **kwargs,
             )
-
-    def on_tick(self, tick: TickModel) -> None:
-        """Propagate tick data to all enabled strategies."""
-        for strategy in self._strategies:
-            strategy.on_tick(tick)
-
-    def on_transaction(self, order: OrderModel) -> None:
-        """Propagate transaction events to all enabled strategies."""
-        for strategy in self._strategies:
-            strategy.on_transaction(order)
-
-    def on_end(self) -> None:
-        """Notify all strategies that execution has ended."""
-        for strategy in self._strategies:
-            strategy.on_end()
 
     def start_historical_filling(self) -> None:
         """Mark the asset as currently processing historical data."""

@@ -77,14 +77,6 @@ class AuthenticationService(AuthenticationInterface):
 
         return self._ensure_authenticated()
 
-    def _validate_token(self) -> bool:
-        try:
-            provider = HorizonRouterProvider()
-            provider.me()
-            return True
-        except Exception:
-            return False
-
     def _clear_session(self) -> None:
         self._token = None
         self._token_exp = None
@@ -133,23 +125,65 @@ class AuthenticationService(AuthenticationInterface):
 
         return False
 
-    def _try_test_credentials(self) -> bool:
-        test_email = get_env(ENV_TEST_EMAIL)
-        test_password = get_env(ENV_TEST_PASSWORD)
-
-        if not test_email or not test_password:
-            return False
-
-        self._log.info("Test credentials detected, attempting auto-login")
-
-        if self._login_with_credentials(test_email, test_password):
-            return True
-
-        self._log.warning("Auto-login with test credentials failed")
-        return False
-
     def _is_authenticated(self) -> bool:
         return self._token is not None and not self._is_token_expired()
+
+    def _is_token_expired(self) -> bool:
+        if self._token is None or self._token_exp is None:
+            return True
+
+        current_time = int(time.time())
+        return current_time >= (self._token_exp - TOKEN_EXPIRY_BUFFER_SECONDS)
+
+    def _load_session(self) -> None:
+        if not SESSION_FILE_PATH.exists():
+            return
+
+        try:
+            content = SESSION_FILE_PATH.read_text()
+            data = json.loads(content)
+            self._token = data.get("token")
+            self._token_exp = data.get("exp")
+            self._user = data.get("user")
+        except (json.JSONDecodeError, OSError) as exception:
+            self._log.warning(f"Failed to load session: {exception}")
+            self._token = None
+            self._token_exp = None
+            self._user = None
+
+    def _login(self) -> bool:
+        email = questionary.text("", qmark=self._log.prompt("Email:")).ask()
+        password = questionary.password("", qmark=self._log.prompt("Password:")).ask()
+
+        if not email or not password:
+            self._log.error("Email and password are required")
+            return False
+
+        return self._login_with_credentials(email, password)
+
+    def _login_with_credentials(self, email: str, password: str) -> bool:
+        try:
+            provider = HorizonRouterProvider()
+            login_response = provider.login(email, password)
+            token = login_response["data"]["token"]
+            expires_in = login_response["data"]["expires_in"]
+
+            if not token:
+                self._log.error("Authentication failed: no token received")
+                return False
+
+            user_response = provider.me()
+            self._user = user_response["data"]
+
+            self._token = token
+            self._token_exp = int(time.time()) + expires_in
+            self._save_session()
+            self._log.success("Authentication successful")
+            return True
+
+        except Exception as exception:
+            self._log.error(f"Authentication failed: {exception}")
+            return False
 
     def _register(self) -> bool:
         self._log.info("Creating a new account")
@@ -190,6 +224,40 @@ class AuthenticationService(AuthenticationInterface):
             self._log.error(f"Registration failed: {exception}")
             return False
 
+    def _save_session(self) -> None:
+        if not self._token:
+            return
+
+        try:
+            data = {"token": self._token, "exp": self._token_exp, "user": self._user}
+            SESSION_FILE_PATH.write_text(json.dumps(data))
+            self._log.info(f"Session saved to {SESSION_FILE_PATH}")
+        except OSError as exception:
+            self._log.error(f"Failed to save session: {exception}")
+
+    def _try_test_credentials(self) -> bool:
+        test_email = get_env(ENV_TEST_EMAIL)
+        test_password = get_env(ENV_TEST_PASSWORD)
+
+        if not test_email or not test_password:
+            return False
+
+        self._log.info("Test credentials detected, attempting auto-login")
+
+        if self._login_with_credentials(test_email, test_password):
+            return True
+
+        self._log.warning("Auto-login with test credentials failed")
+        return False
+
+    def _validate_token(self) -> bool:
+        try:
+            provider = HorizonRouterProvider()
+            provider.me()
+            return True
+        except Exception:
+            return False
+
     def _verify_email(self, provider: HorizonRouterProvider, user_id: str) -> bool:
         token = questionary.text("", qmark=self._log.prompt("Verification token:")).ask()
 
@@ -205,95 +273,6 @@ class AuthenticationService(AuthenticationInterface):
         except Exception as exception:
             self._log.error(f"Email verification failed: {exception}")
             return False
-
-    def _login_with_credentials(self, email: str, password: str) -> bool:
-        try:
-            provider = HorizonRouterProvider()
-            login_response = provider.login(email, password)
-            token = login_response["data"]["token"]
-            expires_in = login_response["data"]["expires_in"]
-
-            if not token:
-                self._log.error("Authentication failed: no token received")
-                return False
-
-            user_response = provider.me()
-            self._user = user_response["data"]
-
-            self._token = token
-            self._token_exp = int(time.time()) + expires_in
-            self._save_session()
-            self._log.success("Authentication successful")
-            return True
-
-        except Exception as exception:
-            self._log.error(f"Authentication failed: {exception}")
-            return False
-
-    def _login(self) -> bool:
-        email = questionary.text("", qmark=self._log.prompt("Email:")).ask()
-        password = questionary.password("", qmark=self._log.prompt("Password:")).ask()
-
-        if not email or not password:
-            self._log.error("Email and password are required")
-            return False
-
-        try:
-            provider = HorizonRouterProvider()
-            login_response = provider.login(email, password)
-            token = login_response["data"]["token"]
-            expires_in = login_response["data"]["expires_in"]
-
-            if not token:
-                self._log.error("Authentication failed: no token received")
-                return False
-
-            user_response = provider.me()
-            self._user = user_response["data"]
-
-            self._token = token
-            self._token_exp = int(time.time()) + expires_in
-            self._save_session()
-            self._log.success("Authentication successful")
-            return True
-
-        except Exception as exception:
-            self._log.error(f"Authentication failed: {exception}")
-            return False
-
-    def _is_token_expired(self) -> bool:
-        if self._token is None or self._token_exp is None:
-            return True
-
-        current_time = int(time.time())
-        return current_time >= (self._token_exp - TOKEN_EXPIRY_BUFFER_SECONDS)
-
-    def _load_session(self) -> None:
-        if not SESSION_FILE_PATH.exists():
-            return
-
-        try:
-            content = SESSION_FILE_PATH.read_text()
-            data = json.loads(content)
-            self._token = data.get("token")
-            self._token_exp = data.get("exp")
-            self._user = data.get("user")
-        except (json.JSONDecodeError, OSError) as exception:
-            self._log.warning(f"Failed to load session: {exception}")
-            self._token = None
-            self._token_exp = None
-            self._user = None
-
-    def _save_session(self) -> None:
-        if not self._token:
-            return
-
-        try:
-            data = {"token": self._token, "exp": self._token_exp, "user": self._user}
-            SESSION_FILE_PATH.write_text(json.dumps(data))
-            self._log.info(f"Session saved to {SESSION_FILE_PATH}")
-        except OSError as exception:
-            self._log.error(f"Failed to save session: {exception}")
 
 
 __all__ = ["AuthenticationService"]
