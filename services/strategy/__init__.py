@@ -9,14 +9,15 @@ from enums.order_side import OrderSide
 from enums.quality_method import QualityMethod
 from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
+from interfaces.asset import AssetInterface
 from interfaces.candle import CandleInterface
+from interfaces.orderbook import OrderbookInterface
 from interfaces.portfolio import PortfolioInterface
 from interfaces.strategy import StrategyInterface
 from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
 from services.analytic import AnalyticService
-from services.asset import AssetService
 from services.logging import LoggingService
 from services.orderbook import OrderbookService
 
@@ -58,22 +59,15 @@ class StrategyService(StrategyInterface):
         _log: Logging service instance for logging operations.
     """
 
-    _allocation: float
     _analytic: Optional[AnalyticInterface]
-    _asset: Optional[AssetService]
-    _backtest: bool
     _backtest_expectation: Optional[BacktestExpectationModel]
     _backtest_id: Optional[str]
     _backtest_quality_method: QualityMethod
     _candles: Dict[Timeframe, CandleInterface]
     _commands_queue: Optional["Queue[Command]"] = None
-    _enabled: bool
     _events_queue: Optional["Queue[Any]"] = None
-    _id: str
     _last_timestamps: Dict[Timeframe, datetime.datetime]
     _leverage: int
-    _name: str
-    _orderbook: Optional[OrderbookService]
     _portfolio: Optional[PortfolioInterface]
     _tick: Optional[TickModel]
 
@@ -110,8 +104,8 @@ class StrategyService(StrategyInterface):
         self._last_timestamps = {}
         self._tick = None
 
-        self._id = kwargs.get("id", "")
-        self._name = kwargs.get("name", "")
+        self._id = kwargs.get("id", getattr(self, "_id", ""))
+        self._name = kwargs.get("name", getattr(self, "_name", ""))
         self._allocation = kwargs.get("allocation", 0.0)
         self._leverage = kwargs.get("leverage", 1)
         self._enabled = kwargs.get("enabled", True)
@@ -387,7 +381,8 @@ class StrategyService(StrategyInterface):
             raise ValueError("Asset is required")
 
         if self._allocation <= 0:
-            raise ValueError("Allocation must be greater than 0")
+            self._enabled = False
+            return
 
         if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required")
@@ -405,21 +400,10 @@ class StrategyService(StrategyInterface):
             raise ValueError("Leverage must be greater than 0")
 
     @property
-    def allocation(self) -> float:
-        """Return strategy allocation percentage."""
-        assert self._orderbook is not None
-        return self._orderbook.allocation
-
-    @property
-    def asset(self) -> AssetService:
+    def asset(self) -> AssetInterface:
         """Return the asset this strategy trades."""
         assert self._asset is not None
         return self._asset
-
-    @property
-    def backtest(self) -> bool:
-        """Return whether strategy is running in backtest mode."""
-        return self._backtest
 
     @property
     def balance(self) -> float:
@@ -428,20 +412,10 @@ class StrategyService(StrategyInterface):
         return self._orderbook.balance
 
     @property
-    def enabled(self) -> bool:
-        """Return whether strategy is enabled."""
-        return self._enabled
-
-    @property
     def exposure(self) -> float:
         """Return total market exposure."""
         assert self._orderbook is not None
         return self._orderbook.exposure
-
-    @property
-    def id(self) -> str:
-        """Return strategy unique identifier."""
-        return self._id
 
     @property
     def is_available_to_open_orders(self) -> bool:
@@ -454,18 +428,13 @@ class StrategyService(StrategyInterface):
         return not self.backtest and self._tick is not None and not self._tick.is_simulated
 
     @property
-    def name(self) -> str:
-        """Return strategy display name."""
-        return self._name
-
-    @property
     def nav(self) -> float:
         """Return net asset value."""
         assert self._orderbook is not None
         return self._orderbook.nav
 
     @property
-    def orderbook(self) -> OrderbookService:
+    def orderbook(self) -> OrderbookInterface:
         """Return the orderbook managing this strategy's orders."""
         assert self._orderbook is not None
         return self._orderbook

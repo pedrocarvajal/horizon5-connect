@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from multiprocessing import Queue
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from enums.asset_quality_method import AssetQualityMethod
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
-from interfaces.strategy import StrategyInterface
 from models.order import OrderModel
 from models.tick import TickModel
 from services.gateway import GatewayService
@@ -25,19 +24,20 @@ class AssetService(AssetInterface):
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
     _gateway_name: str
-    _is_historical_filling: bool
     _portfolio: Optional[PortfolioInterface]
-    _strategies: List[StrategyInterface]
-    _symbol: str
 
-    _gateway: GatewayService
     _log: LoggingService
     _quality_calculator: QualityCalculatorService
 
-    def __init__(self) -> None:
-        """Initialize the asset service with default configuration."""
+    def __init__(self, allocation: float = 0.0) -> None:
+        """Initialize the asset service with default configuration.
+
+        Args:
+            allocation: Total allocation for this asset to distribute among strategies.
+        """
         self._log = LoggingService()
 
+        self._allocation = allocation
         self._strategies = []
         self._commands_queue = None
         self._events_queue = None
@@ -132,8 +132,3 @@ class AssetService(AssetInterface):
     def stop_historical_filling(self) -> None:
         """Mark the asset as no longer processing historical data."""
         self._is_historical_filling = False
-
-    @property
-    def is_historical_filling(self) -> bool:
-        """Return whether the asset is currently processing historical data."""
-        return self._is_historical_filling

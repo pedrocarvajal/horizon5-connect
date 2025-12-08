@@ -1,14 +1,14 @@
 """Orderbook service for order lifecycle and portfolio state management."""
 
 import threading
-from typing import Callable, Dict, List, Optional, Set
+from typing import Callable, List, Optional
 
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
+from interfaces.gateway import GatewayInterface
 from interfaces.orderbook import OrderbookInterface
 from models.order import OrderModel
 from models.tick import TickModel
-from services.gateway import GatewayService
 from services.logging import LoggingService
 
 from .gateway import GatewayHandlerService
@@ -49,19 +49,11 @@ class OrderbookService(OrderbookInterface):
         _log: Logging service instance for logging operations.
     """
 
-    _backtest: bool
     _backtest_id: Optional[str]
-    _allocation: float
-    _balance: float
-    _leverage: int
     _nav: float
     _exposure: float
-    _orders: Dict[str, OrderModel]
-    _open_orders_index: Set[str]
     _tick: Optional[TickModel]
     _on_transaction: Callable[[OrderModel], None]
-    _margin_call_active: bool
-    _gateway_handler: GatewayHandlerService
     _log: LoggingService
     _balance_lock: threading.Lock
     _orders_lock: threading.Lock
@@ -73,7 +65,7 @@ class OrderbookService(OrderbookInterface):
         allocation: float,
         balance: float,
         leverage: int,
-        gateway: GatewayService,
+        gateway: GatewayInterface,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
         """
@@ -427,21 +419,6 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     @property
-    def allocation(self) -> float:
-        """Return strategy allocation percentage."""
-        return self._allocation
-
-    @property
-    def balance(self) -> float:
-        """Return current cash balance."""
-        return self._balance
-
-    @property
-    def equity(self) -> float:
-        """Calculate account equity as balance plus unrealized PnL."""
-        return self._balance + self.pnl
-
-    @property
     def exposure(self) -> float:
         """Return total market exposure from open positions."""
         with self._orders_lock:
@@ -452,58 +429,9 @@ class OrderbookService(OrderbookInterface):
             )
 
     @property
-    def free_margin(self) -> float:
-        """Return available margin for new positions."""
-        return self.equity - self.used_margin
-
-    @property
-    def gateway_handler(self) -> GatewayHandlerService:
-        """Return gateway handler service."""
-        return self._gateway_handler
-
-    @property
-    def is_backtest(self) -> bool:
-        """Return whether running in backtest mode."""
-        return self._backtest
-
-    @is_backtest.setter
-    def is_backtest(self, value: bool) -> None:
-        """Set backtest mode."""
-        self._backtest = value
-
-    @property
-    def leverage(self) -> int:
-        """Return leverage multiplier."""
-        return self._leverage
-
-    @property
-    def margin_call_active(self) -> bool:
-        """Return whether margin call is active."""
-        return self._margin_call_active
-
-    @margin_call_active.setter
-    def margin_call_active(self, value: bool) -> None:
-        """Set margin call active status."""
-        self._margin_call_active = value
-
-    @property
-    def margin_level(self) -> float:
-        """Return margin level as ratio of equity to used margin."""
-        if self.used_margin == 0:
-            return float("inf")
-
-        return self.equity / self.used_margin
-
-    @property
     def nav(self) -> float:
         """Return net asset value (balance + used margin + unrealized PnL)."""
         return self._balance + self.used_margin + self.pnl
-
-    @property
-    def open_orders_index(self) -> Set[str]:
-        """Return set of open order IDs."""
-        with self._orders_lock:
-            return self._open_orders_index.copy()
 
     @property
     def orders(self) -> List[OrderModel]:

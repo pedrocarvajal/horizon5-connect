@@ -44,8 +44,8 @@ class DonchianBreakoutStrategy(StrategyService):
         _atr_at_entry: ATR value captured at order entry.
     """
 
-    _MIN_CANDLES_REQUIRED: int = 2
     _MIN_CANDLES_FOR_ATR: int = 1
+    _MIN_CANDLES_REQUIRED: int = 2
 
     _enabled = False
     _name = "DonchianBreakout"
@@ -72,6 +72,7 @@ class DonchianBreakoutStrategy(StrategyService):
 
         self._log = LoggingService()
 
+        self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
             num_trades=[5, 50],
             max_drawdown=[-0.30, -0.10],
@@ -79,7 +80,6 @@ class DonchianBreakoutStrategy(StrategyService):
             sortino_ratio=[0.5, 3.0],
             profit_factor=[1.2, 3.0],
         )
-        self._backtest_quality_method = QualityMethod.FQS
 
         self._settings = kwargs.get(
             "settings",
@@ -237,42 +237,6 @@ class DonchianBreakoutStrategy(StrategyService):
             self._log.info(message)
             self._open_long_order(current_atr)
 
-    def _open_long_order(self, atr: float) -> None:
-        assert self._tick is not None
-
-        current_price = self._tick.price
-        tp_multiplier = self._settings.get("take_profit_atr_multiplier", 2.5)
-        sl_multiplier = self._settings.get("stop_loss_atr_multiplier", 1.5)
-        trailing_enabled = self._settings.get("trailing_enabled", True)
-
-        stop_loss_price = current_price - (sl_multiplier * atr)
-        take_profit_price = 0.0 if trailing_enabled else current_price + (tp_multiplier * atr)
-
-        volume_percentage = self._settings.get("volume_percentage", 0.05)
-        volume = (self.nav / current_price) * volume_percentage
-
-        self._atr_at_entry = atr
-        self._trailing_active = False
-        self._trailing_exit_level = stop_loss_price
-
-        self.open_order(
-            OrderSide.BUY,
-            current_price,
-            take_profit_price,
-            stop_loss_price,
-            volume,
-            variables={
-                "atr_at_entry": atr,
-            },
-        )
-
-        message = (
-            f"Opened LONG: price={current_price:.2f}, "
-            f"sl={stop_loss_price:.2f}, tp={take_profit_price:.2f}, "
-            f"atr={atr:.2f}, volume={volume:.6f}"
-        )
-        self._log.info(message)
-
     def _check_trailing_exit(self) -> None:
         assert self._tick is not None
 
@@ -340,3 +304,39 @@ class DonchianBreakoutStrategy(StrategyService):
             return 0.0
 
         return closed_candle.indicators["atr"]["value"]
+
+    def _open_long_order(self, atr: float) -> None:
+        assert self._tick is not None
+
+        current_price = self._tick.price
+        tp_multiplier = self._settings.get("take_profit_atr_multiplier", 2.5)
+        sl_multiplier = self._settings.get("stop_loss_atr_multiplier", 1.5)
+        trailing_enabled = self._settings.get("trailing_enabled", True)
+
+        stop_loss_price = current_price - (sl_multiplier * atr)
+        take_profit_price = 0.0 if trailing_enabled else current_price + (tp_multiplier * atr)
+
+        volume_percentage = self._settings.get("volume_percentage", 0.05)
+        volume = (self.nav / current_price) * volume_percentage
+
+        self._atr_at_entry = atr
+        self._trailing_active = False
+        self._trailing_exit_level = stop_loss_price
+
+        self.open_order(
+            OrderSide.BUY,
+            current_price,
+            take_profit_price,
+            stop_loss_price,
+            volume,
+            variables={
+                "atr_at_entry": atr,
+            },
+        )
+
+        message = (
+            f"Opened LONG: price={current_price:.2f}, "
+            f"sl={stop_loss_price:.2f}, tp={take_profit_price:.2f}, "
+            f"atr={atr:.2f}, volume={volume:.6f}"
+        )
+        self._log.info(message)

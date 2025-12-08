@@ -50,6 +50,7 @@ class BacktestService(BacktestInterface):
     _events_queue: Optional[Queue[Any]]
     _horizon_router: HorizonRouterProvider
     _portfolio_path: Optional[str]
+    _allocation: float
     _shutdown_requested: bool
 
     def __init__(
@@ -60,6 +61,7 @@ class BacktestService(BacktestInterface):
         commands_queue: Optional[Queue[Any]] = None,
         events_queue: Optional[Queue[Any]] = None,
         portfolio_path: Optional[str] = None,
+        allocation: float = 0.0,
         args: Optional[argparse.Namespace] = None,
     ) -> None:
         """Initialize backtest service with asset and date range.
@@ -71,6 +73,7 @@ class BacktestService(BacktestInterface):
             commands_queue: Queue for receiving commands.
             events_queue: Queue for publishing events.
             portfolio_path: Path to portfolio configuration.
+            allocation: Allocation amount for this asset.
             args: Command-line arguments namespace.
         """
         restore_ticks = args.restore_ticks == "true" if args is not None else False
@@ -84,13 +87,14 @@ class BacktestService(BacktestInterface):
         self._to_date = to_date
         self._restore_ticks = restore_ticks
         self._portfolio_path = portfolio_path
+        self._allocation = allocation
         self._commands_queue = commands_queue
         self._events_queue = events_queue
 
         self._log = LoggingService()
         self._log.info("Backtesting service started")
 
-        self._asset = asset()
+        self._asset = asset(allocation=allocation)
         self._tick = TicksService()
         self._horizon_router = HorizonRouterProvider()
 

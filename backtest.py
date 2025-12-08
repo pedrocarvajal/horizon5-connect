@@ -101,12 +101,8 @@ if __name__ == "__main__":
         else datetime.datetime.now(tz=TIMEZONE)
     )
     portfolio = get_portfolio_by_path(args.portfolio_path)
-    assets = getattr(portfolio, "assets", None)
 
-    if assets is None:
-        assets = getattr(portfolio, "_assets", None)
-
-    if not assets:
+    if not portfolio.assets:
         parser.error("Portfolio must define at least one asset.")
 
     processes = [
@@ -119,7 +115,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    for asset in assets:
+    for asset, allocation in portfolio.assets:
         processes.append(
             Process(
                 target=Backtest,
@@ -130,6 +126,7 @@ if __name__ == "__main__":
                     "to_date": to_date,
                     "commands_queue": commands_queue,
                     "events_queue": events_queue,
+                    "allocation": allocation,
                     "args": args,
                 },
             )

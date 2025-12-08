@@ -3,9 +3,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+from enums.asset_quality_method import AssetQualityMethod
+
 
 class QualityCalculatorInterface(ABC):
     """Interface for services that aggregate child reports and calculate quality metrics."""
+
+    _quality_method: AssetQualityMethod
 
     @abstractmethod
     def on_end(self) -> Dict[str, Any]:
@@ -30,3 +34,13 @@ class QualityCalculatorInterface(ABC):
     def reset(self) -> None:
         """Reset collected reports."""
         pass
+
+    @property
+    def quality_method(self) -> AssetQualityMethod:
+        """Return the current quality aggregation method."""
+        return self._quality_method
+
+    @quality_method.setter
+    def quality_method(self, value: AssetQualityMethod) -> None:
+        """Set the quality aggregation method."""
+        self._quality_method = value

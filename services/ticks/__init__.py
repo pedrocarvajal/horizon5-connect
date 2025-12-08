@@ -205,8 +205,3 @@ class TicksService(TicksInterface):
         self._log.info(f"Data saved to {parquet_file}")
         self._log.info(f"Total ticks: {final_ticks.height}")
         self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
-
-    @property
-    def folder(self) -> Path:
-        """Return the folder path for tick data storage."""
-        return self._ticks_folder

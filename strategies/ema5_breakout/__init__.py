@@ -57,6 +57,7 @@ class EMA5BreakoutStrategy(StrategyService):
 
         self._log = LoggingService()
 
+        self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
             num_trades=[5, 30],
             max_drawdown=[-0.25, -0.10],
@@ -64,7 +65,6 @@ class EMA5BreakoutStrategy(StrategyService):
             sortino_ratio=[0.5, 2.0],
             profit_factor=[1.2, 2.5],
         )
-        self._backtest_quality_method = QualityMethod.FQS
 
         self._settings = kwargs.get(
             "settings",

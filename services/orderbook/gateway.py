@@ -10,9 +10,9 @@ from configs.timezone import TIMEZONE
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
 from enums.order_type import OrderType
+from interfaces.gateway import GatewayInterface
 from interfaces.gateway_handler import GatewayHandlerInterface
 from models.order import OrderModel
-from services.gateway import GatewayService
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
@@ -47,7 +47,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
     POLLING_INTERVAL_SECONDS: int = 1
     SYMBOL_PATTERN: str = r"^[A-Z0-9]+$"
 
-    _backtest: bool
     _backtest_id: Optional[str]
     _cache_lock: threading.Lock
     _polling_lock: threading.Lock
@@ -55,12 +54,11 @@ class GatewayHandlerService(GatewayHandlerInterface):
     _symbol_info_cache: Dict[str, GatewaySymbolInfoModel]
     _verification: Optional[Dict[str, bool]]
 
-    _gateway: GatewayService
     _log: LoggingService
 
     def __init__(
         self,
-        gateway: GatewayService,
+        gateway: GatewayInterface,
         **kwargs: Any,
     ) -> None:
         """
@@ -300,7 +298,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
             raise ValueError("Trading permissions disabled - check API key restrictions or account status")
 
         self._log.success("Gateway configuration validated successfully")
-        self._log.success(f"Running sandbox: {self._gateway.sandbox}")
 
     def _cleanup_polling_task(
         self,
@@ -715,13 +712,3 @@ class GatewayHandlerService(GatewayHandlerInterface):
             return False
 
         return not (order.price > 0 and not self._validate_price_constraints(order, symbol_info))
-
-    @property
-    def backtest(self) -> bool:
-        """Check if running in backtest mode."""
-        return self._backtest
-
-    @property
-    def gateway(self) -> GatewayService:
-        """Get the gateway service instance."""
-        return self._gateway

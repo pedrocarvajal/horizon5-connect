@@ -11,12 +11,6 @@ from enums.asset_quality_method import AssetQualityMethod
 from interfaces.quality_calculator import QualityCalculatorInterface
 from services.logging import LoggingService
 
-MIN_HISTORY_LENGTH_FOR_CORRELATION = 2
-MIN_STRATEGIES_FOR_CORRELATION = 2
-CORRELATION_PENALTY_FACTOR = 0.5
-MIN_DIVERSIFICATION_FACTOR = 0.5
-MAX_DIVERSIFICATION_FACTOR = 1.0
-
 
 class QualityCalculatorService(QualityCalculatorInterface):
     """Service for aggregating child reports and calculating quality metrics.
@@ -29,6 +23,12 @@ class QualityCalculatorService(QualityCalculatorInterface):
         _reports: Collected child reports for aggregation.
         _children_key: Key name for children in the output report.
     """
+
+    MIN_HISTORY_LENGTH_FOR_CORRELATION = 2
+    MIN_STRATEGIES_FOR_CORRELATION = 2
+    CORRELATION_PENALTY_FACTOR = 0.5
+    MIN_DIVERSIFICATION_FACTOR = 0.5
+    MAX_DIVERSIFICATION_FACTOR = 1.0
 
     _quality_method: AssetQualityMethod
     _reports: Dict[str, Dict[str, Any]]
@@ -181,12 +181,12 @@ class QualityCalculatorService(QualityCalculatorInterface):
             quality: float = report.get("quality", 0)
             allocation: float = report.get("allocation", 0)
 
-            if len(history) >= MIN_HISTORY_LENGTH_FOR_CORRELATION and allocation > 0:
+            if len(history) >= self.MIN_HISTORY_LENGTH_FOR_CORRELATION and allocation > 0:
                 performance_histories.append(history)
                 qualities.append(quality)
                 allocations.append(allocation)
 
-        if len(performance_histories) < MIN_STRATEGIES_FOR_CORRELATION:
+        if len(performance_histories) < self.MIN_STRATEGIES_FOR_CORRELATION:
             return self._calculate_weighted_average_quality()
 
         min_length = min(len(h) for h in performance_histories)
@@ -209,10 +209,12 @@ class QualityCalculatorService(QualityCalculatorInterface):
                     if i != j:
                         avg_correlation += float(abs(correlation_matrix[i][j])) * weights[j]
 
-                diversification_factor = 1 - (avg_correlation * CORRELATION_PENALTY_FACTOR)
                 diversification_factor = max(
-                    MIN_DIVERSIFICATION_FACTOR,
-                    min(MAX_DIVERSIFICATION_FACTOR, diversification_factor),
+                    self.MIN_DIVERSIFICATION_FACTOR,
+                    min(
+                        self.MAX_DIVERSIFICATION_FACTOR,
+                        1 - (avg_correlation * self.CORRELATION_PENALTY_FACTOR),
+                    ),
                 )
 
                 adjusted_qualities.append(qualities[i] * diversification_factor)
@@ -225,13 +227,3 @@ class QualityCalculatorService(QualityCalculatorInterface):
 
         except (ValueError, np.linalg.LinAlgError):
             return self._calculate_weighted_average_quality()
-
-    @property
-    def quality_method(self) -> AssetQualityMethod:
-        """Return the current quality aggregation method."""
-        return self._quality_method
-
-    @quality_method.setter
-    def quality_method(self, value: AssetQualityMethod) -> None:
-        """Set the quality aggregation method."""
-        self._quality_method = value

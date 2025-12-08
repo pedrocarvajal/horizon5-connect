@@ -1,5 +1,5 @@
 import threading
-from typing import List
+from typing import List, cast
 from unittest.mock import Mock, patch
 
 from enums.order_side import OrderSide
@@ -8,6 +8,7 @@ from models.order import OrderModel
 from services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from services.gateway.models.gateway_order import GatewayOrderModel
 from services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
+from services.orderbook.gateway import GatewayHandlerService
 from tests.services.wrappers.orderbook import OrderbookWrapper
 
 
@@ -29,7 +30,8 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
                 executed_volume=0.01,
                 status=GatewayOrderStatus.EXECUTED,
             )
-            orderbook.gateway_handler._handle_executed_order(order, gateway_order)  # pyright: ignore[reportPrivateUsage]
+            handler = cast(GatewayHandlerService, orderbook.gateway_handler)
+            handler._handle_executed_order(order, gateway_order)  # pyright: ignore[reportPrivateUsage]
         assert order.status == OrderStatus.OPEN
         assert order.executed_volume == 0.01
 
@@ -38,7 +40,8 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook.is_backtest = False
         order = self._create_order()
         order.symbol = ""
-        result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
+        result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
         assert result is False
 
     def test_validate_symbol_too_long_rejected(self) -> None:
@@ -46,7 +49,8 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook.is_backtest = False
         order = self._create_order()
         order.symbol = "A" * 25
-        result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
+        result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
         assert result is False
 
     def test_validate_volume_below_minimum_rejected(self) -> None:
@@ -60,9 +64,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.0001)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is False
 
     def test_validate_volume_above_maximum_rejected(self) -> None:
@@ -76,9 +81,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=2000.0)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is False
 
     def test_validate_price_below_minimum_rejected(self) -> None:
@@ -92,9 +98,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(price=0.005)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is False
 
     def test_validate_price_above_maximum_rejected(self) -> None:
@@ -108,9 +115,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(price=2000000.0)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is False
 
     def test_validate_notional_below_minimum_rejected(self) -> None:
@@ -124,9 +132,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=100.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.001, price=50.0)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is False
 
     def test_validate_valid_order_accepted(self) -> None:
@@ -140,9 +149,10 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
             max_price=1000000.0,
             min_notional=10.0,
         )
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", return_value=symbol_info):
             order = self._create_order(volume=0.01, price=50000.0)
-            result = orderbook.gateway_handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
+            result = handler._validate_order_parameters(order)  # pyright: ignore[reportPrivateUsage]
             assert result is True
 
     def test_symbol_info_cached_after_first_request(self) -> None:
@@ -150,10 +160,11 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(symbol="BTCUSDT")
         mock_get_symbol_info = Mock(return_value=symbol_info)
+        handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", mock_get_symbol_info):
-            orderbook.gateway_handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
-            orderbook.gateway_handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
-            orderbook.gateway_handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
         assert mock_get_symbol_info.call_count == 1
 
     def test_concurrent_open_orders_no_over_leverage(self) -> None:

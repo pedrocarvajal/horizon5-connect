@@ -69,8 +69,8 @@ class ProductionService(ProductionInterface):
         if not self._portfolio or not self._commands_queue or not self._events_queue:
             raise ValueError("Service not properly setup")
 
-        for asset in self._portfolio.assets:
-            self._assets.append(asset())
+        for asset_class, allocation in self._portfolio.assets:
+            self._assets.append(asset_class(allocation=allocation))
 
         for asset in self._assets:
             asset.setup(
@@ -152,9 +152,7 @@ class ProductionService(ProductionInterface):
                 callback=callback,
             )
         except Exception as e:
-            self._log.error(
-                f"Error connecting to gateway stream: {e} | Asset: {asset.symbol} | Gateway: {gateway.name}"
-            )
+            self._log.error(f"Error connecting to gateway stream: {e} | Asset: {asset.symbol}")
 
     async def _run_tasks(self) -> None:
         await asyncio.gather(

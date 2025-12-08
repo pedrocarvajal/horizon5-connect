@@ -28,7 +28,7 @@ class TestStrategy(StrategyService):
     - Order volume calculated as percentage of NAV (configurable, default: 1%)
     """
 
-    _enabled = True
+    _enabled = False
     _name = "Test"
 
     _settings: Dict[str, Any]
