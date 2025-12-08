@@ -320,6 +320,7 @@ class StrategyService(StrategyInterface):
             backtest_expectation=self._backtest_expectation,
         )
 
+        self._log.setup_prefix(f"[{self._name}]")
         self._log.info(f"Setting up {self.name}")
 
     def _check_timeframe_transitions(self, tick: TickModel) -> None:

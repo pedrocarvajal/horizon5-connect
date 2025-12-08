@@ -1,6 +1,8 @@
 """Low-risk portfolio configuration with conservative asset allocation."""
 
 from assets.btcusdt import Asset as BTCUSDTAsset
+from assets.ethusdt import Asset as ETHUSDTAsset
+from assets.solusdt import Asset as SOLUSDTAsset
 from services.portfolio import PortfolioService
 
 
@@ -19,4 +21,6 @@ class Portfolio(PortfolioService):
         """Configure the portfolio assets for low-risk trading."""
         self._assets = [
             (BTCUSDTAsset, 100000.0),
+            (ETHUSDTAsset, 100000.0),
+            (SOLUSDTAsset, 100000.0),
         ]

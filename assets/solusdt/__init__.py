@@ -1,4 +1,4 @@
-"""BTCUSDT asset configuration for Binance exchange trading."""
+"""SOLUSDT asset configuration for Binance exchange trading."""
 
 from typing import Dict, List
 
@@ -11,14 +11,14 @@ from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
 
 
 class Asset(AssetService):
-    """BTCUSDT trading asset with configured strategies for Binance."""
+    """SOLUSDT trading asset with configured strategies for Binance."""
 
-    _symbol = "BTCUSDT"
+    _symbol = "SOLUSDT"
     _gateway_name = "binance"
     _strategies: List[StrategyInterface]
 
     def __init__(self, allocation: float = 0.0) -> None:
-        """Initialize BTCUSDT asset with trading strategies.
+        """Initialize SOLUSDT asset with trading strategies.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.

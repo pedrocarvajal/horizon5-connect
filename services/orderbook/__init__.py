@@ -275,11 +275,13 @@ class OrderbookService(OrderbookInterface):
         with self._balance_lock:
             if self.free_margin < required_margin:
                 error_msg = (
+                    f"Strategy: {order.strategy_id} "
                     f"Free margin is less than required margin, cannot open order. "
                     f"Volume: {order.volume:.2f} | Price: {order.price:.2f} | "
                     f"Required margin: {required_margin:.2f} | "
                     f"Free margin: {self.free_margin:.2f}"
                 )
+
                 self._cancel_order(order, error_msg)
                 return
 
