@@ -1,15 +1,15 @@
-"""Commands service for inter-process communication and command handling."""
+"""Command service for inter-process communication and command handling."""
 
 from multiprocessing import Queue
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from enums.command import Command
-from interfaces.commands import CommandsInterface
+from interfaces.commands import CommandInterface
 from models.command import CommandModel
 from services.logging import LoggingService
 
 
-class CommandsService(CommandsInterface):
+class CommandService(CommandInterface):
     """Service that processes commands from the command queue."""
 
     _commands_queue: Optional["Queue[Any]"]

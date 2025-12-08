@@ -41,7 +41,7 @@ Single test: `uv run python -m unittest tests.unit.test_filename -v`
 ## Architecture
 
 **Event-Driven Multiprocessing:**
-- Main processes: `BacktestService`/`ProductionService` + `CommandsService`
+- Main processes: `BacktestService`/`ProductionService` + `CommandService`
 - Communication via `multiprocessing.Queue` for commands and events
 - See `backtest.py:43-80` and `production.py:27-57`
 
@@ -97,7 +97,7 @@ Single test: `uv run python -m unittest tests.unit.test_filename -v`
 - `ProductionService` - Live trading execution
 - `CandleService` - Builds candlesticks from ticks, manages indicators
 - `TicksService` - Downloads/manages historical tick data
-- `CommandsService` - Processes commands from queue (KILL, EXECUTE)
+- `CommandService` - Processes commands from queue (KILL, EXECUTE)
 - `OrderbookService` - Order management with margin tracking and risk enforcement
 - `GatewayHandlerService` - Production order execution and gateway validation
 

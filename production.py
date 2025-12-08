@@ -6,7 +6,7 @@ import argparse
 from multiprocessing import Process, Queue
 from typing import Any
 
-from services.commands import CommandsService
+from services.commands import CommandService
 from services.production import ProductionService
 
 
@@ -27,14 +27,14 @@ class Production(ProductionService):
         self.run()
 
 
-class Commands(CommandsService):
+class Commands(CommandService):
     """Commands process wrapper for production control."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize commands service.
 
         Args:
-            **kwargs: Arguments passed to CommandsService.
+            **kwargs: Arguments passed to CommandService.
         """
         super().__init__(**kwargs)
 

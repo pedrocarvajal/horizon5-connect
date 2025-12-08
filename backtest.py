@@ -16,7 +16,7 @@ from helpers.get_portfolio_by_path import get_portfolio_by_path
 from helpers.parse_date import parse_date
 from services.authentication import AuthenticationService
 from services.backtest import BacktestService
-from services.commands import CommandsService
+from services.commands import CommandService
 from services.logging import LoggingService
 from services.quality_calculator import QualityCalculatorService
 
@@ -37,14 +37,14 @@ class Backtest(BacktestService):
         super().run()
 
 
-class Commands(CommandsService):
+class Commands(CommandService):
     """Commands process wrapper for backtest control."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize commands service.
 
         Args:
-            **kwargs: Arguments passed to CommandsService.
+            **kwargs: Arguments passed to CommandService.
         """
         super().__init__(**kwargs)
 

@@ -1,4 +1,4 @@
-"""Commands interface for inter-process communication and command handling."""
+"""Command interface for inter-process communication and command handling."""
 
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
@@ -7,7 +7,7 @@ from typing import Any, Optional, Tuple
 from models.command import CommandModel
 
 
-class CommandsInterface(ABC):
+class CommandInterface(ABC):
     """Abstract interface for command processing service."""
 
     _commands_queue: Optional["Queue[Any]"]
