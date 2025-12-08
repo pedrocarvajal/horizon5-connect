@@ -100,6 +100,7 @@ if __name__ == "__main__":
         if args.to_date
         else datetime.datetime.now(tz=TIMEZONE)
     )
+
     portfolio = get_portfolio_by_path(args.portfolio_path)
 
     if not portfolio.assets:

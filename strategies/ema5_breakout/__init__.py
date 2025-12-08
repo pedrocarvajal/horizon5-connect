@@ -69,7 +69,7 @@ class EMA5BreakoutStrategy(StrategyService):
         self._settings = kwargs.get(
             "settings",
             {
-                "main_volume_percentage": 0.05,
+                "main_volume_percentage": 0.15,
                 "main_take_profit_percentage": 0.03,
                 "main_stop_loss_percentage": 0.15,
                 "recovery_maximum_number_of_openings": 3,
