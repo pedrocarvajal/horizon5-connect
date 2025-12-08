@@ -1,7 +1,6 @@
 """Ticks service for downloading and managing historical tick data."""
 
 import datetime
-import tempfile
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -15,11 +14,13 @@ from models.tick import TickModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.logging import LoggingService
 
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
 
 class TicksService(TicksInterface):
     """Service for downloading and managing historical tick data."""
 
-    _ticks_folder: Path = Path(tempfile.gettempdir()) / "horizon-connect" / "ticks"
+    _ticks_folder: Path = PROJECT_ROOT / "storage" / "ticks"
     _asset: Optional[AssetInterface] = None
     _restore_ticks: bool = False
     _disable_download: bool = False

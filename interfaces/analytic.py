@@ -1,6 +1,7 @@
 """Analytic interface for performance metrics calculation."""
 
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 from models.order import OrderModel
 from models.tick import TickModel
@@ -10,8 +11,12 @@ class AnalyticInterface(ABC):
     """Interface defining the contract for analytics services that track performance metrics."""
 
     @abstractmethod
-    def on_end(self) -> None:
-        """Handle the end of analytics tracking."""
+    def on_end(self) -> Optional[Dict[str, Any]]:
+        """Handle the end of analytics tracking.
+
+        Returns:
+            Dictionary containing the analytics report, or None if tracking failed.
+        """
         pass
 
     def on_new_day(self) -> None:  # noqa: B027

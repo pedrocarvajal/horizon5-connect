@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from multiprocessing import Queue
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
@@ -47,10 +47,41 @@ class AssetService(AssetInterface):
             sandbox=False,
         )
 
-    def on_end(self) -> None:
-        """Notify all strategies that execution has ended."""
+    def on_end(self) -> Dict[str, Any]:
+        """Notify all strategies that execution has ended.
+
+        Returns:
+            Asset report with aggregated performance and strategy reports.
+        """
+        strategy_reports: Dict[str, Dict[str, Any]] = {}
+
         for strategy in self._strategies:
-            strategy.on_end()
+            strategy_report = strategy.on_end()
+
+            if strategy_report is not None:
+                strategy_reports[strategy.id] = strategy_report
+
+        return self._report(strategy_reports)
+
+    def _report(self, strategy_reports: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Build the asset report aggregating all strategy data.
+
+        Args:
+            strategy_reports: Dictionary of strategy reports keyed by strategy id.
+
+        Returns:
+            Asset report with performance and strategies data.
+        """
+        total_allocation = sum(report.get("allocation", 0) for report in strategy_reports.values())
+        total_performance = sum(report.get("performance", 0) for report in strategy_reports.values())
+        performance_percentage = total_performance / total_allocation if total_allocation > 0 else 0.0
+
+        return {
+            "allocation": total_allocation,
+            "performance": total_performance,
+            "performance_percentage": performance_percentage,
+            "strategies": strategy_reports,
+        }
 
     def on_tick(self, tick: TickModel) -> None:
         """Propagate tick data to all enabled strategies."""

@@ -1,7 +1,7 @@
 """Asset interface for trading instrument abstraction."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 if TYPE_CHECKING:
     from interfaces.strategy import StrategyInterface
@@ -32,9 +32,13 @@ class AssetInterface(ABC):
         """Abstract method."""
         pass
 
-    def on_end(self) -> None:  # noqa: B027
-        """Abstract method."""
-        pass
+    def on_end(self) -> Dict[str, Any]:
+        """Abstract method.
+
+        Returns:
+            Asset report with aggregated performance and strategy reports.
+        """
+        return {}
 
     def start_historical_filling(self) -> None:  # noqa: B027
         """Abstract method."""

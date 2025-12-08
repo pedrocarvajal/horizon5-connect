@@ -1,7 +1,7 @@
 """Strategy interface for trading logic implementation."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Dict, Optional
 
 from models.order import OrderModel
 from models.tick import TickModel
@@ -47,8 +47,12 @@ class StrategyInterface(ABC):
         """Abstract method."""
         pass
 
-    def on_end(self) -> None:  # noqa: B027
-        """Abstract method."""
+    def on_end(self) -> Optional[Dict[str, Any]]:  # noqa: B027
+        """Abstract method.
+
+        Returns:
+            Dictionary containing the analytics report, or None.
+        """
         pass
 
     @property

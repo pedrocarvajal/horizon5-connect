@@ -9,7 +9,7 @@ import sys
 from multiprocessing import Queue
 from time import sleep
 from types import FrameType
-from typing import Any, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from configs.timezone import TIMEZONE
 from enums.backtest_status import BacktestStatus
@@ -230,8 +230,8 @@ class BacktestService(BacktestInterface):
         end_at = datetime.datetime.now(TIMEZONE)
         duration = get_duration(self._start_at, end_at)
 
-        self._asset.on_end()
-        self._update_backtest(status=BacktestStatus.COMPLETED.value)
+        report = self._asset.on_end()
+        self._update_backtest(status=BacktestStatus.COMPLETED.value, report=report)
         self._kill()
 
         self._log.info(f"Backtest completed in: {duration}")
@@ -247,11 +247,21 @@ class BacktestService(BacktestInterface):
             self._handle_shutdown,
         )
 
-    def _update_backtest(self, status: str) -> None:
+    def _update_backtest(
+        self,
+        status: str,
+        report: Optional[Dict[str, Any]] = None,
+    ) -> None:
         if not self._id:
             return
+
+        settings: Optional[Dict[str, Any]] = None
+
+        if report is not None:
+            settings = {"report": report}
 
         self._horizon_router.backtest_update(
             backtest_id=self._id,
             status=status,
+            settings=settings,
         )

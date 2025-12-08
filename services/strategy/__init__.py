@@ -109,13 +109,16 @@ class StrategyService(StrategyInterface):
         self._leverage = kwargs.get("leverage", 1)
         self._enabled = kwargs.get("enabled", True)
 
-    def on_end(self) -> None:
+    def on_end(self) -> Optional[Dict[str, Any]]:
         """
         Handle the end of strategy execution.
 
         In backtest mode, closes all open orders before finalizing analytics.
         Always calls the analytics service to finalize tracking and generate
         the final report.
+
+        Returns:
+            Dictionary containing the analytics report, or None.
         """
         assert self._orderbook is not None
         assert self._analytic is not None
@@ -126,7 +129,7 @@ class StrategyService(StrategyInterface):
             for order in self._orderbook.orders:
                 self._orderbook.close(order)
 
-        self._analytic.on_end()
+        return self._analytic.on_end()
 
     def on_new_day(self) -> None:
         """

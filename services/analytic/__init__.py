@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import json
 from multiprocessing import Queue
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from interfaces.analytic import AnalyticInterface
 from interfaces.orderbook import OrderbookInterface
@@ -127,21 +127,24 @@ class AnalyticService(AnalyticInterface):
             ulcer_index=0,
         )
 
-    def on_end(self) -> None:
+    def on_end(self) -> Optional[Dict[str, Any]]:
         """
         Handle the end of analytics tracking.
 
         Records the end timestamp, performs final calculations, stores the
         final snapshot, updates the backtest status to completed, and generates
         the final report.
+
+        Returns:
+            Dictionary containing the analytics report, or None if tick is not set.
         """
         if self._tick is None:
             self._log.error("Tick must be set before ending analytics.")
-            return
+            return None
 
         self._ended_at = self._tick.date
         self._perform_calculations()
-        self._report()
+        return self._report()
 
     def on_new_day(self) -> None:
         """
@@ -257,30 +260,36 @@ class AnalyticService(AnalyticInterface):
                 self._snapshot.drawdown,
             )
 
-    def _report(self) -> None:
+    def _report(self) -> Dict[str, Any]:
         """
         Generate and log the final analytics report.
 
         Logs backtest ID and strategy ID, then outputs a detailed JSON report
         containing all snapshot metrics, timestamps, and elapsed days.
+
+        Returns:
+            Dictionary containing the complete analytics report.
         """
         self._log.info(f"Backtest ID: {self._backtest_id}")
         self._log.info(f"Strategy: {self._strategy_id}")
 
         days_elapsed = (self._ended_at - self._started_at).days
+        report: Dict[str, Any] = {
+            **self._snapshot.to_dict(),
+            "started_at": str(self._started_at),
+            "ended_at": str(self._ended_at),
+            "days_elapsed": days_elapsed,
+        }
 
         self._log.debug(
             json.dumps(
-                {
-                    **self._snapshot.to_dict(),
-                    "started_at": self._started_at,
-                    "ended_at": self._ended_at,
-                    "days_elapsed": days_elapsed,
-                },
+                report,
                 indent=4,
                 default=str,
             )
         )
+
+        return report
 
     @property
     def _elapsed_days(self) -> int:
