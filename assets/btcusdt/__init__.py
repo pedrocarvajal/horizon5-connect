@@ -5,6 +5,7 @@ from typing import List
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
+from strategies.donchian_breakout import DonchianBreakoutStrategy
 from strategies.ema5_breakout import EMA5BreakoutStrategy
 from strategies.test import TestStrategy
 
@@ -25,6 +26,12 @@ class Asset(AssetService):
         self._strategies = [
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
+                allocation=1000,
+                leverage=3,
+                enabled=False,
+            ),
+            DonchianBreakoutStrategy(
+                id="donchian_breakout",
                 allocation=1000,
                 leverage=3,
                 enabled=True,
