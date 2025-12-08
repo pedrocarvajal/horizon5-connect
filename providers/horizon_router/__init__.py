@@ -7,8 +7,6 @@ from typing import Any, Dict, Optional, Tuple
 from helpers.get_env import get_env
 from providers import BaseProvider
 
-SESSION_FILE_PATH = Path(".horizon-session")
-
 
 class HorizonRouterProvider(BaseProvider):
     """Provider for Horizon Router API integration.
@@ -20,6 +18,8 @@ class HorizonRouterProvider(BaseProvider):
         _horizon_base_url: Base URL for the Horizon Router API.
         _session: Session data including token and user.
     """
+
+    _SESSION_FILE_PATH = Path(".horizon-session")
 
     _horizon_base_url: str
     _session: Optional[Dict[str, Any]]
@@ -38,32 +38,6 @@ class HorizonRouterProvider(BaseProvider):
 
         if self._session and self._session.get("token"):
             self._headers["Authorization"] = f"Bearer {self._session['token']}"
-
-    def user_update(self, user_id: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Update an existing user.
-
-        Args:
-            user_id: Unique identifier of the user.
-            data: User update data.
-
-        Returns:
-            API response with updated user.
-        """
-        return self.put(
-            f"/api/v1/user/{user_id}",
-            data=data,
-        )
-
-    def backtest_get(self, backtest_id: str) -> Dict[str, Any]:
-        """Retrieve backtest by ID.
-
-        Args:
-            backtest_id: Backtest identifier.
-
-        Returns:
-            API response with backtest data.
-        """
-        return self.get(f"/api/v1/backtest/{backtest_id}")
 
     def backtest_create(
         self,
@@ -89,11 +63,23 @@ class HorizonRouterProvider(BaseProvider):
             data=data,
         )
 
+    def backtest_get(self, backtest_id: str) -> Dict[str, Any]:
+        """Retrieve backtest by ID.
+
+        Args:
+            backtest_id: Backtest identifier.
+
+        Returns:
+            API response with backtest data.
+        """
+        return self.get(f"/api/v1/backtest/{backtest_id}")
+
     def backtest_update(
         self,
         backtest_id: str,
         status: Optional[str] = None,
         settings: Optional[Dict[str, Any]] = None,
+        analytics: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Update existing backtest.
 
@@ -101,6 +87,7 @@ class HorizonRouterProvider(BaseProvider):
             backtest_id: Backtest identifier.
             status: Optional new backtest status.
             settings: Optional updated backtest configuration.
+            analytics: Optional analytics data with performance metrics.
 
         Returns:
             API response with updated backtest.
@@ -112,6 +99,9 @@ class HorizonRouterProvider(BaseProvider):
 
         if settings is not None:
             data["settings"] = settings
+
+        if analytics is not None:
+            data["analytics"] = analytics
 
         return self.put(
             f"/api/v1/backtest/{backtest_id}",
@@ -126,14 +116,6 @@ class HorizonRouterProvider(BaseProvider):
         """
         return self.get("/api/v1/auth/me")
 
-    def set_token(self, token: str) -> None:
-        """Set the authentication token manually.
-
-        Args:
-            token: Bearer token to use for authentication.
-        """
-        self._headers["Authorization"] = f"Bearer {token}"
-
     def refresh(self) -> Tuple[str, int]:
         """Refresh the current JWT token.
 
@@ -145,6 +127,14 @@ class HorizonRouterProvider(BaseProvider):
         expires_in: int = response["data"]["expires_in"]
         self._headers["Authorization"] = f"Bearer {token}"
         return token, expires_in
+
+    def set_token(self, token: str) -> None:
+        """Set the authentication token manually.
+
+        Args:
+            token: Bearer token to use for authentication.
+        """
+        self._headers["Authorization"] = f"Bearer {token}"
 
     def _load_base_url(self) -> str:
         """Load base URL from environment.
@@ -168,11 +158,11 @@ class HorizonRouterProvider(BaseProvider):
         Returns:
             Session data if file exists and is valid, None otherwise.
         """
-        if not SESSION_FILE_PATH.exists():
+        if not self._SESSION_FILE_PATH.exists():
             return None
 
         try:
-            content = SESSION_FILE_PATH.read_text()
+            content = self._SESSION_FILE_PATH.read_text()
             return json.loads(content)
         except (json.JSONDecodeError, OSError):
             return None

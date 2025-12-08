@@ -16,13 +16,7 @@ class StrategySettingsModel(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert strategy settings to dictionary representation."""
-        return {
-            "id": self.id,
-            "enabled": self.enabled,
-            "allocation": self.allocation,
-            "leverage": self.leverage,
-            "settings": self.settings,
-        }
+        return self.model_dump()
 
 
 class AssetSettingsModel(BaseModel):
@@ -30,13 +24,11 @@ class AssetSettingsModel(BaseModel):
 
     symbol: str
     gateway: str
+    strategies: List[StrategySettingsModel] = Field(default_factory=lambda: [])
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert asset settings to dictionary representation."""
-        return {
-            "symbol": self.symbol,
-            "gateway": self.gateway,
-        }
+        return self.model_dump()
 
 
 class PortfolioSettingsModel(BaseModel):
@@ -47,14 +39,7 @@ class PortfolioSettingsModel(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert portfolio settings to dictionary representation."""
-        return {
-            "id": self.id,
-            "path": self.path,
-        }
-
-
-def _empty_strategies_list() -> List[StrategySettingsModel]:
-    return []
+        return self.model_dump()
 
 
 class BacktestSettingsModel(BaseModel):
@@ -63,15 +48,8 @@ class BacktestSettingsModel(BaseModel):
     from_date: int = Field(description="Start timestamp in seconds")
     to_date: int = Field(description="End timestamp in seconds")
     portfolio: PortfolioSettingsModel
-    asset: AssetSettingsModel
-    strategies: List[StrategySettingsModel] = Field(default_factory=_empty_strategies_list)
+    assets: List[AssetSettingsModel] = Field(default_factory=lambda: [])
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert backtest settings to dictionary representation."""
-        return {
-            "from_date": self.from_date,
-            "to_date": self.to_date,
-            "portfolio": self.portfolio.to_dict(),
-            "asset": self.asset.to_dict(),
-            "strategies": [s.to_dict() for s in self.strategies],
-        }
+        return self.model_dump()

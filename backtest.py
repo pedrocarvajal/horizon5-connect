@@ -7,13 +7,22 @@ import datetime
 import sys
 import time
 from multiprocessing import Process, Queue
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from configs.timezone import TIMEZONE
 from enums.backtest_event import BacktestEvent
+from enums.backtest_status import BacktestStatus
 from enums.command import Command
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from helpers.parse_date import parse_date
+from interfaces.asset import AssetInterface
+from models.backtest_settings import (
+    AssetSettingsModel,
+    BacktestSettingsModel,
+    PortfolioSettingsModel,
+    StrategySettingsModel,
+)
+from providers.horizon_router import HorizonRouterProvider
 from services.authentication import AuthenticationService
 from services.backtest import BacktestService
 from services.commands import CommandService
@@ -52,14 +61,16 @@ class Commands(CommandService):
 class PortfolioAggregator:
     """Aggregates asset reports into a portfolio report."""
 
-    _events_queue: Queue[Any]
+    _backtest_id: str
     _commands_queue: Queue[Any]
-    _total_assets: int
     _completed_assets: int
+    _events_queue: Queue[Any]
     _failed_assets: int
+    _horizon_router: HorizonRouterProvider
+    _log: LoggingService
     _portfolio_id: str
     _quality_calculator: QualityCalculatorService
-    _log: LoggingService
+    _total_assets: int
 
     def __init__(
         self,
@@ -67,6 +78,7 @@ class PortfolioAggregator:
         commands_queue: Queue[Any],
         total_assets: int,
         portfolio_id: str,
+        backtest_id: str,
     ) -> None:
         """Initialize the portfolio aggregator."""
         self._log = LoggingService()
@@ -76,9 +88,11 @@ class PortfolioAggregator:
         self._commands_queue = commands_queue
         self._total_assets = total_assets
         self._portfolio_id = portfolio_id
+        self._backtest_id = backtest_id
         self._completed_assets = 0
         self._failed_assets = 0
         self._quality_calculator = QualityCalculatorService(children_key="assets")
+        self._horizon_router = HorizonRouterProvider()
 
         self._start()
 
@@ -139,8 +153,72 @@ class PortfolioAggregator:
         self._log.info(f"Portfolio ID: {self._portfolio_id}")
         self._log.debug(portfolio_report)
 
+        self._horizon_router.backtest_update(
+            backtest_id=self._backtest_id,
+            status=BacktestStatus.COMPLETED.value,
+            analytics=portfolio_report,
+        )
+
     def _send_kill(self) -> None:
         self._commands_queue.put({"command": Command.KILL})
+
+
+def create_backtest(
+    portfolio_path: str,
+    portfolio_id: str,
+    assets: List[Tuple[Type[AssetInterface], float]],
+    from_date: datetime.datetime,
+    to_date: datetime.datetime,
+) -> Optional[str]:
+    """Create a backtest in the backend and return the backtest_id."""
+    log = LoggingService()
+    horizon_router = HorizonRouterProvider()
+
+    asset_settings_list: List[AssetSettingsModel] = []
+
+    for asset_class, allocation in assets:
+        asset_instance = asset_class(allocation=allocation)
+        strategy_settings_list: List[StrategySettingsModel] = []
+
+        for strategy in asset_instance.strategies:
+            strategy_settings = getattr(strategy, "_settings", {})
+            strategy_settings_list.append(
+                StrategySettingsModel(
+                    id=strategy.id,
+                    enabled=strategy.enabled,
+                    allocation=getattr(strategy, "_allocation", 0.0),
+                    leverage=getattr(strategy, "_leverage", 1),
+                    settings=strategy_settings,
+                )
+            )
+
+        asset_settings_list.append(
+            AssetSettingsModel(
+                symbol=asset_instance.symbol,
+                gateway=getattr(asset_instance, "_gateway_name", ""),
+                strategies=strategy_settings_list,
+            )
+        )
+
+    portfolio_settings = PortfolioSettingsModel(
+        id=portfolio_id,
+        path=portfolio_path,
+    )
+
+    settings = BacktestSettingsModel(
+        from_date=int(from_date.timestamp()),
+        to_date=int(to_date.timestamp()),
+        portfolio=portfolio_settings,
+        assets=asset_settings_list,
+    )
+
+    response = horizon_router.backtest_create(settings=settings.to_dict())
+    backtest_id: Optional[str] = response.get("data", {}).get("id")
+
+    if backtest_id:
+        log.info(f"Backtest created: {backtest_id}")
+
+    return backtest_id
 
 
 if __name__ == "__main__":
@@ -203,6 +281,19 @@ if __name__ == "__main__":
     if not portfolio.assets:
         parser.error("Portfolio must define at least one asset.")
 
+    backtest_id = create_backtest(
+        portfolio_path=args.portfolio_path,
+        portfolio_id=portfolio.id,
+        assets=portfolio.assets,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+    if not backtest_id:
+        log = LoggingService()
+        log.error("Failed to create backtest")
+        sys.exit(1)
+
     processes = [
         Process(
             target=Commands,
@@ -218,6 +309,7 @@ if __name__ == "__main__":
                 "commands_queue": commands_queue,
                 "total_assets": len(portfolio.assets),
                 "portfolio_id": portfolio.id,
+                "backtest_id": backtest_id,
             },
         ),
     ]
@@ -235,6 +327,7 @@ if __name__ == "__main__":
                     "events_queue": events_queue,
                     "allocation": allocation,
                     "args": args,
+                    "backtest_id": backtest_id,
                 },
             )
         )

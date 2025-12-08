@@ -9,22 +9,14 @@ import sys
 from multiprocessing import Queue
 from time import sleep
 from types import FrameType
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional, Type
 
 from configs.timezone import TIMEZONE
 from enums.backtest_event import BacktestEvent
-from enums.backtest_status import BacktestStatus
 from helpers.get_duration import get_duration
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
 from interfaces.backtest import BacktestInterface
-from models.backtest_settings import (
-    AssetSettingsModel,
-    BacktestSettingsModel,
-    PortfolioSettingsModel,
-    StrategySettingsModel,
-)
-from providers.horizon_router import HorizonRouterProvider
 from services.logging import LoggingService
 from services.ticks import TicksService
 
@@ -33,29 +25,27 @@ class BacktestService(BacktestInterface):
     """Backtest service for simulating trading strategies on historical data.
 
     Manages backtest lifecycle including setup, tick processing, and result collection.
-    Integrates with HorizonRouter API for backtest tracking and analytics.
 
     Attributes:
         _id: Unique backtest identifier.
         _tick: Ticks service for historical data.
         _commands_queue: Queue for inter-process commands.
         _events_queue: Queue for event broadcasting.
-        _horizon_router: Provider for HorizonRouter API.
         _portfolio_path: Path to portfolio configuration.
     """
 
-    _id: Optional[str]
-    _tick: TicksService
+    _allocation: float
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Queue[Any]
-    _horizon_router: HorizonRouterProvider
+    _id: str
     _portfolio_path: Optional[str]
-    _allocation: float
     _shutdown_requested: bool
+    _tick: TicksService
 
     def __init__(
         self,
         asset: Type[AssetInterface],
+        backtest_id: str,
         from_date: datetime.datetime,
         to_date: datetime.datetime,
         events_queue: Queue[Any],
@@ -68,6 +58,7 @@ class BacktestService(BacktestInterface):
 
         Args:
             asset: Asset class to backtest.
+            backtest_id: Unique backtest identifier from the main process.
             from_date: Start date for backtest.
             to_date: End date for backtest.
             commands_queue: Queue for receiving commands.
@@ -81,7 +72,7 @@ class BacktestService(BacktestInterface):
         self._shutdown_requested = False
         self._setup_signal_handlers()
 
-        self._id = None
+        self._id = backtest_id
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
         self._to_date = to_date
@@ -92,13 +83,10 @@ class BacktestService(BacktestInterface):
         self._events_queue = events_queue
 
         self._log = LoggingService()
-        self._log.info("Backtesting service started")
+        self._log.info(f"Backtesting service started for backtest: {self._id}")
 
         self._asset = asset(allocation=allocation)
         self._tick = TicksService()
-        self._horizon_router = HorizonRouterProvider()
-
-        self._create_backtest()
 
         tick_setup = {
             "restore_ticks": restore_ticks,
@@ -140,11 +128,6 @@ class BacktestService(BacktestInterface):
             to_date=self._to_date,
         )
 
-        if not self._id:
-            self._log.error("Failed to create backtest...")
-            self._send_failed("Failed to create backtest")
-            return
-
         if len(ticks) == 0:
             self._log.error("No ticks found")
             self._send_failed("No ticks found")
@@ -159,53 +142,6 @@ class BacktestService(BacktestInterface):
             self._asset.on_tick(tick_model)
 
         self._on_end()
-
-    def _create_backtest(self) -> None:
-        portfolio_id = ""
-        strategies: List[StrategySettingsModel] = []
-
-        if self._portfolio_path:
-            portfolio_instance = get_portfolio_by_path(self._portfolio_path)
-
-            if portfolio_instance:
-                portfolio_id = portfolio_instance.id
-
-        for strategy in self._asset.strategies:
-            strategy_settings = getattr(strategy, "_settings", {})
-            strategies.append(
-                StrategySettingsModel(
-                    id=strategy.id,
-                    enabled=strategy.enabled,
-                    allocation=getattr(strategy, "_allocation", 0.0),
-                    leverage=getattr(strategy, "_leverage", 1),
-                    settings=strategy_settings,
-                )
-            )
-
-        asset = AssetSettingsModel(
-            symbol=self._asset.symbol,
-            gateway=getattr(self._asset, "_gateway_name", ""),
-        )
-
-        portfolio = PortfolioSettingsModel(
-            id=portfolio_id,
-            path=self._portfolio_path or "",
-        )
-
-        settings = BacktestSettingsModel(
-            from_date=int(self._from_date.timestamp()),
-            to_date=int(self._to_date.timestamp()),
-            portfolio=portfolio,
-            asset=asset,
-            strategies=strategies,
-        )
-
-        response = self._horizon_router.backtest_create(
-            settings=settings.to_dict(),
-        )
-
-        self._id = response["data"]["id"]
-        self._log.info(f"Backtest created: {self._id}")
 
     def _handle_shutdown(
         self,
@@ -222,21 +158,10 @@ class BacktestService(BacktestInterface):
         sleep(3)
         sys.exit(0)
 
-    def _send_failed(self, error: str) -> None:
-        self._events_queue.put(
-            {
-                "event": BacktestEvent.BACKTEST_FAILED,
-                "asset_id": self._asset.symbol,
-                "error": error,
-            }
-        )
-
     def _on_end(self) -> None:
         end_at = datetime.datetime.now(TIMEZONE)
         duration = get_duration(self._start_at, end_at)
         report = self._asset.on_end()
-
-        self._update_backtest(status=BacktestStatus.COMPLETED.value, report=report)
 
         self._events_queue.put(
             {
@@ -248,6 +173,15 @@ class BacktestService(BacktestInterface):
 
         self._log.info(f"Backtest completed in: {duration}")
 
+    def _send_failed(self, error: str) -> None:
+        self._events_queue.put(
+            {
+                "event": BacktestEvent.BACKTEST_FAILED,
+                "asset_id": self._asset.symbol,
+                "error": error,
+            }
+        )
+
     def _setup_signal_handlers(self) -> None:
         signal.signal(
             signal.SIGINT,
@@ -257,23 +191,4 @@ class BacktestService(BacktestInterface):
         signal.signal(
             signal.SIGTERM,
             self._handle_shutdown,
-        )
-
-    def _update_backtest(
-        self,
-        status: str,
-        report: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        if not self._id:
-            return
-
-        settings: Optional[Dict[str, Any]] = None
-
-        if report is not None:
-            settings = {"report": report}
-
-        self._horizon_router.backtest_update(
-            backtest_id=self._id,
-            status=status,
-            settings=settings,
         )
