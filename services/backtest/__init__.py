@@ -12,8 +12,8 @@ from types import FrameType
 from typing import Any, Dict, List, Optional, Type
 
 from configs.timezone import TIMEZONE
+from enums.backtest_event import BacktestEvent
 from enums.backtest_status import BacktestStatus
-from enums.command import Command
 from helpers.get_duration import get_duration
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from interfaces.asset import AssetInterface
@@ -47,7 +47,7 @@ class BacktestService(BacktestInterface):
     _id: Optional[str]
     _tick: TicksService
     _commands_queue: Optional[Queue[Any]]
-    _events_queue: Optional[Queue[Any]]
+    _events_queue: Queue[Any]
     _horizon_router: HorizonRouterProvider
     _portfolio_path: Optional[str]
     _allocation: float
@@ -58,8 +58,8 @@ class BacktestService(BacktestInterface):
         asset: Type[AssetInterface],
         from_date: datetime.datetime,
         to_date: datetime.datetime,
+        events_queue: Queue[Any],
         commands_queue: Optional[Queue[Any]] = None,
-        events_queue: Optional[Queue[Any]] = None,
         portfolio_path: Optional[str] = None,
         allocation: float = 0.0,
         args: Optional[argparse.Namespace] = None,
@@ -142,17 +142,17 @@ class BacktestService(BacktestInterface):
 
         if not self._id:
             self._log.error("Failed to create backtest...")
-            self._kill()
+            self._send_failed("Failed to create backtest")
             return
 
         if len(ticks) == 0:
             self._log.error("No ticks found")
-            self._kill()
+            self._send_failed("No ticks found")
             return
 
         if enabled_strategies == 0:
             self._log.error("No enabled strategies found")
-            self._kill()
+            self._send_failed("No enabled strategies found")
             return
 
         for tick_model in ticks:
@@ -217,26 +217,34 @@ class BacktestService(BacktestInterface):
 
         self._shutdown_requested = True
         self._log.info("Shutdown signal received, cleaning up...")
-        self._kill()
+        self._send_failed("Shutdown signal received")
 
         sleep(3)
         sys.exit(0)
 
-    def _kill(self) -> None:
-        if self._commands_queue is not None:
-            self._commands_queue.put(
-                {
-                    "command": Command.KILL,
-                }
-            )
+    def _send_failed(self, error: str) -> None:
+        self._events_queue.put(
+            {
+                "event": BacktestEvent.BACKTEST_FAILED,
+                "asset_id": self._asset.symbol,
+                "error": error,
+            }
+        )
 
     def _on_end(self) -> None:
         end_at = datetime.datetime.now(TIMEZONE)
         duration = get_duration(self._start_at, end_at)
-
         report = self._asset.on_end()
+
         self._update_backtest(status=BacktestStatus.COMPLETED.value, report=report)
-        self._kill()
+
+        self._events_queue.put(
+            {
+                "event": BacktestEvent.BACKTEST_FINISHED,
+                "asset_id": self._asset.symbol,
+                "report": report,
+            }
+        )
 
         self._log.info(f"Backtest completed in: {duration}")
 
