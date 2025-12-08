@@ -6,11 +6,13 @@ from typing import Any, Dict, List, Optional
 
 from enums.command import Command
 from enums.order_side import OrderSide
+from enums.quality_method import QualityMethod
 from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
 from interfaces.candle import CandleInterface
 from interfaces.portfolio import PortfolioInterface
 from interfaces.strategy import StrategyInterface
+from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
 from services.analytic import AnalyticService
@@ -60,7 +62,9 @@ class StrategyService(StrategyInterface):
     _analytic: Optional[AnalyticInterface]
     _asset: Optional[AssetService]
     _backtest: bool
+    _backtest_expectation: Optional[BacktestExpectationModel]
     _backtest_id: Optional[str]
+    _backtest_quality_method: QualityMethod
     _candles: Dict[Timeframe, CandleInterface]
     _commands_queue: Optional["Queue[Command]"] = None
     _enabled: bool
@@ -68,11 +72,12 @@ class StrategyService(StrategyInterface):
     _id: str
     _last_timestamps: Dict[Timeframe, datetime.datetime]
     _leverage: int
-    _log: LoggingService
     _name: str
     _orderbook: Optional[OrderbookService]
     _portfolio: Optional[PortfolioInterface]
     _tick: Optional[TickModel]
+
+    _log: LoggingService
 
     def __init__(
         self,
@@ -93,6 +98,8 @@ class StrategyService(StrategyInterface):
 
         self._backtest = False
         self._backtest_id = None
+        self._backtest_expectation = None
+        self._backtest_quality_method = QualityMethod.FQS
         self._portfolio = None
         self._asset = None
         self._candles = {}
@@ -315,6 +322,8 @@ class StrategyService(StrategyInterface):
             orderbook=self._orderbook,
             commands_queue=self._commands_queue,
             events_queue=self._events_queue,
+            quality_method=self._backtest_quality_method,
+            backtest_expectation=self._backtest_expectation,
         )
 
         self._log.info(f"Setting up {self.name}")

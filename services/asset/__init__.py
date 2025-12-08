@@ -5,6 +5,7 @@ from __future__ import annotations
 from multiprocessing import Queue
 from typing import Any, Dict, List, Optional
 
+from enums.asset_quality_method import AssetQualityMethod
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from interfaces.strategy import StrategyInterface
@@ -12,24 +13,26 @@ from models.order import OrderModel
 from models.tick import TickModel
 from services.gateway import GatewayService
 from services.logging import LoggingService
+from services.quality_calculator import QualityCalculatorService
 
 
 class AssetService(AssetInterface):
     """Service managing strategies and gateway for a specific trading asset."""
 
+    _asset_quality_method: AssetQualityMethod
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
     _gateway_name: str
     _is_historical_filling: bool
-    _name: str
     _portfolio: Optional[PortfolioInterface]
     _strategies: List[StrategyInterface]
     _symbol: str
 
     _gateway: GatewayService
     _log: LoggingService
+    _quality_calculator: QualityCalculatorService
 
     def __init__(self) -> None:
         """Initialize the asset service with default configuration."""
@@ -42,6 +45,11 @@ class AssetService(AssetInterface):
         self._backtest_id = None
         self._portfolio = None
         self._is_historical_filling = False
+        self._asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+        self._quality_calculator = QualityCalculatorService(
+            quality_method=self._asset_quality_method,
+            children_key="strategies",
+        )
         self._gateway = GatewayService(
             gateway=self._gateway_name,
             sandbox=False,
@@ -53,35 +61,15 @@ class AssetService(AssetInterface):
         Returns:
             Asset report with aggregated performance and strategy reports.
         """
-        strategy_reports: Dict[str, Dict[str, Any]] = {}
+        self._quality_calculator.reset()
 
         for strategy in self._strategies:
             strategy_report = strategy.on_end()
 
             if strategy_report is not None:
-                strategy_reports[strategy.id] = strategy_report
+                self._quality_calculator.on_report(strategy.id, strategy_report)
 
-        return self._report(strategy_reports)
-
-    def _report(self, strategy_reports: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """Build the asset report aggregating all strategy data.
-
-        Args:
-            strategy_reports: Dictionary of strategy reports keyed by strategy id.
-
-        Returns:
-            Asset report with performance and strategies data.
-        """
-        total_allocation = sum(report.get("allocation", 0) for report in strategy_reports.values())
-        total_performance = sum(report.get("performance", 0) for report in strategy_reports.values())
-        performance_percentage = total_performance / total_allocation if total_allocation > 0 else 0.0
-
-        return {
-            "allocation": total_allocation,
-            "performance": total_performance,
-            "performance_percentage": performance_percentage,
-            "strategies": strategy_reports,
-        }
+        return self._quality_calculator.on_end()
 
     def on_tick(self, tick: TickModel) -> None:
         """Propagate tick data to all enabled strategies."""

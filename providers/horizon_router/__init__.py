@@ -1,11 +1,9 @@
 """Horizon Router API provider for user management and authentication."""
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from configs.timezone import TIMEZONE
 from helpers.get_env import get_env
 from providers import BaseProvider
 
@@ -120,67 +118,6 @@ class HorizonRouterProvider(BaseProvider):
             data=data,
         )
 
-    def register(
-        self,
-        name: str,
-        email: str,
-        password: str,
-        password_confirmation: str,
-    ) -> Dict[str, Any]:
-        """Register a new user account.
-
-        Args:
-            name: User's full name.
-            email: User's email address.
-            password: User's password (min 8 characters).
-            password_confirmation: Password confirmation.
-
-        Returns:
-            API response with created user data.
-        """
-        analytics = {
-            "user_agent": "Horizon5-Connect/CLI",
-            "timestamp": datetime.now(TIMEZONE).isoformat(),
-        }
-
-        return self.post(
-            "/api/v1/user",
-            data={
-                "name": name,
-                "email": email,
-                "password": password,
-                "password_confirmation": password_confirmation,
-                "analytics": analytics,
-            },
-        )
-
-    def verify_email(self, user_id: str, token: str) -> Dict[str, Any]:
-        """Verify user email using the verification token.
-
-        Args:
-            user_id: User ID from registration.
-            token: Verification token from email.
-
-        Returns:
-            API response with verification result.
-        """
-        return self.get(f"/api/v1/user/{user_id}/verify/{token}")
-
-    def login(self, email: str, password: str) -> Dict[str, Any]:
-        """Authenticate with email and password.
-
-        Args:
-            email: User email.
-            password: User password.
-
-        Returns:
-            API response with token and expires_in.
-        """
-        response = self.post("/api/v1/auth/login", data={"email": email, "password": password})
-        token: str = response["data"]["token"]
-        self._headers["Authorization"] = f"Bearer {token}"
-        return response
-
     def me(self) -> Dict[str, Any]:
         """Get current authenticated user.
 
@@ -188,6 +125,14 @@ class HorizonRouterProvider(BaseProvider):
             API response with user data.
         """
         return self.get("/api/v1/auth/me")
+
+    def set_token(self, token: str) -> None:
+        """Set the authentication token manually.
+
+        Args:
+            token: Bearer token to use for authentication.
+        """
+        self._headers["Authorization"] = f"Bearer {token}"
 
     def refresh(self) -> Tuple[str, int]:
         """Refresh the current JWT token.

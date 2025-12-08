@@ -70,9 +70,6 @@ class SnapshotModel(BaseModel):
             Dictionary with all snapshot metrics.
         """
         return {
-            "backtest": self.backtest,
-            "backtest_id": self.backtest_id,
-            "strategy_id": self.strategy_id,
             "nav": self.nav,
             "allocation": self.allocation,
             "performance": self.performance,

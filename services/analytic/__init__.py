@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import datetime
-import json
 from multiprocessing import Queue
 from typing import Any, Dict, Optional
 
+from enums.quality_method import QualityMethod
 from interfaces.analytic import AnalyticInterface
 from interfaces.orderbook import OrderbookInterface
+from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
@@ -16,6 +17,7 @@ from services.analytic.helpers.get_cagr import get_cagr
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
 from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
 from services.analytic.helpers.get_profit_factor import get_profit_factor
+from services.analytic.helpers.get_quality import get_quality
 from services.analytic.helpers.get_r2 import get_r2
 from services.analytic.helpers.get_recovery_factor import get_recovery_factor
 from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
@@ -46,24 +48,25 @@ class AnalyticService(AnalyticInterface):
         _ended_at: Timestamp when analytics tracking ended.
         _tick: Current market tick data.
         _snapshot: Current analytics snapshot model.
-        _executed_orders: Count of executed orders.
+        _closed_orders: Count of closed orders.
     """
 
     _backtest: bool
+    _backtest_expectation: Optional[BacktestExpectationModel]
     _backtest_id: Optional[str]
-    _strategy_id: str
-    _orderbook: OrderbookInterface
+    _closed_orders: int
     _commands_queue: Queue[Any]
+    _ended_at: datetime.datetime
     _events_queue: Queue[Any]
-    _log: LoggingService
-
+    _orderbook: OrderbookInterface
+    _quality_method: QualityMethod
+    _snapshot: SnapshotModel
     _started: bool
     _started_at: datetime.datetime
-    _ended_at: datetime.datetime
-
+    _strategy_id: str
     _tick: Optional[TickModel]
-    _snapshot: SnapshotModel
-    _executed_orders: int
+
+    _log: LoggingService
 
     def __init__(
         self,
@@ -73,6 +76,8 @@ class AnalyticService(AnalyticInterface):
         orderbook: OrderbookInterface,
         commands_queue: Queue[Any],
         events_queue: Queue[Any],
+        quality_method: QualityMethod = QualityMethod.FQS,
+        backtest_expectation: Optional[BacktestExpectationModel] = None,
     ) -> None:
         """
         Initialize the analytics service.
@@ -84,6 +89,8 @@ class AnalyticService(AnalyticInterface):
             orderbook: Service for managing orders and portfolio state.
             commands_queue: Queue for sending commands to external services.
             events_queue: Queue for receiving events from external services.
+            quality_method: Method for calculating quality score.
+            backtest_expectation: BacktestExpectationModel with [min, expected] ranges.
 
         Raises:
             ValueError: If backtest is True but backtest_id is None.
@@ -97,6 +104,8 @@ class AnalyticService(AnalyticInterface):
         self._orderbook = orderbook
         self._commands_queue = commands_queue
         self._events_queue = events_queue
+        self._quality_method = quality_method
+        self._backtest_expectation = backtest_expectation
 
         if self._backtest and self._backtest_id is None:
             raise ValueError("Backtest ID is required when backtest is True")
@@ -106,7 +115,7 @@ class AnalyticService(AnalyticInterface):
 
         self._started = False
         self._tick = None
-        self._executed_orders = 0
+        self._closed_orders = 0
 
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
@@ -204,7 +213,7 @@ class AnalyticService(AnalyticInterface):
             order: The order model representing the transaction.
         """
         if order.status.is_closed():
-            self._executed_orders += 1
+            self._closed_orders += 1
             self._snapshot.profit_history.append(order.profit)
 
     def _is_running_in_live_mode(self) -> bool:
@@ -273,21 +282,33 @@ class AnalyticService(AnalyticInterface):
         self._log.info(f"Backtest ID: {self._backtest_id}")
         self._log.info(f"Strategy: {self._strategy_id}")
 
+        quality, quality_method = get_quality(
+            method=self._quality_method,
+            expectations=self._backtest_expectation,
+            sortino_ratio=self._snapshot.sortino_ratio,
+            sharpe_ratio=self._snapshot.sharpe_ratio,
+            r_squared=self._snapshot.r2,
+            max_drawdown=self._snapshot.max_drawdown,
+            profit_factor=self._snapshot.profit_factor,
+            num_trades=self._closed_orders,
+            cagr=self._snapshot.cagr,
+            calmar_ratio=self._snapshot.calmar_ratio,
+            recovery_factor=self._snapshot.recovery_factor,
+            expected_shortfall=self._snapshot.expected_shortfall,
+            ulcer_index=self._snapshot.ulcer_index,
+            performance_percentage=self._snapshot.performance_percentage,
+        )
+
         days_elapsed = (self._ended_at - self._started_at).days
         report: Dict[str, Any] = {
             **self._snapshot.to_dict(),
             "started_at": str(self._started_at),
             "ended_at": str(self._ended_at),
             "days_elapsed": days_elapsed,
+            "num_trades": self._closed_orders,
+            "quality": quality,
+            "quality_method": quality_method,
         }
-
-        self._log.debug(
-            json.dumps(
-                report,
-                indent=4,
-                default=str,
-            )
-        )
 
         return report
 

@@ -9,14 +9,15 @@ Review code following clean-code guidelines. Analyzes files systematically and a
 
 ## Arguments
 
-- `$ARGUMENTS` - Path to file or folder to review
+- `$ARGUMENTS` - (Optional) Path to file or folder to review. If omitted, reviews all modified Python files in the current git session.
 
 ## Workflow
 
 ### Step 1: Identify Target
 
-Determine if `$ARGUMENTS` is a file or folder:
+Determine what to review based on `$ARGUMENTS`:
 
+- **If empty or not provided**: Get modified files from the current git session using `git status --porcelain`. Filter for `.py` files that are modified (M), added (A), or untracked (??) and inform user: "No path specified. Found N modified Python files in current session: [list files]. I will analyze each one systematically." Process each file separately following this workflow from the beginning.
 - **If folder**: List all `.py` files and inform user: "This folder contains N files. I will analyze each one systematically, one at a time." Process each file separately following this workflow from the beginning.
 - **If file**: Proceed to Step 2.
 
@@ -116,6 +117,8 @@ After all validations pass, report to user:
 
 ## Example Execution
 
+**With file argument:**
+
 ```
 User: /do-coding-review services/orderbook/__init__.py
 
@@ -127,4 +130,21 @@ Agent:
 5. [Applies corrections]
 6. [Runs linter checks and tests]
 7. [Reports changes]
+```
+
+**Without arguments (reviews current session changes):**
+
+```
+User: /do-coding-review
+
+Agent:
+1. Running: git status --porcelain
+2. Found 5 modified Python files in current session:
+   - services/analytic/__init__.py (M)
+   - services/asset/__init__.py (M)
+   - models/backtest_expectation.py (??)
+   - enums/quality_method.py (??)
+   - services/quality_calculator/__init__.py (??)
+3. Starting systematic review of each file...
+4. [Processes each file through the full workflow]
 ```

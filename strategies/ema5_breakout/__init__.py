@@ -5,8 +5,10 @@ from typing import Any, Dict, Optional
 
 from enums.order_side import OrderSide
 from enums.order_status import OrderStatus
+from enums.quality_method import QualityMethod
 from enums.timeframe import Timeframe
 from indicators.ma import MAIndicator
+from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
 from services.candle import CandleService
@@ -30,6 +32,7 @@ class EMA5BreakoutStrategy(StrategyService):
         _enabled: Strategy activation flag.
         _name: Strategy identifier.
         _settings: Configuration parameters.
+        _backtest_expectation: Expected thresholds for quality calculation.
         _previous_day_ema5_max: Maximum EMA5 value from previous day.
         _candles: Candle services for different timeframes.
     """
@@ -51,7 +54,17 @@ class EMA5BreakoutStrategy(StrategyService):
                 - recovery_stop_loss_percentage: Recovery SL % (default: 0.15)
         """
         super().__init__(**kwargs)
+
         self._log = LoggingService()
+
+        self._backtest_expectation = BacktestExpectationModel(
+            num_trades=[5, 30],
+            max_drawdown=[-0.25, -0.10],
+            performance_percentage=[0.10, 0.50],
+            sortino_ratio=[0.5, 2.0],
+            profit_factor=[1.2, 2.5],
+        )
+        self._backtest_quality_method = QualityMethod.FQS
 
         self._settings = kwargs.get(
             "settings",
