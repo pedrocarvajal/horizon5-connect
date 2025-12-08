@@ -34,13 +34,13 @@ class Asset(AssetService):
                 id="donchian_breakout",
                 allocation=allocations.get("donchian_breakout", 0.0),
                 leverage=3,
-                enabled=True,
+                enabled=False,
             ),
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
                 allocation=allocations.get("ema5_breakout", 0.0),
                 leverage=3,
-                enabled=False,
+                enabled=True,
             ),
             RSIBollingerBreakoutStrategy(
                 id="rsi_bollinger_breakout",
