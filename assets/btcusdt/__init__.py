@@ -41,6 +41,14 @@ class Asset(AssetService):
                 allocation=allocations.get("ema5_breakout", 0.0),
                 leverage=3,
                 enabled=True,
+                settings={
+                    "main_volume_percentage": 0.10,
+                    "main_take_profit_percentage": 0.03,
+                    "main_stop_loss_percentage": 0.15,
+                    "recovery_maximum_number_of_openings": 10,
+                    "recovery_take_profit_percentage": 0.03,
+                    "recovery_stop_loss_percentage": 0.15,
+                },
             ),
             RSIBollingerBreakoutStrategy(
                 id="rsi_bollinger_breakout",
