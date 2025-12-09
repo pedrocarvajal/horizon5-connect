@@ -17,6 +17,7 @@ class AssetInterface(ABC):
     _symbol: str
     _name: str
     _allocation: float
+    _enabled: bool
     _is_historical_filling: bool
     _gateway: "GatewayInterface"
     _strategies: List["StrategyInterface"]
@@ -73,6 +74,11 @@ class AssetInterface(ABC):
     def allocation(self) -> float:
         """Return the asset allocation."""
         return self._allocation
+
+    @property
+    def enabled(self) -> bool:
+        """Return whether asset is enabled."""
+        return self._enabled
 
     @property
     def gateway(self) -> "GatewayInterface":

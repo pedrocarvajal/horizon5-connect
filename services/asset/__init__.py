@@ -29,15 +29,17 @@ class AssetService(AssetInterface):
     _log: LoggingService
     _quality_calculator: QualityCalculatorService
 
-    def __init__(self, allocation: float = 0.0) -> None:
+    def __init__(self, allocation: float = 0.0, enabled: bool = True) -> None:
         """Initialize the asset service with default configuration.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
+            enabled: Whether this asset is enabled for execution.
         """
         self._log = LoggingService()
 
         self._allocation = allocation
+        self._enabled = enabled
         self._strategies = []
         self._commands_queue = None
         self._events_queue = None

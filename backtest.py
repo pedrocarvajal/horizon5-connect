@@ -66,11 +66,12 @@ class PortfolioAggregator:
     _completed_assets: int
     _events_queue: Queue[Any]
     _failed_assets: int
+    _portfolio_id: str
+    _total_assets: int
+
     _horizon_router: HorizonRouterProvider
     _log: LoggingService
-    _portfolio_id: str
     _quality_calculator: QualityCalculatorService
-    _total_assets: int
 
     def __init__(
         self,
@@ -104,6 +105,7 @@ class PortfolioAggregator:
 
             if event == BacktestEvent.BACKTEST_FINISHED:
                 should_exit = self._handle_backtest_finished(event_data)
+
             elif event == BacktestEvent.BACKTEST_FAILED:
                 should_exit = self._handle_backtest_failed(event_data)
 
@@ -281,16 +283,29 @@ if __name__ == "__main__":
     if not portfolio.assets:
         parser.error("Portfolio must define at least one asset.")
 
+    log = LoggingService()
+    assets: List[Tuple[Type[AssetInterface], float]] = []
+
+    for asset_class, allocation in portfolio.assets:
+        instance = asset_class(allocation=allocation)
+
+        if instance.enabled:
+            assets.append((asset_class, allocation))
+        else:
+            log.warning(f"Asset {instance.symbol} is not enabled")
+
+    if not assets:
+        parser.error("No enabled assets found in portfolio.")
+
     backtest_id = create_backtest(
         portfolio_path=args.portfolio_path,
         portfolio_id=portfolio.id,
-        assets=portfolio.assets,
+        assets=assets,
         from_date=from_date,
         to_date=to_date,
     )
 
     if not backtest_id:
-        log = LoggingService()
         log.error("Failed to create backtest")
         sys.exit(1)
 
@@ -307,14 +322,14 @@ if __name__ == "__main__":
             kwargs={
                 "events_queue": events_queue,
                 "commands_queue": commands_queue,
-                "total_assets": len(portfolio.assets),
+                "total_assets": len(assets),
                 "portfolio_id": portfolio.id,
                 "backtest_id": backtest_id,
             },
         ),
     ]
 
-    for asset, allocation in portfolio.assets:
+    for asset, allocation in assets:
         processes.append(
             Process(
                 target=Backtest,
