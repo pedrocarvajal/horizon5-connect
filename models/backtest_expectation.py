@@ -23,13 +23,11 @@ class BacktestExpectationModel(BaseModel):
         num_trades: [min, expected] number of trades for statistical significance.
         max_drawdown: [min, expected] maximum drawdown (negative values, e.g., [-0.30, -0.05]).
         performance_percentage: [min, expected] total return percentage.
-        sortino_ratio: [min, expected] risk-adjusted return (downside volatility).
-        sharpe_ratio: [min, expected] risk-adjusted return (total volatility).
         profit_factor: [min, expected] gross profit / gross loss ratio.
+        win_ratio: [min, expected] ratio of winning trades (0-1).
         r_squared: [min, expected] equity curve linearity (0-1).
-        cagr: [min, expected] compound annual growth rate.
-        calmar_ratio: [min, expected] CAGR / max drawdown ratio.
         recovery_factor: [min, expected] net profit / max drawdown ratio.
+        trade_duration: [min, expected] average trade duration in minutes.
     """
 
     num_trades: Optional[List[float]] = Field(
@@ -44,33 +42,25 @@ class BacktestExpectationModel(BaseModel):
         default=None,
         description="[min, expected] total return percentage",
     )
-    sortino_ratio: Optional[List[float]] = Field(
-        default=None,
-        description="[min, expected] Sortino ratio",
-    )
-    sharpe_ratio: Optional[List[float]] = Field(
-        default=None,
-        description="[min, expected] Sharpe ratio",
-    )
     profit_factor: Optional[List[float]] = Field(
         default=None,
         description="[min, expected] profit factor",
+    )
+    win_ratio: Optional[List[float]] = Field(
+        default=None,
+        description="[min, expected] ratio of winning trades (0-1)",
     )
     r_squared: Optional[List[float]] = Field(
         default=None,
         description="[min, expected] R² of equity curve",
     )
-    cagr: Optional[List[float]] = Field(
-        default=None,
-        description="[min, expected] compound annual growth rate",
-    )
-    calmar_ratio: Optional[List[float]] = Field(
-        default=None,
-        description="[min, expected] Calmar ratio",
-    )
     recovery_factor: Optional[List[float]] = Field(
         default=None,
         description="[min, expected] recovery factor",
+    )
+    trade_duration: Optional[List[float]] = Field(
+        default=None,
+        description="[min, expected] average trade duration in minutes",
     )
 
     def get_range(self, metric: str) -> Optional[Tuple[float, float]]:
@@ -91,13 +81,16 @@ class BacktestExpectationModel(BaseModel):
         """Convert to dictionary, excluding None values."""
         return {k: v for k, v in self.model_dump().items() if v is not None}
 
-
-DEFAULT_BACKTEST_EXPECTATION = BacktestExpectationModel(
-    num_trades=[10, 50],
-    max_drawdown=[-0.30, -0.05],
-    performance_percentage=[0.05, 0.30],
-    sortino_ratio=[0.5, 2.0],
-    sharpe_ratio=[0.3, 1.5],
-    profit_factor=[1.0, 2.0],
-    r_squared=[0.3, 0.8],
-)
+    @classmethod
+    def default(cls) -> "BacktestExpectationModel":
+        """Return default expectation thresholds for backtest quality calculation."""
+        return cls(
+            num_trades=[10, 50],
+            max_drawdown=[-0.30, -0.05],
+            performance_percentage=[0.05, 0.30],
+            profit_factor=[1.0, 2.0],
+            win_ratio=[0.40, 0.60],
+            r_squared=[0.3, 0.8],
+            recovery_factor=[1.0, 3.0],
+            trade_duration=[30, 240],
+        )

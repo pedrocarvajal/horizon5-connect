@@ -13,19 +13,15 @@ class QualityMethod(Enum):
     - Value between min and expected → linearly interpolated (0-1)
 
     Attributes:
-        FQS: Final Quality Score - weighted average of all metrics (default).
-        SORTINO: Based on Sortino ratio only (risk-adjusted, downside volatility).
+        FQS: Final Quality Score - weighted average of performance, drawdown, r2.
         DRAWDOWN: Based on max drawdown only (inverted - lower is better).
-        PERFORMANCE: Based on performance percentage only.
         PROFIT_FACTOR: Based on profit factor only.
-        SHARPE: Based on Sharpe ratio only (risk-adjusted, total volatility).
         R_SQUARED: Based on R² only (equity curve consistency).
+        WIN_RATIO: Based on win ratio only (winning trades / total trades).
     """
 
     FQS = "fqs"
-    SORTINO = "sortino"
     DRAWDOWN = "drawdown"
-    PERFORMANCE = "performance"
     PROFIT_FACTOR = "profit_factor"
-    SHARPE = "sharpe"
     R_SQUARED = "r_squared"
+    WIN_RATIO = "win_ratio"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from multiprocessing import Queue
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from enums.quality_method import QualityMethod
 from interfaces.analytic import AnalyticInterface
@@ -13,6 +13,7 @@ from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
+from services.analytic.helpers.get_average_trade_duration import get_average_trade_duration
 from services.analytic.helpers.get_cagr import get_cagr
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
 from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
@@ -23,6 +24,7 @@ from services.analytic.helpers.get_recovery_factor import get_recovery_factor
 from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
 from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
 from services.analytic.helpers.get_ulcer_index import get_ulcer_index
+from services.analytic.helpers.get_win_ratio import get_win_ratio
 from services.logging import LoggingService
 
 
@@ -65,6 +67,7 @@ class AnalyticService(AnalyticInterface):
     _started_at: datetime.datetime
     _strategy_id: str
     _tick: Optional[TickModel]
+    _trade_durations: List[float]
 
     _log: LoggingService
 
@@ -116,6 +119,7 @@ class AnalyticService(AnalyticInterface):
         self._started = False
         self._tick = None
         self._closed_orders = 0
+        self._trade_durations = []
 
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
@@ -134,6 +138,8 @@ class AnalyticService(AnalyticInterface):
             sharpe_ratio=0,
             sortino_ratio=0,
             ulcer_index=0,
+            win_ratio=0,
+            average_trade_duration=0,
         )
 
     def on_end(self) -> Optional[Dict[str, Any]]:
@@ -206,8 +212,8 @@ class AnalyticService(AnalyticInterface):
         Handle a transaction event (order status change).
 
         When an order is closed, this method updates the executed orders count,
-        records the profit in the snapshot's profit history, and stores the order
-        via the commands queue.
+        records the profit in the snapshot's profit history, calculates trade
+        duration, and stores the order via the commands queue.
 
         Args:
             order: The order model representing the transaction.
@@ -215,6 +221,11 @@ class AnalyticService(AnalyticInterface):
         if order.status.is_closed():
             self._closed_orders += 1
             self._snapshot.profit_history.append(order.profit)
+
+            if order.created_at is not None and order.updated_at is not None:
+                duration_seconds = (order.updated_at - order.created_at).total_seconds()
+                duration_minutes = duration_seconds / 60
+                self._trade_durations.append(duration_minutes)
 
     def _is_running_in_live_mode(self) -> bool:
         """
@@ -231,7 +242,8 @@ class AnalyticService(AnalyticInterface):
 
         Computes various risk-adjusted return metrics including R², CAGR,
         Calmar ratio, expected shortfall, profit factor, recovery factor,
-        Sharpe ratio, Sortino ratio, and ulcer index.
+        Sharpe ratio, Sortino ratio, ulcer index, win ratio, and average
+        trade duration.
         """
         allocation = self._snapshot.allocation
         nav = self._snapshot.nav
@@ -251,6 +263,8 @@ class AnalyticService(AnalyticInterface):
         self._snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
         self._snapshot.sortino_ratio = get_sortino_ratio(nav_history)
         self._snapshot.ulcer_index = get_ulcer_index(nav_history)
+        self._snapshot.win_ratio = get_win_ratio(profit_history)
+        self._snapshot.average_trade_duration = get_average_trade_duration(self._trade_durations)
 
     def _refresh(self) -> None:
         """
@@ -282,24 +296,21 @@ class AnalyticService(AnalyticInterface):
         self._log.info(f"Backtest ID: {self._backtest_id}")
         self._log.info(f"Strategy: {self._strategy_id}")
 
+        days_elapsed = (self._ended_at - self._started_at).days
+
         quality, quality_method = get_quality(
             method=self._quality_method,
             expectations=self._backtest_expectation,
-            sortino_ratio=self._snapshot.sortino_ratio,
-            sharpe_ratio=self._snapshot.sharpe_ratio,
+            days_elapsed=days_elapsed,
             r_squared=self._snapshot.r2,
             max_drawdown=self._snapshot.max_drawdown,
             profit_factor=self._snapshot.profit_factor,
             num_trades=self._closed_orders,
-            cagr=self._snapshot.cagr,
-            calmar_ratio=self._snapshot.calmar_ratio,
             recovery_factor=self._snapshot.recovery_factor,
-            expected_shortfall=self._snapshot.expected_shortfall,
-            ulcer_index=self._snapshot.ulcer_index,
+            win_ratio=self._snapshot.win_ratio,
+            trade_duration=self._snapshot.average_trade_duration,
             performance_percentage=self._snapshot.performance_percentage,
         )
-
-        days_elapsed = (self._ended_at - self._started_at).days
         report: Dict[str, Any] = {
             **self._snapshot.to_dict(),
             "started_at": str(self._started_at),

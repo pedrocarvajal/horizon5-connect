@@ -74,11 +74,11 @@ class DonchianBreakoutStrategy(StrategyService):
 
         self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
-            num_trades=[5, 50],
-            max_drawdown=[-0.30, -0.10],
-            performance_percentage=[0.10, 0.80],
-            sortino_ratio=[0.5, 3.0],
-            profit_factor=[1.2, 3.0],
+            num_trades=[12, 12 * 28],
+            max_drawdown=[-0.30, 0],
+            performance_percentage=[0.12, 0.50],
+            profit_factor=[1, 3.0],
+            r_squared=[0.7, 1],
         )
 
         self._settings = kwargs.get(

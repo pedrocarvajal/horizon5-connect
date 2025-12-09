@@ -46,6 +46,8 @@ class SnapshotModel(BaseModel):
     sharpe_ratio: float = Field(default=0)
     sortino_ratio: float = Field(default=0)
     ulcer_index: float = Field(default=0, ge=0)
+    win_ratio: float = Field(default=0, ge=0, le=1)
+    average_trade_duration: float = Field(default=0, ge=0)
 
     performance_history: List[float] = Field(default_factory=lambda: [])
     nav_history: List[float] = Field(default_factory=lambda: [])
@@ -85,6 +87,8 @@ class SnapshotModel(BaseModel):
             "sharpe_ratio": self.sharpe_ratio,
             "sortino_ratio": self.sortino_ratio,
             "ulcer_index": self.ulcer_index,
+            "win_ratio": self.win_ratio,
+            "average_trade_duration": self.average_trade_duration,
             "created_at": self.created_at,
         }
 

@@ -3,15 +3,42 @@
 from typing import Any, Dict, Optional, Tuple
 
 from enums.quality_method import QualityMethod
-from models.backtest_expectation import (
-    DEFAULT_BACKTEST_EXPECTATION,
-    BacktestExpectationModel,
-)
+from models.backtest_expectation import BacktestExpectationModel
+
+DAYS_IN_YEAR = 365
+
+
+def _annualize_performance(performance_percentage: float, days_elapsed: int) -> float:
+    """Annualize performance percentage based on elapsed days.
+
+    Formula: (1 + performance) ^ (365 / days) - 1
+
+    Args:
+        performance_percentage: Raw performance as decimal (e.g., 0.25 for 25%)
+        days_elapsed: Number of days in the backtest period
+
+    Returns:
+        Annualized performance as decimal.
+        Returns 0.0 if days_elapsed <= 0.
+
+    Examples:
+        - 25% in 90 days → (1.25)^(365/90) - 1 = 166% annualized
+        - 50% in 180 days → (1.50)^(365/180) - 1 = 125% annualized
+        - 100% in 365 days → (2.00)^(365/365) - 1 = 100% annualized
+    """
+    if days_elapsed <= 0:
+        return 0.0
+
+    if performance_percentage <= -1:
+        return -1.0
+
+    return (1 + performance_percentage) ** (DAYS_IN_YEAR / days_elapsed) - 1
 
 
 def get_quality(
     method: QualityMethod = QualityMethod.FQS,
     expectations: Optional[BacktestExpectationModel] = None,
+    days_elapsed: int = 0,
     **metrics: Any,
 ) -> Tuple[float, str]:
     """Calculate quality score for a backtest using the specified method.
@@ -25,50 +52,46 @@ def get_quality(
     - Value <= expected → quality contribution = 1
     - Value >= min → quality contribution = 0
 
+    Note: performance_percentage is automatically annualized using days_elapsed
+    before comparison with thresholds.
+
     Args:
         method: QualityMethod enum specifying the calculation method.
         expectations: BacktestExpectationModel with [min, expected] ranges.
             If None, uses DEFAULT_BACKTEST_EXPECTATION.
+        days_elapsed: Number of days in the backtest period for annualization.
         **metrics: All available metrics from the backtest:
-            - sortino_ratio: Risk-adjusted return (downside volatility only)
-            - sharpe_ratio: Risk-adjusted return (total volatility)
             - r_squared: Linear trend coefficient of equity curve (0 to 1)
             - max_drawdown: Maximum peak-to-trough decline (negative value)
             - profit_factor: Sum of winning trades / sum of losing trades
             - num_trades: Total number of closed trades
-            - cagr: Compound annual growth rate
-            - calmar_ratio: CAGR / max_drawdown
             - recovery_factor: Performance / max_drawdown
-            - performance_percentage: Total return as percentage
+            - win_ratio: Ratio of winning trades (0-1)
+            - trade_duration: Average trade duration in minutes
+            - performance_percentage: Total return as percentage (will be annualized)
 
     Returns:
         Tuple of (quality_score, method_name).
         Score is normalized to [0, 1] range for all methods.
     """
-    exp = expectations or DEFAULT_BACKTEST_EXPECTATION
+    exp = expectations or BacktestExpectationModel.default()
 
     if method == QualityMethod.FQS:
-        return _calculate_fqs(metrics, exp)
-
-    if method == QualityMethod.SORTINO:
-        return _calculate_single_metric(metrics, exp, "sortino_ratio", "sortino")
+        return _calculate_fqs(metrics, exp, days_elapsed)
 
     if method == QualityMethod.DRAWDOWN:
         return _calculate_single_metric(metrics, exp, "max_drawdown", "drawdown", higher_is_better=False)
 
-    if method == QualityMethod.PERFORMANCE:
-        return _calculate_single_metric(metrics, exp, "performance_percentage", "performance")
-
     if method == QualityMethod.PROFIT_FACTOR:
         return _calculate_single_metric(metrics, exp, "profit_factor", "profit_factor")
-
-    if method == QualityMethod.SHARPE:
-        return _calculate_single_metric(metrics, exp, "sharpe_ratio", "sharpe")
 
     if method == QualityMethod.R_SQUARED:
         return _calculate_single_metric(metrics, exp, "r_squared", "r_squared")
 
-    return _calculate_fqs(metrics, exp)
+    if method == QualityMethod.WIN_RATIO:
+        return _calculate_single_metric(metrics, exp, "win_ratio", "win_ratio")
+
+    return _calculate_fqs(metrics, exp, days_elapsed)
 
 
 def _calculate_metric_quality(
@@ -155,32 +178,33 @@ def _calculate_single_metric(
 def _calculate_fqs(
     metrics: Dict[str, Any],
     expectations: BacktestExpectationModel,
+    days_elapsed: int = 0,
 ) -> Tuple[float, str]:
     """Calculate Final Quality Score (FQS) using weighted average.
 
-    Weights:
-        - num_trades: 0.10 (statistical significance)
-        - max_drawdown: 0.20 (risk management)
-        - performance_percentage: 0.15 (returns)
-        - sortino_ratio: 0.20 (risk-adjusted returns)
-        - profit_factor: 0.15 (trade efficiency)
-        - r_squared: 0.10 (consistency)
-        - sharpe_ratio: 0.10 (risk-adjusted returns alternative)
+    FQS focuses on three core metrics:
+        - performance_percentage: 0.40 (returns, annualized)
+        - max_drawdown: 0.40 (risk management)
+        - r_squared: 0.20 (consistency/equity curve linearity)
+
+    Note: performance_percentage is annualized before comparison.
+
+    Args:
+        metrics: Dictionary of all metrics.
+        expectations: BacktestExpectationModel with ranges.
+        days_elapsed: Number of days in the backtest period for annualization.
 
     Returns:
         Tuple of (quality_score, "fqs").
     """
     metric_weights = {
-        "num_trades": 0.10,
-        "max_drawdown": 0.20,
-        "performance_percentage": 0.15,
-        "sortino_ratio": 0.20,
-        "profit_factor": 0.15,
-        "r_squared": 0.10,
-        "sharpe_ratio": 0.10,
+        "performance_percentage": 0.40,
+        "max_drawdown": 0.40,
+        "r_squared": 0.20,
     }
 
     lower_is_better_metrics = {"max_drawdown"}
+    annualized_metrics = {"performance_percentage"}
 
     total_weight = 0.0
     weighted_sum = 0.0
@@ -193,6 +217,9 @@ def _calculate_fqs(
         current_value = metrics.get(metric_key, 0)
         threshold, expected = exp_range
         higher_is_better = metric_key not in lower_is_better_metrics
+
+        if metric_key in annualized_metrics and days_elapsed > 0:
+            current_value = _annualize_performance(current_value, days_elapsed)
 
         if metric_key in lower_is_better_metrics:
             current_value = abs(current_value)

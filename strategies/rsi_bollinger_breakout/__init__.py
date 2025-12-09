@@ -67,11 +67,11 @@ class RSIBollingerBreakoutStrategy(StrategyService):
 
         self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
-            num_trades=[5, 100],
-            max_drawdown=[-0.25, -0.05],
-            performance_percentage=[0.20, 1.00],
-            sortino_ratio=[0.5, 3.0],
-            profit_factor=[1.2, 3.0],
+            num_trades=[12, 12 * 28],
+            max_drawdown=[-0.30, 0],
+            performance_percentage=[0.12, 0.50],
+            profit_factor=[1, 3.0],
+            r_squared=[0.7, 1],
         )
 
         self._settings = kwargs.get(
