@@ -1,8 +1,11 @@
 """Ticks service for downloading and managing historical tick data."""
 
 import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional
+from threading import Lock
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import polars
 
@@ -14,27 +17,113 @@ from models.tick import TickModel
 from services.gateway.models.gateway_kline import GatewayKlineModel
 from services.logging import LoggingService
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+@dataclass
+class DownloadTask:
+    """Task for parallel download of tick data."""
+
+    asset: AssetInterface
+    restore_ticks: bool = False
 
 
 class TicksService(TicksInterface):
     """Service for downloading and managing historical tick data."""
 
-    _ticks_folder: Path = PROJECT_ROOT / "storage" / "ticks"
+    _PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
+    _SECONDS_PER_MINUTE: int = 60
+    _TIMELINE_START_DATE: datetime.datetime = datetime.datetime(2000, 6, 1, 0, 0, 0, tzinfo=TIMEZONE)
+
     _asset: Optional[AssetInterface] = None
-    _restore_ticks: bool = False
-    _disable_download: bool = False
+    _is_download_disabled: bool = False
+    _should_restore_ticks: bool = False
+    _ticks_folder: Path = _PROJECT_ROOT / "storage" / "ticks"
+
     _log: LoggingService
 
     def __init__(self) -> None:
-        """Initialize ticks service with logging."""
+        """Initialize ticks service."""
         self._log = LoggingService()
+
+    def get_timeline(
+        self,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> List[int]:
+        """Generate timeline of timestamps from from_date to to_date."""
+        return self._generate_timeline(from_date, to_date)
+
+    def iterate_ticks(
+        self,
+        symbols: List[str],
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> Iterator[Tuple[datetime.datetime, Dict[str, TickModel]]]:
+        """Iterate over timeline yielding ticks for each timestamp."""
+        assets_data = self.load_assets_data(symbols, from_date, to_date)
+        timeline = self.get_timeline(from_date, to_date)
+
+        for timestamp in timeline:
+            tick_date = self._get_datetime_from_timestamp(timestamp)
+            ticks: Dict[str, TickModel] = {}
+
+            for symbol in symbols:
+                dataframe = assets_data.get(symbol)
+
+                if dataframe is None:
+                    continue
+
+                row = dataframe.filter(polars.col("timestamp") == timestamp)
+
+                if row.height == 0:
+                    continue
+
+                close_price = row[0, "close"]
+
+                if close_price is None:
+                    continue
+
+                ticks[symbol] = TickModel(
+                    date=tick_date,
+                    price=close_price,
+                    is_simulated=True,
+                )
+
+            yield (tick_date, ticks)
+
+    def load_assets_data(
+        self,
+        symbols: List[str],
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> Dict[str, polars.DataFrame]:
+        """Load parquet data for multiple assets into memory."""
+        assets_data: Dict[str, polars.DataFrame] = {}
+        from_timestamp = int(from_date.timestamp())
+        to_timestamp = int(to_date.timestamp())
+
+        for symbol in symbols:
+            parquet_path = self._get_parquet_path(symbol)
+
+            if not parquet_path.exists():
+                self._log.warning(f"No parquet file for {symbol}")
+                continue
+
+            dataframe = (
+                polars.scan_parquet(parquet_path)  # pyright: ignore[reportUnknownMemberType]
+                .filter((polars.col("timestamp") >= from_timestamp) & (polars.col("timestamp") <= to_timestamp))
+                .collect()
+            )
+
+            assets_data[symbol] = dataframe.set_sorted("timestamp")
+            self._log.info(f"Loaded {dataframe.height:,} rows for {symbol}")
+
+        return assets_data
 
     def setup(self, **kwargs: Any) -> None:
         """Configure ticks service with asset and download options."""
         self._asset = kwargs.get("asset")
-        self._restore_ticks = kwargs.get("restore_ticks", False)
-        self._disable_download = kwargs.get("disable_download", False)
+        self._should_restore_ticks = kwargs.get("restore_ticks", False)
+        self._is_download_disabled = kwargs.get("disable_download", False)
 
         if self._asset is None:
             raise ValueError("Asset is required")
@@ -50,20 +139,24 @@ class TicksService(TicksInterface):
         """Retrieve tick data for the specified date range."""
         assert self._asset is not None
         response: List[TickModel] = []
-        ticks_folder = self.folder / self._asset.symbol
-        ticks = polars.scan_parquet(ticks_folder / "ticks.parquet")  # pyright: ignore[reportUnknownMemberType]
+        parquet_file = self._get_parquet_path(self._asset.symbol)
+        ticks = polars.scan_parquet(parquet_file)  # pyright: ignore[reportUnknownMemberType]
+        from_timestamp = int(from_date.timestamp())
+        to_timestamp = int(to_date.timestamp())
 
         filtered_ticks = (
             ticks.filter(
-                (polars.col("id") >= int(from_date.timestamp())) & (polars.col("id") <= int(to_date.timestamp()))
+                (polars.col("timestamp") >= from_timestamp)
+                & (polars.col("timestamp") <= to_timestamp)
+                & (polars.col("close").is_not_null())
             )
-            .sort("id")
+            .sort("timestamp")
             .collect(engine="streaming")
         )
 
         for tick_row in filtered_ticks.iter_rows(named=True):
-            price = tick_row["price"]
-            date = self._get_datetime_from_timestamp(tick_row["id"])
+            date = self._get_datetime_from_timestamp(tick_row["timestamp"])
+            price = tick_row["close"]
 
             tick = TickModel(
                 date=date,
@@ -76,11 +169,10 @@ class TicksService(TicksInterface):
 
     def _download(self) -> None:
         assert self._asset is not None
-        if self._disable_download:
+        if self._is_download_disabled:
             return
 
-        ticks_folder = self._ticks_folder / self._asset.symbol
-        parquet_file = ticks_folder / "ticks.parquet"
+        parquet_file = self._get_parquet_path(self._asset.symbol)
         download_from_date = self._get_download_start_date(parquet_file)
         download_to_date = datetime.datetime.now(tz=TIMEZONE)
 
@@ -122,8 +214,8 @@ class TicksService(TicksInterface):
             current_date_formatted = self._get_formatted_timestamp(current_date)
             end_date_formatted = self._get_formatted_timestamp(end_timestamp)
             start_date_formatted = self._get_formatted_timestamp(actual_start_timestamp)
-
             times = f"Start: {start_date_formatted} | Current: {current_date_formatted} | End: {end_date_formatted}"
+
             self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
 
         try:
@@ -144,16 +236,34 @@ class TicksService(TicksInterface):
         if not klines_list:
             return
 
-        self._save_ticks(klines_list, parquet_file, ticks_folder)
+        if self._should_restore_ticks or not parquet_file.exists():
+            self._save_ticks_with_timeline(klines_list, parquet_file, download_from_date, download_to_date)
+        else:
+            self._merge_ticks(klines_list, parquet_file)
+
+    def _generate_timeline(
+        self,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> List[int]:
+        timestamps: List[int] = []
+        current_timestamp = int(from_date.timestamp())
+        end_timestamp = int(to_date.timestamp())
+
+        while current_timestamp <= end_timestamp:
+            timestamps.append(current_timestamp)
+            current_timestamp += self._SECONDS_PER_MINUTE
+
+        return timestamps
 
     def _get_datetime_from_timestamp(self, timestamp: int) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(timestamp, tz=TIMEZONE)
 
     def _get_download_start_date(self, parquet_file: Path) -> datetime.datetime:
         assert self._asset is not None
-        date = datetime.datetime.now(tz=TIMEZONE) - datetime.timedelta(days=365 * 25)
+        date = self._TIMELINE_START_DATE
 
-        if self._restore_ticks:
+        if self._should_restore_ticks:
             if parquet_file.exists():
                 parquet_file.unlink()
 
@@ -161,8 +271,8 @@ class TicksService(TicksInterface):
 
         if parquet_file.exists():
             existing_ticks = polars.scan_parquet(parquet_file)  # pyright: ignore[reportUnknownMemberType]
-            last_tick = existing_ticks.select(polars.col("id").max()).collect()
-            last_timestamp = last_tick[0, "id"]
+            last_tick = existing_ticks.select(polars.col("timestamp").max()).collect()
+            last_timestamp = last_tick[0, "timestamp"]
             date = self._get_datetime_from_timestamp(last_timestamp)
 
             self._log.info(f"Resuming download from {date}")
@@ -174,34 +284,136 @@ class TicksService(TicksInterface):
     def _get_formatted_timestamp(self, timestamp: int) -> str:
         return self._get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
-    def _save_ticks(
+    def _get_parquet_path(self, symbol: str) -> Path:
+        return self._ticks_folder / f"{symbol}.parquet"
+
+    def _klines_to_dataframe(self, klines: List[GatewayKlineModel]) -> polars.DataFrame:
+        data = {
+            "timestamp": [kline.open_time for kline in klines],
+            "open": [kline.open_price for kline in klines],
+            "high": [kline.high_price for kline in klines],
+            "low": [kline.low_price for kline in klines],
+            "close": [kline.close_price for kline in klines],
+            "volume": [kline.volume for kline in klines],
+        }
+
+        return polars.DataFrame(data)
+
+    def _merge_ticks(
         self,
         klines: List[GatewayKlineModel],
         parquet_file: Path,
-        ticks_folder: Path,
     ) -> None:
-        ticks_folder.mkdir(parents=True, exist_ok=True)
-        klines_dict = [kline.model_dump(exclude={"response"}) for kline in klines]
-        candlesticks_data = polars.DataFrame(klines_dict)
-        new_ticks = candlesticks_data.select(
-            [
-                (polars.col("close_time")).cast(polars.Int64).alias("id"),
-                polars.col("close_price").alias("price"),
-            ]
-        )
+        new_ticks = self._klines_to_dataframe(klines)
+        existing_ticks = polars.read_parquet(parquet_file)
 
-        if self._restore_ticks or not parquet_file.exists():
-            new_ticks.write_parquet(parquet_file)
-        else:
-            existing_ticks = polars.read_parquet(parquet_file)
-            combined_ticks = polars.concat([existing_ticks, new_ticks])
-            combined_ticks = combined_ticks.unique(subset=["id"]).sort("id")
-            combined_ticks.write_parquet(parquet_file)
+        combined_ticks = polars.concat([existing_ticks, new_ticks])
+        combined_ticks = combined_ticks.unique(subset=["timestamp"]).sort("timestamp")
+        combined_ticks.write_parquet(parquet_file)
 
+        self._report(parquet_file)
+
+    def _report(self, parquet_file: Path) -> None:
         final_ticks = polars.read_parquet(parquet_file)
-        actual_start_date = self._get_datetime_from_timestamp(final_ticks[0, "id"])
-        actual_end_date = self._get_datetime_from_timestamp(final_ticks[-1, "id"])
+        actual_start_date = self._get_datetime_from_timestamp(final_ticks[0, "timestamp"])
+        actual_end_date = self._get_datetime_from_timestamp(final_ticks[-1, "timestamp"])
+
+        non_null_count = final_ticks.filter(polars.col("close").is_not_null()).height
 
         self._log.info(f"Data saved to {parquet_file}")
-        self._log.info(f"Total ticks: {final_ticks.height}")
+        self._log.info(f"Total rows: {final_ticks.height}")
+        self._log.info(f"Rows with data: {non_null_count}")
         self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
+
+    def _save_ticks_ohlcv(
+        self,
+        klines: List[GatewayKlineModel],
+        parquet_file: Path,
+    ) -> None:
+        parquet_file.parent.mkdir(parents=True, exist_ok=True)
+        new_ticks = self._klines_to_dataframe(klines)
+        new_ticks = new_ticks.sort("timestamp")
+        new_ticks.write_parquet(parquet_file)
+
+    def _save_ticks_with_timeline(
+        self,
+        klines: List[GatewayKlineModel],
+        parquet_file: Path,
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> None:
+        parquet_file.parent.mkdir(parents=True, exist_ok=True)
+        timeline = self._generate_timeline(from_date, to_date)
+        timeline_df = polars.DataFrame({"timestamp": timeline})
+        klines_df = self._klines_to_dataframe(klines)
+        aligned_df = timeline_df.join(klines_df, on="timestamp", how="left")
+        aligned_df = aligned_df.sort("timestamp")
+        aligned_df.write_parquet(parquet_file)
+
+        self._report(parquet_file)
+
+    @staticmethod
+    def download_parallel(
+        tasks: List[DownloadTask],
+        on_complete: Optional[Callable[[str], None]] = None,
+        on_all_complete: Optional[Callable[[], None]] = None,
+    ) -> Dict[str, "TicksService"]:
+        """Download tick data for multiple assets in parallel.
+
+        Args:
+            tasks: List of DownloadTask with asset and restore_ticks flag.
+            on_complete: Callback called when each asset download completes.
+            on_all_complete: Callback called when all downloads are complete.
+
+        Returns:
+            Dictionary mapping symbol to configured TicksService instance.
+        """
+        logger = LoggingService()
+        tick_services_by_symbol: Dict[str, TicksService] = {}
+        services_lock = Lock()
+        completed_count = 0
+        completed_lock = Lock()
+        total_tasks_count = len(tasks)
+
+        def _download_asset(task: DownloadTask) -> Tuple[str, TicksService]:
+            nonlocal completed_count
+            symbol = task.asset.symbol
+            tick_service = TicksService()
+
+            tick_service.setup(
+                asset=task.asset,
+                restore_ticks=task.restore_ticks,
+            )
+
+            with services_lock:
+                tick_services_by_symbol[symbol] = tick_service
+
+            if on_complete:
+                on_complete(symbol)
+
+            with completed_lock:
+                completed_count += 1
+                logger.info(f"Download complete for {symbol} ({completed_count}/{total_tasks_count})")
+
+                if completed_count == total_tasks_count and on_all_complete:
+                    on_all_complete()
+
+            return symbol, tick_service
+
+        logger.info(f"Starting parallel download for {total_tasks_count} assets")
+
+        with ThreadPoolExecutor(max_workers=total_tasks_count) as executor:
+            download_futures = [executor.submit(_download_asset, task) for task in tasks]
+
+            for future in as_completed(download_futures):
+                try:
+                    future.result()
+                except Exception as download_error:
+                    logger.error(f"Download failed: {download_error}")
+
+        return tick_services_by_symbol
+
+    @property
+    def folder(self) -> Path:
+        """Return the folder path for tick data storage."""
+        return self._ticks_folder

@@ -1,9 +1,10 @@
 """Portfolio interface for multi-asset container."""
 
 from abc import ABC
-from typing import List, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 from interfaces.asset import AssetInterface
+from models.tick import TickModel
 
 
 class PortfolioInterface(ABC):
@@ -11,6 +12,7 @@ class PortfolioInterface(ABC):
 
     _id: str
     _assets: List[Tuple[Type[AssetInterface], float]]
+    _asset_instances: List[AssetInterface]
 
     @property
     def id(self) -> str:
@@ -21,3 +23,24 @@ class PortfolioInterface(ABC):
     def assets(self) -> List[Tuple[Type[AssetInterface], float]]:
         """Return the list of asset classes with their allocations."""
         return self._assets
+
+    @property
+    def asset_instances(self) -> List[AssetInterface]:
+        """Return the list of instantiated assets."""
+        return self._asset_instances
+
+    def setup(self, **kwargs: Any) -> None:  # noqa: B027
+        """Configure the portfolio with runtime parameters."""
+        pass
+
+    def on_tick(self, ticks: Dict[str, TickModel]) -> None:  # noqa: B027
+        """Process tick data for all assets.
+
+        Args:
+            ticks: Dictionary mapping symbol to tick data.
+        """
+        pass
+
+    def on_end(self) -> Dict[str, Any]:
+        """Finalize portfolio and return aggregated report."""
+        return {}

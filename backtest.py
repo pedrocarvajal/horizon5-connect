@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import select
 import sys
+import termios
 import time
+import tty
 from multiprocessing import Process, Queue
-from typing import Any, Dict, List, Optional, Tuple, Type
+from threading import Thread
+from typing import Any, Dict, List, Optional
 
 from configs.timezone import TIMEZONE
 from enums.backtest_event import BacktestEvent
@@ -15,7 +19,7 @@ from enums.backtest_status import BacktestStatus
 from enums.command import Command
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from helpers.parse_date import parse_date
-from interfaces.asset import AssetInterface
+from interfaces.portfolio import PortfolioInterface
 from models.backtest_settings import (
     AssetSettingsModel,
     BacktestSettingsModel,
@@ -27,159 +31,136 @@ from services.authentication import AuthenticationService
 from services.backtest import BacktestService
 from services.commands import CommandService
 from services.logging import LoggingService
-from services.quality_calculator import QualityCalculatorService
 
 
-class Backtest(BacktestService):
-    """Backtest process wrapper that runs historical simulation."""
-
-    def __init__(
-        self,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize and immediately start backtest execution.
-
-        Args:
-            **kwargs: Arguments passed to BacktestService.
-        """
-        super().__init__(**kwargs)
-        super().run()
-
-
-class Commands(CommandService):
-    """Commands process wrapper for backtest control."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize commands service.
-
-        Args:
-            **kwargs: Arguments passed to CommandService.
-        """
-        super().__init__(**kwargs)
-
-
-class PortfolioAggregator:
-    """Aggregates asset reports into a portfolio report."""
+class EventHandler:
+    """Handles backtest events from the events queue."""
 
     _backtest_id: str
     _commands_queue: Queue[Any]
-    _completed_assets: int
     _events_queue: Queue[Any]
-    _failed_assets: int
     _portfolio_id: str
-    _total_assets: int
 
     _horizon_router: HorizonRouterProvider
     _log: LoggingService
-    _quality_calculator: QualityCalculatorService
 
     def __init__(
         self,
         events_queue: Queue[Any],
         commands_queue: Queue[Any],
-        total_assets: int,
         portfolio_id: str,
         backtest_id: str,
     ) -> None:
-        """Initialize the portfolio aggregator."""
+        """Initialize the event handler."""
         self._log = LoggingService()
-        self._log.info("Portfolio aggregator started")
-
         self._events_queue = events_queue
         self._commands_queue = commands_queue
-        self._total_assets = total_assets
         self._portfolio_id = portfolio_id
         self._backtest_id = backtest_id
-        self._completed_assets = 0
-        self._failed_assets = 0
-        self._quality_calculator = QualityCalculatorService(children_key="assets")
         self._horizon_router = HorizonRouterProvider()
 
-        self._start()
-
-    def _start(self) -> None:
+    def start(self) -> None:
+        """Start listening for events."""
         while True:
             event_data: Dict[str, Any] = self._events_queue.get()
             event = event_data.get("event")
-            should_exit = False
 
             if event == BacktestEvent.BACKTEST_FINISHED:
-                should_exit = self._handle_backtest_finished(event_data)
-
-            elif event == BacktestEvent.BACKTEST_FAILED:
-                should_exit = self._handle_backtest_failed(event_data)
-
-            if should_exit:
+                self._handle_finished(event_data)
                 break
 
-    def _handle_backtest_finished(self, event_data: Dict[str, Any]) -> bool:
-        asset_id = event_data.get("asset_id")
-        report = event_data.get("report")
+            if event == BacktestEvent.BACKTEST_FAILED:
+                self._handle_failed(event_data)
+                break
 
-        if asset_id is None or report is None:
-            self._log.error("Asset ID or report missing in BACKTEST_FINISHED event")
-            return False
+        self._commands_queue.put({"command": Command.KILL})
 
-        self._quality_calculator.on_report(asset_id, report)
-        self._completed_assets += 1
-
-        self._log.info(f"Asset {asset_id} completed ({self._completed_assets}/{self._total_assets})")
-
-        return self._check_all_finished()
-
-    def _handle_backtest_failed(self, event_data: Dict[str, Any]) -> bool:
-        asset_id = event_data.get("asset_id")
-        error = event_data.get("error")
-
-        self._failed_assets += 1
-        self._log.error(f"Asset {asset_id} failed: {error}")
-
-        return self._check_all_finished()
-
-    def _check_all_finished(self) -> bool:
-        total_processed = self._completed_assets + self._failed_assets
-
-        if total_processed >= self._total_assets:
-            if self._completed_assets > 0:
-                self._generate_portfolio_report()
-
-            self._send_kill()
-            return True
-
-        return False
-
-    def _generate_portfolio_report(self) -> None:
-        portfolio_report = self._quality_calculator.on_end()
-        portfolio_report["portfolio_id"] = self._portfolio_id
+    def _handle_finished(self, event_data: Dict[str, Any]) -> None:
+        report = event_data.get("report", {})
+        report["portfolio_id"] = self._portfolio_id
 
         self._log.info(f"Portfolio ID: {self._portfolio_id}")
-        self._log.debug(portfolio_report)
+        self._log.debug(report)
 
         self._horizon_router.backtest_update(
             backtest_id=self._backtest_id,
             status=BacktestStatus.COMPLETED.value,
-            analytics=portfolio_report,
+            analytics=report,
         )
 
-    def _send_kill(self) -> None:
-        self._commands_queue.put({"command": Command.KILL})
+    def _handle_failed(self, event_data: Dict[str, Any]) -> None:
+        error = event_data.get("error", "Unknown error")
+        self._log.error(f"Backtest failed: {error}")
+
+        self._horizon_router.backtest_update(
+            backtest_id=self._backtest_id,
+            status=BacktestStatus.FAILED.value,
+            analytics={"error": error},
+        )
+
+
+class KeyboardListener:
+    """Listens for Esc key press to trigger shutdown."""
+
+    _commands_queue: Queue[Any]
+    _running: bool
+    _log: LoggingService
+
+    def __init__(self, commands_queue: Queue[Any]) -> None:
+        """Initialize keyboard listener."""
+        self._commands_queue = commands_queue
+        self._running = True
+        self._log = LoggingService()
+
+    def start(self) -> None:
+        """Listen for Esc key (char code 27) in a loop with timeout."""
+        if not sys.stdin.isatty():
+            return
+
+        old_settings = termios.tcgetattr(sys.stdin)
+
+        try:
+            tty.setcbreak(sys.stdin.fileno())
+
+            while self._running:
+                ready, _, _ = select.select([sys.stdin], [], [], 0.5)
+
+                if not ready:
+                    continue
+
+                char = sys.stdin.read(1)
+
+                if char == "\x1b":
+                    self._log.info("Esc pressed - sending kill signal...")
+                    self._commands_queue.put({"command": Command.KILL})
+                    self._running = False
+                    break
+
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+    def stop(self) -> None:
+        """Stop the keyboard listener."""
+        self._running = False
 
 
 def create_backtest(
     portfolio_path: str,
-    portfolio_id: str,
-    assets: List[Tuple[Type[AssetInterface], float]],
+    portfolio: PortfolioInterface,
     from_date: datetime.datetime,
     to_date: datetime.datetime,
 ) -> Optional[str]:
     """Create a backtest in the backend and return the backtest_id."""
     log = LoggingService()
     horizon_router = HorizonRouterProvider()
-
     asset_settings_list: List[AssetSettingsModel] = []
 
-    for asset_class, allocation in assets:
+    for asset_class, allocation in portfolio.assets:
         asset_instance = asset_class(allocation=allocation)
+
+        if not asset_instance.enabled:
+            continue
+
         strategy_settings_list: List[StrategySettingsModel] = []
 
         for strategy in asset_instance.strategies:
@@ -203,7 +184,7 @@ def create_backtest(
         )
 
     portfolio_settings = PortfolioSettingsModel(
-        id=portfolio_id,
+        id=portfolio.id,
         path=portfolio_path,
     )
 
@@ -284,23 +265,21 @@ if __name__ == "__main__":
         parser.error("Portfolio must define at least one asset.")
 
     log = LoggingService()
-    assets: List[Tuple[Type[AssetInterface], float]] = []
 
+    has_enabled_assets = False
     for asset_class, allocation in portfolio.assets:
         instance = asset_class(allocation=allocation)
-
         if instance.enabled:
-            assets.append((asset_class, allocation))
+            has_enabled_assets = True
         else:
             log.warning(f"Asset {instance.symbol} is not enabled")
 
-    if not assets:
+    if not has_enabled_assets:
         parser.error("No enabled assets found in portfolio.")
 
     backtest_id = create_backtest(
         portfolio_path=args.portfolio_path,
-        portfolio_id=portfolio.id,
-        assets=assets,
+        portfolio=portfolio,
         from_date=from_date,
         to_date=to_date,
     )
@@ -309,46 +288,43 @@ if __name__ == "__main__":
         log.error("Failed to create backtest")
         sys.exit(1)
 
-    processes = [
-        Process(
-            target=Commands,
-            kwargs={
-                "commands_queue": commands_queue,
-                "events_queue": events_queue,
-            },
-        ),
-        Process(
-            target=PortfolioAggregator,
-            kwargs={
-                "events_queue": events_queue,
-                "commands_queue": commands_queue,
-                "total_assets": len(assets),
-                "portfolio_id": portfolio.id,
-                "backtest_id": backtest_id,
-            },
-        ),
-    ]
+    commands_process = Process(
+        target=CommandService,
+        kwargs={
+            "commands_queue": commands_queue,
+            "events_queue": events_queue,
+        },
+    )
+    commands_process.start()
 
-    for asset, allocation in assets:
-        processes.append(
-            Process(
-                target=Backtest,
-                kwargs={
-                    "asset": asset,
-                    "portfolio_path": args.portfolio_path,
-                    "from_date": from_date,
-                    "to_date": to_date,
-                    "commands_queue": commands_queue,
-                    "events_queue": events_queue,
-                    "allocation": allocation,
-                    "args": args,
-                    "backtest_id": backtest_id,
-                },
-            )
-        )
+    event_handler = EventHandler(
+        events_queue=events_queue,
+        commands_queue=commands_queue,
+        portfolio_id=portfolio.id,
+        backtest_id=backtest_id,
+    )
 
-    for process in processes:
-        process.start()
+    event_thread = Thread(target=event_handler.start)
+    event_thread.start()
 
-    for process in processes:
-        process.join()
+    keyboard_listener = KeyboardListener(commands_queue=commands_queue)
+    keyboard_thread = Thread(target=keyboard_listener.start, daemon=True)
+    keyboard_thread.start()
+
+    log.info("Press Esc to stop the backtest")
+
+    backtest_service = BacktestService(
+        portfolio=portfolio,
+        backtest_id=backtest_id,
+        from_date=from_date,
+        to_date=to_date,
+        events_queue=events_queue,
+        commands_queue=commands_queue,
+        restore_ticks=restore_ticks,
+    )
+
+    backtest_service.run()
+
+    keyboard_listener.stop()
+    event_thread.join()
+    commands_process.join()
