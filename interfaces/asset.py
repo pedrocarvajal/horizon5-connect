@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Dict, List
 if TYPE_CHECKING:
     from interfaces.gateway import GatewayInterface
     from interfaces.strategy import StrategyInterface
-    from models.order import OrderModel
 
 from models.tick import TickModel
 
@@ -40,8 +39,20 @@ class AssetInterface(ABC):
         """Abstract method."""
         pass
 
-    def on_transaction(self, order: "OrderModel") -> None:  # noqa: B027
-        """Abstract method."""
+    def on_new_hour(self) -> None:  # noqa: B027
+        """Handle a new hour event."""
+        pass
+
+    def on_new_day(self) -> None:  # noqa: B027
+        """Handle a new day event."""
+        pass
+
+    def on_new_week(self) -> None:  # noqa: B027
+        """Handle a new week event."""
+        pass
+
+    def on_new_month(self) -> None:  # noqa: B027
+        """Handle a new month event."""
         pass
 
     def on_end(self) -> Dict[str, Any]:

@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import datetime
 from multiprocessing import Queue
 from typing import Any, Dict, Optional
 
 from enums.asset_quality_method import AssetQualityMethod
+from enums.timeframe import Timeframe
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
-from models.order import OrderModel
 from models.tick import TickModel
+from services.asset.components import AnalyticComponent
 from services.gateway import GatewayService
 from services.logging import LoggingService
 from services.quality_calculator import QualityCalculatorService
+from services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class AssetService(AssetInterface):
@@ -24,8 +27,11 @@ class AssetService(AssetInterface):
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
     _gateway_name: str
+    _last_timestamps: Dict[Timeframe, datetime.datetime]
     _portfolio: Optional[PortfolioInterface]
+    _tick: Optional[TickModel]
 
+    _analytic: AnalyticComponent
     _log: LoggingService
     _quality_calculator: QualityCalculatorService
 
@@ -47,6 +53,8 @@ class AssetService(AssetInterface):
         self._backtest_id = None
         self._portfolio = None
         self._is_historical_filling = False
+        self._last_timestamps = {}
+        self._tick = None
 
         if not hasattr(self, "_asset_quality_method"):
             self._asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
@@ -78,13 +86,63 @@ class AssetService(AssetInterface):
 
     def on_tick(self, tick: TickModel) -> None:
         """Propagate tick data to all enabled strategies."""
+        self._tick = tick
+
         for strategy in self._strategies:
             strategy.on_tick(tick)
 
-    def on_transaction(self, order: OrderModel) -> None:
-        """Propagate transaction events to all enabled strategies."""
-        for strategy in self._strategies:
-            strategy.on_transaction(order)
+        self._analytic.on_tick(tick)
+        self._check_timeframe_transitions(tick)
+
+    def on_new_hour(self) -> None:
+        """Handle a new hour event for asset-level analytics."""
+        self._analytic.on_new_hour()
+
+    def on_new_day(self) -> None:
+        """Handle a new day event for asset-level analytics."""
+        self._analytic.on_new_day()
+
+    def on_new_week(self) -> None:
+        """Handle a new week event for asset-level analytics."""
+        self._analytic.on_new_week()
+
+    def on_new_month(self) -> None:
+        """Handle a new month event for asset-level analytics."""
+        self._analytic.on_new_month()
+
+    def _check_timeframe_transitions(self, tick: TickModel) -> None:
+        """Check for timeframe transitions and trigger appropriate events."""
+        current_time = tick.date
+
+        for timeframe in Timeframe:
+            if timeframe == Timeframe.ONE_MINUTE:
+                continue
+
+            last_timestamp = self._last_timestamps.get(timeframe)
+
+            if last_timestamp is None:
+                self._last_timestamps[timeframe] = get_truncated_timeframe(current_time, timeframe)
+                continue
+
+            current_period = get_truncated_timeframe(current_time, timeframe)
+
+            if current_period > last_timestamp:
+                self._last_timestamps[timeframe] = current_period
+                self._trigger_timeframe_event(timeframe)
+
+    def _trigger_timeframe_event(self, timeframe: Timeframe) -> None:
+        """Trigger the appropriate event handler for a timeframe transition."""
+        if timeframe == Timeframe.ONE_HOUR:
+            self.on_new_hour()
+
+        elif timeframe == Timeframe.ONE_DAY:
+            self.on_new_day()
+
+        elif timeframe == Timeframe.ONE_WEEK:
+            self.on_new_week()
+
+        elif timeframe == Timeframe.ONE_MONTH:
+            self.on_new_month()
 
     def setup(self, **kwargs: Any) -> None:
         """Configure the asset with runtime parameters and initialize strategies."""
@@ -129,6 +187,14 @@ class AssetService(AssetInterface):
             strategy.setup(
                 **kwargs,
             )
+
+        self._analytic = AnalyticComponent(
+            asset_id=self._symbol,
+            allocation=self._allocation,
+            strategies=self._strategies,
+            backtest=self._backtest,
+            backtest_id=self._backtest_id,
+        )
 
     def start_historical_filling(self) -> None:
         """Mark the asset as currently processing historical data."""

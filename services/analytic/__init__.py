@@ -323,3 +323,8 @@ class AnalyticService(AnalyticInterface):
         if self._tick is None:
             return 0
         return (self._tick.date - self._started_at).days
+
+    @property
+    def snapshot(self) -> SnapshotModel:
+        """Return the current snapshot."""
+        return self._snapshot

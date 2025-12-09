@@ -1,10 +1,13 @@
 """Analytic interface for performance metrics calculation."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from models.order import OrderModel
 from models.tick import TickModel
+
+if TYPE_CHECKING:
+    from models.snapshot import SnapshotModel
 
 
 class AnalyticInterface(ABC):
@@ -42,4 +45,10 @@ class AnalyticInterface(ABC):
 
     def on_transaction(self, order: OrderModel) -> None:  # noqa: B027
         """Handle a transaction event."""
+        pass
+
+    @property
+    @abstractmethod
+    def snapshot(self) -> "SnapshotModel":
+        """Return the current snapshot."""
         pass

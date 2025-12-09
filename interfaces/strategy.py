@@ -7,6 +7,7 @@ from models.order import OrderModel
 from models.tick import TickModel
 
 if TYPE_CHECKING:
+    from interfaces.analytic import AnalyticInterface
     from interfaces.asset import AssetInterface
     from interfaces.orderbook import OrderbookInterface
 
@@ -19,6 +20,7 @@ class StrategyInterface(ABC):
     _allocation: float
     _enabled: bool
     _backtest: bool
+    _analytic: Optional["AnalyticInterface"]
     _asset: Optional["AssetInterface"]
     _orderbook: Optional["OrderbookInterface"]
 
@@ -146,3 +148,10 @@ class StrategyInterface(ABC):
         """Return all orders for this strategy."""
         assert self._orderbook is not None
         return self._orderbook.orders
+
+    @property
+    @abstractmethod
+    def analytic(self) -> "AnalyticInterface":
+        """Return the analytic service for this strategy."""
+        assert self._analytic is not None
+        return self._analytic

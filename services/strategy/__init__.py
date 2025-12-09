@@ -445,3 +445,9 @@ class StrategyService(StrategyInterface):
         """Return all orders for this strategy."""
         assert self._orderbook is not None
         return self._orderbook.orders
+
+    @property
+    def analytic(self) -> AnalyticInterface:
+        """Return the analytic service for this strategy."""
+        assert self._analytic is not None
+        return self._analytic
