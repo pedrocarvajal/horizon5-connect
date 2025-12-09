@@ -33,6 +33,17 @@ class PortfolioInterface(ABC):
         """Configure the portfolio with runtime parameters."""
         pass
 
+    def setup_analytic(self, **kwargs: Any) -> None:  # noqa: B027
+        """Initialize the portfolio analytics service.
+
+        This method can be called separately when assets are setup externally
+        (e.g., by BacktestService for parallel downloads).
+
+        Args:
+            **kwargs: Configuration parameters for analytics.
+        """
+        pass
+
     def on_tick(self, ticks: Dict[str, TickModel]) -> None:  # noqa: B027
         """Process tick data for all assets.
 

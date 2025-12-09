@@ -48,6 +48,7 @@ class SnapshotModel(BaseModel):
     ulcer_index: float = Field(default=0, ge=0)
     win_ratio: float = Field(default=0, ge=0, le=1)
     average_trade_duration: float = Field(default=0, ge=0)
+    quality: float = Field(default=0, ge=0, le=1)
 
     performance_history: List[float] = Field(default_factory=lambda: [])
     nav_history: List[float] = Field(default_factory=lambda: [])

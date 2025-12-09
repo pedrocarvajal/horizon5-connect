@@ -223,6 +223,8 @@ class BacktestService(BacktestInterface):
 
             self._portfolio.asset_instances.append(asset_instance)
 
+        self._portfolio.setup_analytic(**setup_kwargs)
+
     def _setup_signal_handlers(self) -> None:
         signal.signal(
             signal.SIGINT,

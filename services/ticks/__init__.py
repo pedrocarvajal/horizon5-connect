@@ -1,6 +1,7 @@
 """Ticks service for downloading and managing historical tick data."""
 
 import datetime
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -118,36 +119,6 @@ class TicksService(TicksInterface):
 
         return assets_data
 
-    def _load_assets_arrays(
-        self,
-        symbols: List[str],
-        from_date: datetime.datetime,
-        to_date: datetime.datetime,
-    ) -> Dict[str, List[Optional[float]]]:
-        """Load close prices as native Python lists for direct index access."""
-        assets_arrays: Dict[str, List[Optional[float]]] = {}
-        from_timestamp = int(from_date.timestamp())
-        to_timestamp = int(to_date.timestamp())
-
-        for symbol in symbols:
-            parquet_path = self._get_parquet_path(symbol)
-
-            if not parquet_path.exists():
-                self._log.warning(f"No parquet file for {symbol}")
-                continue
-
-            dataframe = (
-                polars.scan_parquet(parquet_path)  # pyright: ignore[reportUnknownMemberType]
-                .filter((polars.col("timestamp") >= from_timestamp) & (polars.col("timestamp") <= to_timestamp))
-                .select("close")
-                .collect()
-            )
-
-            assets_arrays[symbol] = dataframe["close"].to_list()
-            self._log.info(f"Loaded {len(assets_arrays[symbol]):,} rows for {symbol}")
-
-        return assets_arrays
-
     def setup(self, **kwargs: Any) -> None:
         """Configure ticks service with asset and download options."""
         self._asset = kwargs.get("asset")
@@ -196,6 +167,25 @@ class TicksService(TicksInterface):
 
         return response
 
+    def _atomic_write_parquet(self, dataframe: polars.DataFrame, target_path: Path) -> None:
+        """Write parquet file atomically to prevent corruption on interruption."""
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                suffix=".parquet.tmp",
+                dir=target_path.parent,
+                delete=False,
+            ) as temp_file_handle:
+                temp_file = Path(temp_file_handle.name)
+            dataframe.write_parquet(temp_file)
+            temp_file.rename(target_path)
+        except Exception:
+            if temp_file and temp_file.exists():
+                temp_file.unlink()
+            raise
+
     def _download(self) -> None:
         assert self._asset is not None
         if self._is_download_disabled:
@@ -212,24 +202,24 @@ class TicksService(TicksInterface):
         current_date = None
         actual_start_timestamp: Optional[int] = None
         end_timestamp = int(download_to_date.timestamp())
-        klines_list: List[GatewayKlineModel] = []
+        klines: List[GatewayKlineModel] = []
         asset = self._asset
         assert asset is not None
 
-        def _process_klines(klines: List[GatewayKlineModel]) -> None:
+        def _process_klines(new_klines: List[GatewayKlineModel]) -> None:
             nonlocal current_date
-            nonlocal klines_list
+            nonlocal klines
             nonlocal actual_start_timestamp
 
-            if not klines:
+            if not new_klines:
                 return
 
-            klines_list.extend(klines)
+            klines.extend(new_klines)
 
             if actual_start_timestamp is None:
-                actual_start_timestamp = klines_list[0].close_time
+                actual_start_timestamp = klines[0].close_time
 
-            current_date = klines_list[-1].close_time
+            current_date = klines[-1].close_time
             progress = min(
                 get_progress_between_dates(
                     start_date_in_timestamp=actual_start_timestamp,
@@ -259,16 +249,16 @@ class TicksService(TicksInterface):
 
         except Exception as e:
             self._log.error(f"Error downloading data for {self._asset.symbol}: {e}")
-            if not klines_list:
+            if not klines:
                 raise
 
-        if not klines_list:
+        if not klines:
             return
 
         if self._should_restore_ticks or not parquet_file.exists():
-            self._save_ticks_with_timeline(klines_list, parquet_file, download_from_date, download_to_date)
+            self._save_ticks_with_timeline(klines, parquet_file, download_from_date, download_to_date)
         else:
-            self._merge_ticks(klines_list, parquet_file)
+            self._merge_ticks(klines, parquet_file)
 
     def _generate_timeline(
         self,
@@ -328,6 +318,36 @@ class TicksService(TicksInterface):
 
         return polars.DataFrame(data)
 
+    def _load_assets_arrays(
+        self,
+        symbols: List[str],
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> Dict[str, List[Optional[float]]]:
+        """Load close prices as native Python lists for direct index access."""
+        assets_arrays: Dict[str, List[Optional[float]]] = {}
+        from_timestamp = int(from_date.timestamp())
+        to_timestamp = int(to_date.timestamp())
+
+        for symbol in symbols:
+            parquet_path = self._get_parquet_path(symbol)
+
+            if not parquet_path.exists():
+                self._log.warning(f"No parquet file for {symbol}")
+                continue
+
+            dataframe = (
+                polars.scan_parquet(parquet_path)  # pyright: ignore[reportUnknownMemberType]
+                .filter((polars.col("timestamp") >= from_timestamp) & (polars.col("timestamp") <= to_timestamp))
+                .select("close")
+                .collect()
+            )
+
+            assets_arrays[symbol] = dataframe["close"].to_list()
+            self._log.info(f"Loaded {len(assets_arrays[symbol]):,} rows for {symbol}")
+
+        return assets_arrays
+
     def _merge_ticks(
         self,
         klines: List[GatewayKlineModel],
@@ -338,7 +358,7 @@ class TicksService(TicksInterface):
 
         combined_ticks = polars.concat([existing_ticks, new_ticks])
         combined_ticks = combined_ticks.unique(subset=["timestamp"]).sort("timestamp")
-        combined_ticks.write_parquet(parquet_file)
+        self._atomic_write_parquet(combined_ticks, parquet_file)
 
         self._report(parquet_file)
 
@@ -359,10 +379,9 @@ class TicksService(TicksInterface):
         klines: List[GatewayKlineModel],
         parquet_file: Path,
     ) -> None:
-        parquet_file.parent.mkdir(parents=True, exist_ok=True)
         new_ticks = self._klines_to_dataframe(klines)
         new_ticks = new_ticks.sort("timestamp")
-        new_ticks.write_parquet(parquet_file)
+        self._atomic_write_parquet(new_ticks, parquet_file)
 
     def _save_ticks_with_timeline(
         self,
@@ -371,13 +390,12 @@ class TicksService(TicksInterface):
         from_date: datetime.datetime,
         to_date: datetime.datetime,
     ) -> None:
-        parquet_file.parent.mkdir(parents=True, exist_ok=True)
         timeline = self._generate_timeline(from_date, to_date)
         timeline_df = polars.DataFrame({"timestamp": timeline})
         klines_df = self._klines_to_dataframe(klines)
         aligned_df = timeline_df.join(klines_df, on="timestamp", how="left")
         aligned_df = aligned_df.sort("timestamp")
-        aligned_df.write_parquet(parquet_file)
+        self._atomic_write_parquet(aligned_df, parquet_file)
 
         self._report(parquet_file)
 

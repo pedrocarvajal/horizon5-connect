@@ -6,22 +6,20 @@ import datetime
 from multiprocessing import Queue
 from typing import Any, Dict, Optional
 
-from enums.asset_quality_method import AssetQualityMethod
 from enums.timeframe import Timeframe
+from interfaces.analytic import AnalyticInterface
 from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from models.tick import TickModel
-from services.asset.components import AnalyticComponent
+from services.analytic import AssetAnalytic
 from services.gateway import GatewayService
 from services.logging import LoggingService
-from services.quality_calculator import QualityCalculatorService
 from services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class AssetService(AssetInterface):
     """Service managing strategies and gateway for a specific trading asset."""
 
-    _asset_quality_method: AssetQualityMethod
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
@@ -31,9 +29,8 @@ class AssetService(AssetInterface):
     _portfolio: Optional[PortfolioInterface]
     _tick: Optional[TickModel]
 
-    _analytic: AnalyticComponent
+    _analytic: AnalyticInterface
     _log: LoggingService
-    _quality_calculator: QualityCalculatorService
 
     def __init__(self, allocation: float = 0.0, enabled: bool = True) -> None:
         """Initialize the asset service with default configuration.
@@ -56,13 +53,6 @@ class AssetService(AssetInterface):
         self._last_timestamps = {}
         self._tick = None
 
-        if not hasattr(self, "_asset_quality_method"):
-            self._asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
-
-        self._quality_calculator = QualityCalculatorService(
-            quality_method=self._asset_quality_method,
-            children_key="strategies",
-        )
         self._gateway = GatewayService(
             gateway=self._gateway_name,
             sandbox=False,
@@ -74,15 +64,8 @@ class AssetService(AssetInterface):
         Returns:
             Asset report with aggregated performance and strategy reports.
         """
-        self._quality_calculator.reset()
-
-        for strategy in self._strategies:
-            strategy_report = strategy.on_end()
-
-            if strategy_report is not None:
-                self._quality_calculator.on_report(strategy.id, strategy_report)
-
-        return self._quality_calculator.on_end()
+        report = self._analytic.on_end()
+        return report if report is not None else {}
 
     def on_tick(self, tick: TickModel) -> None:
         """Propagate tick data to all enabled strategies."""
@@ -188,7 +171,7 @@ class AssetService(AssetInterface):
                 **kwargs,
             )
 
-        self._analytic = AnalyticComponent(
+        self._analytic = AssetAnalytic(
             asset_id=self._symbol,
             allocation=self._allocation,
             strategies=self._strategies,

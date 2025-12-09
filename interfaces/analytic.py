@@ -11,7 +11,13 @@ if TYPE_CHECKING:
 
 
 class AnalyticInterface(ABC):
-    """Interface defining the contract for analytics services that track performance metrics."""
+    """Interface defining the contract for analytics services that track performance metrics.
+
+    This interface supports the Composite pattern where:
+    - StrategyAnalytic is a Leaf (calculates metrics from orderbook)
+    - AssetAnalytic is a Composite (aggregates strategy metrics)
+    - PortfolioAnalytic is a Composite (aggregates asset metrics)
+    """
 
     @abstractmethod
     def on_end(self) -> Optional[Dict[str, Any]]:
@@ -45,6 +51,18 @@ class AnalyticInterface(ABC):
 
     def on_transaction(self, order: OrderModel) -> None:  # noqa: B027
         """Handle a transaction event."""
+        pass
+
+    @property
+    @abstractmethod
+    def nav(self) -> float:
+        """Return the current net asset value."""
+        pass
+
+    @property
+    @abstractmethod
+    def quality(self) -> float:
+        """Return the current quality score (0-1)."""
         pass
 
     @property

@@ -17,7 +17,7 @@ from interfaces.strategy import StrategyInterface
 from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
-from services.analytic import AnalyticService
+from services.analytic import StrategyAnalytic
 from services.logging import LoggingService
 from services.orderbook import OrderbookService
 
@@ -309,13 +309,11 @@ class StrategyService(StrategyInterface):
             on_transaction=self.on_transaction,
         )
 
-        self._analytic = AnalyticService(
+        self._analytic = StrategyAnalytic(
             strategy_id=self._id,
+            orderbook=self._orderbook,
             backtest=self._backtest,
             backtest_id=self._backtest_id if self._backtest else None,
-            orderbook=self._orderbook,
-            commands_queue=self._commands_queue,
-            events_queue=self._events_queue,
             quality_method=self._backtest_quality_method,
             backtest_expectation=self._backtest_expectation,
         )

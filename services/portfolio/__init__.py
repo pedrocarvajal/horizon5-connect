@@ -1,47 +1,47 @@
 """Portfolio service for managing collections of trading assets."""
 
-from typing import Any, Dict
+from __future__ import annotations
 
-from enums.asset_quality_method import AssetQualityMethod
+from multiprocessing import Queue
+from typing import Any, Dict, List, Optional
+
+from interfaces.analytic import AnalyticInterface
+from interfaces.asset import AssetInterface
 from interfaces.portfolio import PortfolioInterface
 from models.tick import TickModel
+from services.analytic import PortfolioAnalytic
 from services.logging import LoggingService
-from services.quality_calculator import QualityCalculatorService
 
 
 class PortfolioService(PortfolioInterface):
     """Service for managing a portfolio of trading assets."""
 
-    _portfolio_quality_method: AssetQualityMethod
-
+    _analytic: Optional[AnalyticInterface]
+    _asset_instances: List[AssetInterface]
+    _backtest: bool
+    _backtest_id: Optional[str]
+    _commands_queue: Optional[Queue[Any]]
+    _events_queue: Optional[Queue[Any]]
     _log: LoggingService
-    _quality_calculator: QualityCalculatorService
 
     def __init__(self) -> None:
         """Initialize the portfolio with an empty asset list."""
         self._assets = []
         self._asset_instances = []
         self._log = LoggingService()
-
-        if not hasattr(self, "_portfolio_quality_method"):
-            self._portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
-
-        self._quality_calculator = QualityCalculatorService(
-            quality_method=self._portfolio_quality_method,
-            children_key="assets",
-        )
+        self._analytic = None
+        self._backtest = False
+        self._backtest_id = None
+        self._commands_queue = None
+        self._events_queue = None
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
-        self._quality_calculator.reset()
+        if self._analytic is None:
+            return {}
 
-        for asset in self._asset_instances:
-            asset_report = asset.on_end()
-
-            if asset_report:
-                self._quality_calculator.on_report(asset.symbol, asset_report)
-
-        return self._quality_calculator.on_end()
+        report = self._analytic.on_end()
+        return report if report is not None else {}
 
     def on_tick(self, ticks: Dict[str, TickModel]) -> None:
         """Process tick data for all assets.
@@ -55,8 +55,22 @@ class PortfolioService(PortfolioInterface):
             if tick is not None:
                 asset.on_tick(tick)
 
+                if self._analytic is not None:
+                    self._analytic.on_tick(tick)
+
     def setup(self, **kwargs: Any) -> None:
         """Configure the portfolio and instantiate all assets."""
+        self._backtest = kwargs.get("backtest", False)
+        self._backtest_id = kwargs.get("backtest_id")
+        self._commands_queue = kwargs.get("commands_queue")
+        self._events_queue = kwargs.get("events_queue")
+
+        if self._commands_queue is None:
+            raise ValueError("Commands queue is required")
+
+        if self._events_queue is None:
+            raise ValueError("Events queue is required")
+
         for asset_class, allocation in self._assets:
             asset_instance = asset_class(allocation=allocation)
 
@@ -66,3 +80,34 @@ class PortfolioService(PortfolioInterface):
 
             asset_instance.setup(**kwargs)
             self._asset_instances.append(asset_instance)
+
+        self.setup_analytic()
+
+    def setup_analytic(self, **kwargs: Any) -> None:
+        """Initialize the portfolio analytics service.
+
+        This method can be called separately when assets are setup externally
+        (e.g., by BacktestService for parallel downloads).
+
+        Args:
+            **kwargs: Configuration parameters including:
+                backtest: Whether running in backtest mode.
+                backtest_id: Backtest identifier.
+                commands_queue: Queue for commands.
+                events_queue: Queue for events.
+        """
+        if kwargs:
+            self._backtest = kwargs.get("backtest", self._backtest)
+            self._backtest_id = kwargs.get("backtest_id", self._backtest_id)
+            self._commands_queue = kwargs.get("commands_queue", self._commands_queue)
+            self._events_queue = kwargs.get("events_queue", self._events_queue)
+
+        if self._commands_queue is None or self._events_queue is None:
+            return
+
+        self._analytic = PortfolioAnalytic(
+            portfolio_id=self._id,
+            assets=self._asset_instances,
+            backtest=self._backtest,
+            backtest_id=self._backtest_id,
+        )
