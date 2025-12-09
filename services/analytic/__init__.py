@@ -311,6 +311,7 @@ class AnalyticService(AnalyticInterface):
             trade_duration=self._snapshot.average_trade_duration,
             performance_percentage=self._snapshot.performance_percentage,
         )
+
         report: Dict[str, Any] = {
             **self._snapshot.to_dict(),
             "started_at": str(self._started_at),
@@ -320,6 +321,9 @@ class AnalyticService(AnalyticInterface):
             "quality": quality,
             "quality_method": quality_method,
         }
+
+        self._log.info(f"[ANALYTIC_REPORT] Strategy: {self._strategy_id}")
+        self._log.info(f"[ANALYTIC_REPORT] {report}")
 
         return report
 

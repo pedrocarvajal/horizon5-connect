@@ -58,26 +58,25 @@ class TicksService(TicksInterface):
         from_date: datetime.datetime,
         to_date: datetime.datetime,
     ) -> Iterator[Tuple[datetime.datetime, Dict[str, TickModel]]]:
-        """Iterate over timeline yielding ticks for each timestamp."""
-        assets_data = self.load_assets_data(symbols, from_date, to_date)
+        """Iterate over timeline yielding ticks for each timestamp using direct index access."""
+        assets_arrays = self._load_assets_arrays(symbols, from_date, to_date)
         timeline = self.get_timeline(from_date, to_date)
 
-        for timestamp in timeline:
+        if assets_arrays:
+            min_array_length = min(len(array) for array in assets_arrays.values())
+            timeline = timeline[:min_array_length]
+
+        for index, timestamp in enumerate(timeline):
             tick_date = self._get_datetime_from_timestamp(timestamp)
             ticks: Dict[str, TickModel] = {}
 
             for symbol in symbols:
-                dataframe = assets_data.get(symbol)
+                close_array = assets_arrays.get(symbol)
 
-                if dataframe is None:
+                if close_array is None:
                     continue
 
-                row = dataframe.filter(polars.col("timestamp") == timestamp)
-
-                if row.height == 0:
-                    continue
-
-                close_price = row[0, "close"]
+                close_price = close_array[index]
 
                 if close_price is None:
                     continue
@@ -118,6 +117,36 @@ class TicksService(TicksInterface):
             self._log.info(f"Loaded {dataframe.height:,} rows for {symbol}")
 
         return assets_data
+
+    def _load_assets_arrays(
+        self,
+        symbols: List[str],
+        from_date: datetime.datetime,
+        to_date: datetime.datetime,
+    ) -> Dict[str, List[Optional[float]]]:
+        """Load close prices as native Python lists for direct index access."""
+        assets_arrays: Dict[str, List[Optional[float]]] = {}
+        from_timestamp = int(from_date.timestamp())
+        to_timestamp = int(to_date.timestamp())
+
+        for symbol in symbols:
+            parquet_path = self._get_parquet_path(symbol)
+
+            if not parquet_path.exists():
+                self._log.warning(f"No parquet file for {symbol}")
+                continue
+
+            dataframe = (
+                polars.scan_parquet(parquet_path)  # pyright: ignore[reportUnknownMemberType]
+                .filter((polars.col("timestamp") >= from_timestamp) & (polars.col("timestamp") <= to_timestamp))
+                .select("close")
+                .collect()
+            )
+
+            assets_arrays[symbol] = dataframe["close"].to_list()
+            self._log.info(f"Loaded {len(assets_arrays[symbol]):,} rows for {symbol}")
+
+        return assets_arrays
 
     def setup(self, **kwargs: Any) -> None:
         """Configure ticks service with asset and download options."""
