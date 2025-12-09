@@ -2,6 +2,7 @@
 
 from typing import Dict, List
 
+from enums.asset_quality_method import AssetQualityMethod
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
@@ -15,6 +16,7 @@ class Asset(AssetService):
 
     _symbol = "SOLUSDT"
     _gateway_name = "binance"
+    _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
     def __init__(self, allocation: float = 0.0) -> None:

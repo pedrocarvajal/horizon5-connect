@@ -16,7 +16,10 @@ class PortfolioService(PortfolioInterface):
     def __init__(self) -> None:
         """Initialize the portfolio with an empty asset list."""
         self._assets = []
-        self._portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+
+        if not hasattr(self, "_portfolio_quality_method"):
+            self._portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+
         self._quality_calculator = QualityCalculatorService(
             quality_method=self._portfolio_quality_method,
             children_key="assets",

@@ -45,7 +45,10 @@ class AssetService(AssetInterface):
         self._backtest_id = None
         self._portfolio = None
         self._is_historical_filling = False
-        self._asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+
+        if not hasattr(self, "_asset_quality_method"):
+            self._asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+
         self._quality_calculator = QualityCalculatorService(
             quality_method=self._asset_quality_method,
             children_key="strategies",
