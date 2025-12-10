@@ -242,6 +242,29 @@ class StrategyAnalytic(AnalyticInterface):
                 duration_minutes = duration_seconds / 60
                 self._trade_durations.append(duration_minutes)
 
+        if order.status.is_closed() or order.status.is_cancelled():
+            self._send_order_to_backend(order)
+
+    def _send_order_to_backend(self, order: OrderModel) -> None:
+        """Send order data to backend via command queue.
+
+        Args:
+            order: The order model to send.
+        """
+        if not self._backtest or self._commands_queue is None:
+            return
+
+        order_data = order.to_api_dict()
+        provider = HorizonRouterProvider()
+
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": provider.order_create,
+                "args": {"data": order_data},
+            }
+        )
+
     def _calculate_quality(self) -> Tuple[float, str]:
         """Calculate quality score using configured method.
 

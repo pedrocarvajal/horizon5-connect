@@ -116,6 +116,30 @@ class HorizonRouterProvider(BaseProvider):
         """
         return self.get("/api/v1/auth/me")
 
+    def order_create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new order.
+
+        Args:
+            data: Order data including strategy_id, asset_id, portfolio_id,
+                  backtest_id, and order details in data field.
+
+        Returns:
+            API response with created order.
+        """
+        return self.post("/api/v1/order", data=data)
+
+    def order_update(self, order_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update an existing order.
+
+        Args:
+            order_id: Order identifier.
+            data: Order data to update.
+
+        Returns:
+            API response with updated order.
+        """
+        return self.put(f"/api/v1/order/{order_id}", data=data)
+
     def snapshot_create(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new snapshot.
 

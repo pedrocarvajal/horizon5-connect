@@ -151,6 +151,50 @@ class OrderModel(BaseModel):
             "updated_at": self.updated_at,
         }
 
+    def to_api_dict(self) -> Dict[str, Any]:
+        """Convert order to API-compatible dictionary format.
+
+        Returns:
+            Dictionary structured for Horizon Router API with strategy_id,
+            asset_id, portfolio_id at root level and order details in data field.
+        """
+        gateway = self.gateway.name if self.gateway else None
+        side = self.side.value if self.side else None
+        order_type = self.order_type.value if self.order_type else None
+        created_at = self.created_at.isoformat() if self.created_at else None
+        updated_at = self.updated_at.isoformat() if self.updated_at else None
+
+        return {
+            "strategy_id": self.strategy_id,
+            "asset_id": self.asset_id,
+            "portfolio_id": self.portfolio_id,
+            "backtest_id": self.backtest_id,
+            "backtest": self.backtest,
+            "data": {
+                "id": self.id,
+                "gateway_order_id": self.gateway_order_id,
+                "symbol": self.symbol,
+                "gateway": gateway,
+                "side": side,
+                "order_type": order_type,
+                "status": self.status.value,
+                "volume": self.volume,
+                "executed_volume": self.executed_volume,
+                "price": self.price,
+                "close_price": self.close_price,
+                "take_profit_price": self.take_profit_price,
+                "stop_loss_price": self.stop_loss_price,
+                "commission": self.commission,
+                "commission_percentage": self.commission_percentage,
+                "client_order_id": self.client_order_id,
+                "filled": self.filled,
+                "profit": self.profit,
+                "profit_percentage": self.profit_percentage,
+                "created_at": created_at,
+                "updated_at": updated_at,
+            },
+        }
+
     def _track_status_change(self, status: OrderStatus) -> None:
         self.logs.append(
             {
