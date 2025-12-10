@@ -316,6 +316,8 @@ class StrategyService(StrategyInterface):
             backtest_id=self._backtest_id if self._backtest else None,
             quality_method=self._backtest_quality_method,
             backtest_expectation=self._backtest_expectation,
+            commands_queue=self._commands_queue,
+            asset_id=self._asset.symbol,
         )
 
         self._log.setup_prefix(f"[{self._asset.symbol}|{self._name}]")

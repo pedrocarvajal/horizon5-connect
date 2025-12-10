@@ -110,4 +110,5 @@ class PortfolioService(PortfolioInterface):
             assets=self._asset_instances,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
+            commands_queue=self._commands_queue,
         )

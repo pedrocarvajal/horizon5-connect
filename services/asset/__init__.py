@@ -177,6 +177,7 @@ class AssetService(AssetInterface):
             strategies=self._strategies,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
+            commands_queue=self._commands_queue,
         )
 
     def start_historical_filling(self) -> None:

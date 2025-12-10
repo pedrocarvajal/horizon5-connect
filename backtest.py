@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import select
 import sys
-import termios
 import time
-import tty
 from multiprocessing import Process, Queue
 from threading import Thread
 from typing import Any, Dict, List, Optional
@@ -16,7 +13,6 @@ from typing import Any, Dict, List, Optional
 from configs.timezone import TIMEZONE
 from enums.backtest_event import BacktestEvent
 from enums.backtest_status import BacktestStatus
-from enums.command import Command
 from helpers.get_portfolio_by_path import get_portfolio_by_path
 from helpers.parse_date import parse_date
 from interfaces.portfolio import PortfolioInterface
@@ -73,8 +69,6 @@ class EventHandler:
                 self._handle_failed(event_data)
                 break
 
-        self._commands_queue.put({"command": Command.KILL})
-
     def _handle_finished(self, event_data: Dict[str, Any]) -> None:
         report = event_data.get("report", {})
         report["portfolio_id"] = self._portfolio_id
@@ -97,51 +91,6 @@ class EventHandler:
             status=BacktestStatus.FAILED.value,
             analytics={"error": error},
         )
-
-
-class KeyboardListener:
-    """Listens for Esc key press to trigger shutdown."""
-
-    _commands_queue: Queue[Any]
-    _running: bool
-    _log: LoggingService
-
-    def __init__(self, commands_queue: Queue[Any]) -> None:
-        """Initialize keyboard listener."""
-        self._commands_queue = commands_queue
-        self._running = True
-        self._log = LoggingService()
-
-    def start(self) -> None:
-        """Listen for Esc key (char code 27) in a loop with timeout."""
-        if not sys.stdin.isatty():
-            return
-
-        old_settings = termios.tcgetattr(sys.stdin)
-
-        try:
-            tty.setcbreak(sys.stdin.fileno())
-
-            while self._running:
-                ready, _, _ = select.select([sys.stdin], [], [], 0.5)
-
-                if not ready:
-                    continue
-
-                char = sys.stdin.read(1)
-
-                if char == "\x1b":
-                    self._log.info("Esc pressed - sending kill signal...")
-                    self._commands_queue.put({"command": Command.KILL})
-                    self._running = False
-                    break
-
-        finally:
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
-    def stop(self) -> None:
-        """Stop the keyboard listener."""
-        self._running = False
 
 
 def create_backtest(
@@ -307,12 +256,6 @@ if __name__ == "__main__":
     event_thread = Thread(target=event_handler.start)
     event_thread.start()
 
-    keyboard_listener = KeyboardListener(commands_queue=commands_queue)
-    keyboard_thread = Thread(target=keyboard_listener.start, daemon=True)
-    keyboard_thread.start()
-
-    log.info("Press Esc to stop the backtest")
-
     backtest_service = BacktestService(
         portfolio=portfolio,
         backtest_id=backtest_id,
@@ -325,6 +268,5 @@ if __name__ == "__main__":
 
     backtest_service.run()
 
-    keyboard_listener.stop()
     event_thread.join()
     commands_process.join()

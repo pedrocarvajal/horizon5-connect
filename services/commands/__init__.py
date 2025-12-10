@@ -1,12 +1,16 @@
 """Command service for inter-process communication and command handling."""
 
+import time
 from multiprocessing import Queue
-from typing import Any, Callable, Dict, Optional, Tuple
+from queue import Empty
+from typing import Any, Callable, Dict, Optional
 
 from enums.command import Command
 from interfaces.commands import CommandInterface
 from models.command import CommandModel
 from services.logging import LoggingService
+
+LOG_INTERVAL_SECONDS = 60
 
 
 class CommandService(CommandInterface):
@@ -14,7 +18,10 @@ class CommandService(CommandInterface):
 
     _commands_queue: Optional["Queue[Any]"]
     _events_queue: Optional["Queue[Any]"]
+
     _commands: Dict[Command, None]
+    _last_log_time: float
+    _processed_count: int
 
     _log: LoggingService
 
@@ -25,25 +32,22 @@ class CommandService(CommandInterface):
 
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
+        self._processed_count = 0
+        self._last_log_time = 0.0
 
         self._commands = {
-            Command.KILL: None,
             Command.EXECUTE: None,
         }
 
         self.start()
 
-    def process_command(self, command: CommandModel) -> Tuple[bool, bool]:
+    def process_command(self, command: CommandModel) -> bool:
         """Process a single command from the queue."""
         command_type = command.command
 
         if command_type not in self._commands:
             self._log.error(f"Command {command_type} not found")
-            return False, False
-
-        if command_type.is_kill():
-            self._log.info("Shutting down commands handler")
-            return True, True
+            return False
 
         if command_type.is_execute():
             function: Optional[Callable[..., Any]] = command.function
@@ -51,7 +55,7 @@ class CommandService(CommandInterface):
 
             if function is None:
                 self._log.error("Function is not set in command")
-                return False, False
+                return False
 
             if args is None:
                 args = {}
@@ -63,14 +67,14 @@ class CommandService(CommandInterface):
                     self._log.error(f"Failed to execute command {function}: {response}")
                     self._log.error(str(args))
 
-                return True, False
+                return True
 
             except Exception as exception:
                 self._log.error("Failed to execute command")
                 self._log.error(str(exception))
-                return False, False
+                return False
 
-        return True, False
+        return True
 
     def start(self) -> None:
         """Start processing commands from the queue."""
@@ -83,14 +87,39 @@ class CommandService(CommandInterface):
             return
 
         while True:
-            command_data = self._commands_queue.get()
+            command_data = self._get_next_command()
+
+            if command_data is None:
+                continue
+
             command = CommandModel(**command_data)
-            success, kill = self.process_command(command)
+            success = self.process_command(command)
+
+            if command.command.is_execute():
+                self._processed_count += 1
+                self._log_progress()
 
             if not success:
                 self._log.error(f"Failed to process command {command}")
                 continue
 
-            if kill:
-                self._log.info("Shutdown commands handler")
-                break
+    def _get_next_command(self) -> Optional[Dict[str, Any]]:
+        """Get next command from the queue."""
+        if self._commands_queue is None:
+            return None
+
+        try:
+            return self._commands_queue.get(timeout=0.1)
+        except Empty:
+            return None
+
+    def _log_progress(self) -> None:
+        """Log progress every 60 seconds."""
+        current_time = time.time()
+        elapsed_seconds = current_time - self._last_log_time
+
+        if elapsed_seconds < LOG_INTERVAL_SECONDS:
+            return
+
+        self._last_log_time = current_time
+        self._log.info(f"[COMMANDS] Processed: {self._processed_count}")

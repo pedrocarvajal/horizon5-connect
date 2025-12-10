@@ -30,7 +30,9 @@ class SnapshotModel(BaseModel):
 
     backtest: bool = Field(default=False)
     backtest_id: Optional[str] = None
+    portfolio_id: Optional[str] = None
     strategy_id: str = Field(...)
+    asset_id: Optional[str] = None
     event: Optional[SnapshotEvent] = Field(default=None)
     allocation: float = Field(default=0, ge=0)
     nav: float = Field(default=0, ge=0)
@@ -67,31 +69,46 @@ class SnapshotModel(BaseModel):
         self._log = LoggingService()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert snapshot to dictionary representation.
+        """Convert snapshot to dictionary representation for API.
 
         Returns:
-            Dictionary with all snapshot metrics.
+            Dictionary with identifiers at root level and metrics in 'data' field.
         """
-        return {
-            "nav": self.nav,
-            "allocation": self.allocation,
-            "performance": self.performance,
-            "performance_percentage": self.performance_percentage,
-            "nav_peak": self.nav_peak,
-            "r2": self.r2,
-            "cagr": self.cagr,
-            "calmar_ratio": self.calmar_ratio,
-            "expected_shortfall": self.expected_shortfall,
-            "max_drawdown": self.max_drawdown,
-            "profit_factor": self.profit_factor,
-            "recovery_factor": self.recovery_factor,
-            "sharpe_ratio": self.sharpe_ratio,
-            "sortino_ratio": self.sortino_ratio,
-            "ulcer_index": self.ulcer_index,
-            "win_ratio": self.win_ratio,
-            "average_trade_duration": self.average_trade_duration,
-            "created_at": self.created_at,
+        result: Dict[str, Any] = {
+            "strategy_id": self.strategy_id,
+            "event": self.event.value if self.event else None,
+            "backtest": self.backtest,
+            "data": {
+                "nav": self.nav,
+                "allocation": self.allocation,
+                "performance": self.performance,
+                "performance_percentage": self.performance_percentage,
+                "nav_peak": self.nav_peak,
+                "r2": self.r2,
+                "cagr": self.cagr,
+                "calmar_ratio": self.calmar_ratio,
+                "expected_shortfall": self.expected_shortfall,
+                "max_drawdown": self.max_drawdown,
+                "profit_factor": self.profit_factor,
+                "recovery_factor": self.recovery_factor,
+                "sharpe_ratio": self.sharpe_ratio,
+                "sortino_ratio": self.sortino_ratio,
+                "ulcer_index": self.ulcer_index,
+                "win_ratio": self.win_ratio,
+                "average_trade_duration": self.average_trade_duration,
+            },
         }
+
+        if self.backtest_id:
+            result["backtest_id"] = self.backtest_id
+
+        if self.portfolio_id:
+            result["portfolio_id"] = self.portfolio_id
+
+        if self.asset_id:
+            result["asset_id"] = self.asset_id
+
+        return result
 
     @property
     def performance(self) -> float:

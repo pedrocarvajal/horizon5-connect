@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import datetime
+from multiprocessing import Queue
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from enums.command import Command
+from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
+from providers.horizon_router import HorizonRouterProvider
 from services.logging import LoggingService
 
 if TYPE_CHECKING:
@@ -36,6 +40,7 @@ class PortfolioAnalytic(AnalyticInterface):
     _assets: List[AssetInterface]
     _backtest: bool
     _backtest_id: Optional[str]
+    _commands_queue: Optional[Queue[Any]]
     _portfolio_id: str
     _snapshot: SnapshotModel
     _started: bool
@@ -50,6 +55,7 @@ class PortfolioAnalytic(AnalyticInterface):
         assets: List[AssetInterface],
         backtest: bool = False,
         backtest_id: Optional[str] = None,
+        commands_queue: Optional[Queue[Any]] = None,
     ) -> None:
         """Initialize the portfolio analytics service.
 
@@ -58,6 +64,7 @@ class PortfolioAnalytic(AnalyticInterface):
             assets: List of asset instances to aggregate metrics from.
             backtest: Whether running in backtest mode.
             backtest_id: Backtest identifier (required if backtest is True).
+            commands_queue: Queue for sending commands to external services.
 
         Raises:
             ValueError: If portfolio_id is empty.
@@ -75,6 +82,7 @@ class PortfolioAnalytic(AnalyticInterface):
         self._assets = assets
         self._backtest = backtest
         self._backtest_id = backtest_id
+        self._commands_queue = commands_queue
 
         self._started = False
         self._started_at = None
@@ -85,6 +93,7 @@ class PortfolioAnalytic(AnalyticInterface):
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
+            portfolio_id=self._portfolio_id,
             strategy_id=self._portfolio_id,
             nav=initial_allocation,
             allocation=initial_allocation,
@@ -141,10 +150,29 @@ class PortfolioAnalytic(AnalyticInterface):
         return report
 
     def on_new_day(self) -> None:
-        """Handle a new day event. Refreshes aggregated metrics."""
+        """Handle a new day event. Refreshes aggregated metrics and sends snapshot."""
         self._refresh()
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
+
+        if not self._backtest or self._commands_queue is None:
+            return
+
+        self._snapshot.event = SnapshotEvent.ON_NEW_DAY
+        snapshot_data = self._snapshot.to_dict()
+        provider = HorizonRouterProvider()
+
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": provider.snapshot_create,
+                "args": {"data": snapshot_data},
+            }
+        )
+
+    def on_new_hour(self) -> None:
+        """Handle a new hour event."""
+        pass
 
     def on_tick(self, tick: TickModel) -> None:
         """Handle a new market tick. Refreshes aggregated snapshot.

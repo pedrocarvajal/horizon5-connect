@@ -116,6 +116,18 @@ class HorizonRouterProvider(BaseProvider):
         """
         return self.get("/api/v1/auth/me")
 
+    def snapshot_create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new snapshot.
+
+        Args:
+            data: Snapshot data including strategy_id, asset_id, event,
+                  nav, allocation, and optional metrics.
+
+        Returns:
+            API response with created snapshot.
+        """
+        return self.post("/api/v1/snapshot", data=data)
+
     def refresh(self) -> Tuple[str, int]:
         """Refresh the current JWT token.
 

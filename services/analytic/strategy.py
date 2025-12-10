@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import datetime
+from multiprocessing import Queue
 from typing import Any, Dict, List, Optional, Tuple
 
+from enums.command import Command
 from enums.quality_method import QualityMethod
+from enums.snapshot_event import SnapshotEvent
 from interfaces.analytic import AnalyticInterface
 from interfaces.orderbook import OrderbookInterface
 from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
+from providers.horizon_router import HorizonRouterProvider
 from services.analytic.helpers.get_average_trade_duration import get_average_trade_duration
 from services.analytic.helpers.get_cagr import get_cagr
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
@@ -50,10 +54,12 @@ class StrategyAnalytic(AnalyticInterface):
         _trade_durations: List of trade durations in minutes.
     """
 
+    _asset_id: Optional[str]
     _backtest: bool
     _backtest_expectation: Optional[BacktestExpectationModel]
     _backtest_id: Optional[str]
     _closed_orders: int
+    _commands_queue: Optional[Queue[Any]]
     _ended_at: datetime.datetime
     _orderbook: OrderbookInterface
     _quality_method: QualityMethod
@@ -74,6 +80,8 @@ class StrategyAnalytic(AnalyticInterface):
         backtest_id: Optional[str] = None,
         quality_method: QualityMethod = QualityMethod.FQS,
         backtest_expectation: Optional[BacktestExpectationModel] = None,
+        commands_queue: Optional[Queue[Any]] = None,
+        asset_id: Optional[str] = None,
     ) -> None:
         """Initialize the strategy analytics service.
 
@@ -84,6 +92,8 @@ class StrategyAnalytic(AnalyticInterface):
             backtest_id: Backtest identifier (required if backtest is True).
             quality_method: Method for calculating quality score.
             backtest_expectation: Expected metric ranges for quality calculation.
+            commands_queue: Queue for sending commands to external services.
+            asset_id: Identifier of the asset this strategy trades.
 
         Raises:
             ValueError: If strategy_id is empty.
@@ -103,6 +113,8 @@ class StrategyAnalytic(AnalyticInterface):
         self._backtest_id = backtest_id
         self._quality_method = quality_method
         self._backtest_expectation = backtest_expectation
+        self._commands_queue = commands_queue
+        self._asset_id = asset_id
 
         self._started = False
         self._tick = None
@@ -113,6 +125,7 @@ class StrategyAnalytic(AnalyticInterface):
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             strategy_id=self._strategy_id,
+            asset_id=self._asset_id,
             nav=self._orderbook.nav,
             allocation=self._orderbook.allocation,
             nav_peak=self._orderbook.nav,
@@ -164,10 +177,29 @@ class StrategyAnalytic(AnalyticInterface):
         return report
 
     def on_new_day(self) -> None:
-        """Handle a new day event. Records history and recalculates metrics."""
+        """Handle a new day event. Records history, recalculates metrics and sends snapshot."""
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
         self._perform_calculations()
+
+        if not self._backtest or self._commands_queue is None:
+            return
+
+        self._snapshot.event = SnapshotEvent.ON_NEW_DAY
+        snapshot_data = self._snapshot.to_dict()
+
+        provider = HorizonRouterProvider()
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": provider.snapshot_create,
+                "args": {"data": snapshot_data},
+            }
+        )
+
+    def on_new_hour(self) -> None:
+        """Handle a new hour event."""
+        pass
 
     def on_new_month(self) -> None:
         """Handle a new month event. Logs monthly performance in live mode."""

@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 import datetime
-import signal
 from multiprocessing import Queue
-from queue import Empty
-from types import FrameType
 from typing import Any, List, Optional, Tuple
 
 from configs.timezone import TIMEZONE
 from enums.backtest_event import BacktestEvent
-from enums.command import Command
 from helpers.get_duration import get_duration
 from interfaces.asset import AssetInterface
 from interfaces.backtest import BacktestInterface
@@ -27,13 +23,13 @@ class BacktestService(BacktestInterface):
     _events_queue: Queue[Any]
     _from_date: datetime.datetime
     _id: str
-    _is_shutdown_requested: bool
-    _log: LoggingService
     _portfolio: PortfolioInterface
     _should_restore_ticks: bool
     _start_at: datetime.datetime
-    _ticks_service: TicksService
     _to_date: datetime.datetime
+
+    _log: LoggingService
+    _ticks_service: TicksService
 
     def __init__(
         self,
@@ -46,9 +42,6 @@ class BacktestService(BacktestInterface):
         restore_ticks: bool = False,
     ) -> None:
         """Initialize backtest service with portfolio and date range."""
-        self._is_shutdown_requested = False
-        self._setup_signal_handlers()
-
         self._id = backtest_id
         self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
@@ -91,14 +84,6 @@ class BacktestService(BacktestInterface):
         )
 
         for index, (_tick_date, ticks) in enumerate(ticks_iterator):
-            if self._is_shutdown_requested:
-                break
-
-            if self._check_kill_command():
-                self._is_shutdown_requested = True
-                self._log.info("Kill command received, stopping backtest...")
-                break
-
             if ticks:
                 self._portfolio.on_tick(ticks)
 
@@ -106,40 +91,7 @@ class BacktestService(BacktestInterface):
                 progress = ((index + 1) / total_ticks) * 100
                 self._log.info(f"Progress: {progress:.1f}% ({index + 1:,}/{total_ticks:,})")
 
-        if self._is_shutdown_requested:
-            self._send_failed("Backtest cancelled by user")
-        else:
-            self._on_end()
-
-    def _check_kill_command(self) -> bool:
-        """Check if a kill command has been received (non-blocking)."""
-        if self._commands_queue is None:
-            return False
-
-        try:
-            command_data = self._commands_queue.get_nowait()
-            command = command_data.get("command")
-
-            if command == Command.KILL:
-                return True
-
-            self._commands_queue.put(command_data)
-
-        except Empty:
-            pass
-
-        return False
-
-    def _handle_shutdown(
-        self,
-        _signum: int,
-        _frame: Optional[FrameType],
-    ) -> None:
-        if self._is_shutdown_requested:
-            return
-
-        self._is_shutdown_requested = True
-        self._log.info("Shutdown signal received, cleaning up...")
+        self._on_end()
 
     def _on_end(self) -> None:
         end_at = datetime.datetime.now(TIMEZONE)
@@ -224,14 +176,3 @@ class BacktestService(BacktestInterface):
             self._portfolio.asset_instances.append(asset_instance)
 
         self._portfolio.setup_analytic(**setup_kwargs)
-
-    def _setup_signal_handlers(self) -> None:
-        signal.signal(
-            signal.SIGINT,
-            self._handle_shutdown,
-        )
-
-        signal.signal(
-            signal.SIGTERM,
-            self._handle_shutdown,
-        )

@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from models.command import CommandModel
 
@@ -19,13 +19,13 @@ class CommandInterface(ABC):
         pass
 
     @abstractmethod
-    def process_command(self, command: CommandModel) -> Tuple[bool, bool]:
+    def process_command(self, command: CommandModel) -> bool:
         """Process a single command.
 
         Args:
             command: The command to process.
 
         Returns:
-            Tuple of (success, should_kill).
+            True if command was processed successfully, False otherwise.
         """
         pass

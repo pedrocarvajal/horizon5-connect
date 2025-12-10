@@ -15,4 +15,5 @@ class SnapshotEvent(Enum):
 
     START_SNAPSHOT = "start_snapshot"
     ON_NEW_DAY = "on_new_day"
+    ON_NEW_HOUR = "on_new_hour"
     BACKTEST_END = "backtest_end"
