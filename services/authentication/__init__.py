@@ -6,7 +6,9 @@ from typing import Any, Dict, Optional
 
 import questionary
 
+from enums.http_status import HttpStatus
 from interfaces.authentication import AuthenticationInterface
+from providers.exceptions import ProviderHTTPError
 from providers.horizon_router import HorizonRouterProvider
 from services.logging import LoggingService
 
@@ -55,6 +57,48 @@ class AuthenticationService(AuthenticationInterface):
 
         return self._ensure_authenticated()
 
+    def _authenticate_with_token(self, token: str) -> bool:
+        try:
+            provider = HorizonRouterProvider()
+            provider.set_token(token)
+            user_response = provider.me()
+
+            self._user = user_response["data"]
+            self._token = token
+            self._save_session()
+            self._log.success("Authentication successful")
+
+            return True
+
+        except ProviderHTTPError as exception:
+            self._log.error(f"Authentication failed: {exception}")
+            self._handle_auth_error(exception)
+            return False
+
+        except Exception as exception:
+            self._log.error(f"Authentication failed: {exception}")
+            return False
+
+    def _handle_auth_error(self, exception: ProviderHTTPError) -> None:
+        """Handle authentication error and show IP if rejected."""
+        if exception.status_code != HttpStatus.UNAUTHORIZED.value:
+            return
+
+        try:
+            response_data = json.loads(exception.response_body)
+            request_ip = response_data.get("request_ip")
+
+            if request_ip:
+                self._log.warning("")
+                self._log.warning("Your request was rejected due to IP restrictions.")
+                self._log.warning(f"Your current IP: {request_ip}")
+                self._log.warning("")
+                self._log.info("Add this IP to your token whitelist in the dashboard.")
+                self._log.info("If using VPN or tunnel, consider disabling it for a stable IP.")
+
+        except (json.JSONDecodeError, KeyError):
+            pass
+
     def _clear_session(self) -> None:
         self._token = None
         self._user = None
@@ -81,40 +125,6 @@ class AuthenticationService(AuthenticationInterface):
 
         return self._request_token()
 
-    def _request_token(self) -> bool:
-        self._log.info("Please paste your token from the Horizon5 dashboard")
-
-        token = questionary.password(
-            "",
-            qmark=self._log.prompt("Token:"),
-        ).ask()
-
-        if not token:
-            self._log.error("Token is required")
-            return False
-
-        token = token.strip()
-
-        if token.lower().startswith("bearer "):
-            token = token[7:]
-
-        return self._authenticate_with_token(token)
-
-    def _authenticate_with_token(self, token: str) -> bool:
-        try:
-            provider = HorizonRouterProvider()
-            provider.set_token(token)
-            user_response = provider.me()
-            self._user = user_response["data"]
-            self._token = token
-            self._save_session()
-            self._log.success("Authentication successful")
-            return True
-
-        except Exception as exception:
-            self._log.error(f"Authentication failed: {exception}")
-            return False
-
     def _is_authenticated(self) -> bool:
         return self._token is not None
 
@@ -131,6 +141,23 @@ class AuthenticationService(AuthenticationInterface):
             self._log.warning(f"Failed to load session: {exception}")
             self._token = None
             self._user = None
+
+    def _request_token(self) -> bool:
+        token = questionary.password(
+            "",
+            qmark=self._log.prompt("Enter your token:"),
+        ).ask()
+
+        if not token:
+            self._log.error("Token is required")
+            return False
+
+        token = token.strip()
+
+        if token.lower().startswith("bearer "):
+            token = token[7:]
+
+        return self._authenticate_with_token(token)
 
     def _save_session(self) -> None:
         if not self._token:
