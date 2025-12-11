@@ -2,31 +2,18 @@
 
 from __future__ import annotations
 
-import datetime
 from multiprocessing import Queue
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from enums.command import Command
-from enums.snapshot_event import SnapshotEvent
-from interfaces.analytic import AnalyticInterface
 from models.snapshot import SnapshotModel
-from models.tick import TickModel
-from providers.horizon_router import HorizonRouterProvider
-from services.analytic.helpers.get_cagr import get_cagr
-from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
-from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
-from services.analytic.helpers.get_r2 import get_r2
-from services.analytic.helpers.get_recovery_factor import get_recovery_factor
-from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
-from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
-from services.analytic.helpers.get_ulcer_index import get_ulcer_index
+from services.analytic.wrappers.analytic import AnalyticWrapper
 from services.logging import LoggingService
 
 if TYPE_CHECKING:
     from interfaces.asset import AssetInterface
 
 
-class PortfolioAnalytic(AnalyticInterface):
+class PortfolioAnalytic(AnalyticWrapper):
     """Analytics service for portfolio-level metrics aggregation.
 
     This is the top-level Composite component that aggregates metrics
@@ -37,25 +24,10 @@ class PortfolioAnalytic(AnalyticInterface):
     Attributes:
         _portfolio_id: Identifier of the portfolio.
         _assets: List of asset instances to aggregate from.
-        _backtest: Whether running in backtest mode.
-        _backtest_id: Optional backtest identifier.
-        _snapshot: Current analytics snapshot.
-        _started: Whether analytics tracking has started.
-        _started_at: Timestamp when tracking started.
-        _tick: Current market tick.
     """
 
     _assets: List[AssetInterface]
-    _backtest: bool
-    _backtest_id: Optional[str]
-    _commands_queue: Optional[Queue[Any]]
     _portfolio_id: str
-    _snapshot: SnapshotModel
-    _started: bool
-    _started_at: Optional[datetime.datetime]
-    _tick: Optional[TickModel]
-
-    _log: LoggingService
 
     def __init__(
         self,
@@ -97,6 +69,7 @@ class PortfolioAnalytic(AnalyticInterface):
         self._tick = None
 
         initial_allocation = self._calculate_initial_allocation()
+        self._previous_day_nav = initial_allocation
 
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
@@ -152,51 +125,7 @@ class PortfolioAnalytic(AnalyticInterface):
             "assets": assets_reports,
         }
 
-        self._log.info(f"[PORTFOLIO_REPORT] Portfolio: {self._portfolio_id}")
-        self._log.info(f"[PORTFOLIO_REPORT] {report}")
-
         return report
-
-    def on_new_day(self) -> None:
-        """Handle a new day event. Refreshes aggregated metrics and sends snapshot."""
-        self._refresh()
-        self._snapshot.performance_history.append(self._snapshot.performance)
-        self._snapshot.nav_history.append(self._snapshot.nav)
-        self._perform_calculations()
-
-        if self._tick is None:
-            return
-
-        self._snapshot.event = SnapshotEvent.ON_NEW_DAY
-        snapshot_data = self._snapshot.to_dict()
-        snapshot_data["created_at"] = int(self._tick.date.timestamp())
-        provider = HorizonRouterProvider()
-
-        assert self._commands_queue is not None
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": provider.snapshot_create,
-                "args": {"data": snapshot_data},
-            }
-        )
-
-    def on_new_hour(self) -> None:
-        """Handle a new hour event."""
-        pass
-
-    def on_tick(self, tick: TickModel) -> None:
-        """Handle a new market tick. Refreshes aggregated snapshot.
-
-        Args:
-            tick: The current market tick data.
-        """
-        self._tick = tick
-        self._refresh()
-
-        if not self._started:
-            self._started = True
-            self._started_at = self._tick.date
 
     def _calculate_initial_allocation(self) -> float:
         """Calculate initial allocation from all assets.
@@ -232,32 +161,12 @@ class PortfolioAnalytic(AnalyticInterface):
 
         if total_allocation > 0:
             return round(weighted_quality_sum / total_allocation, 4)
-        return 0.0
 
-    def _get_elapsed_days(self) -> int:
-        """Calculate number of days elapsed since tracking started."""
-        if self._tick is None or self._started_at is None:
-            return 0
-        return (self._tick.date - self._started_at).days
+        return 0.0
 
     def _perform_calculations(self) -> None:
         """Calculate all financial metrics from aggregated history."""
-        snapshot = self._snapshot
-        allocation = snapshot.allocation
-        nav = snapshot.nav
-        elapsed_days = self._get_elapsed_days()
-        performance_history = snapshot.performance_history
-        nav_history = snapshot.nav_history
-        max_drawdown = snapshot.max_drawdown
-
-        snapshot.r2 = get_r2(performance_history)
-        snapshot.cagr = get_cagr(allocation, nav, elapsed_days)
-        snapshot.calmar_ratio = get_calmar_ratio(snapshot.cagr, max_drawdown)
-        snapshot.expected_shortfall = get_expected_shortfall(nav_history)
-        snapshot.recovery_factor = get_recovery_factor(snapshot.performance_percentage, max_drawdown)
-        snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
-        snapshot.sortino_ratio = get_sortino_ratio(nav_history)
-        snapshot.ulcer_index = get_ulcer_index(nav_history)
+        self._perform_base_calculations()
 
         total_allocation = 0.0
         weighted_profit_factor = 0.0
@@ -276,9 +185,9 @@ class PortfolioAnalytic(AnalyticInterface):
                     total_allocation += strategy_allocation
 
         if total_allocation > 0:
-            snapshot.profit_factor = weighted_profit_factor / total_allocation
-            snapshot.win_ratio = weighted_win_ratio / total_allocation
-            snapshot.average_trade_duration = weighted_avg_trade_duration / total_allocation
+            self._snapshot.profit_factor = weighted_profit_factor / total_allocation
+            self._snapshot.win_ratio = weighted_win_ratio / total_allocation
+            self._snapshot.average_trade_duration = weighted_avg_trade_duration / total_allocation
 
     def _refresh(self) -> None:
         """Refresh snapshot by aggregating NAV from all strategies in all assets."""
@@ -290,24 +199,4 @@ class PortfolioAnalytic(AnalyticInterface):
 
         self._snapshot.nav = aggregated_nav
         self._snapshot.nav_peak = max(self._snapshot.nav_peak, self._snapshot.nav)
-
-        if self._snapshot.drawdown < 0:
-            self._snapshot.max_drawdown = min(
-                self._snapshot.max_drawdown,
-                self._snapshot.drawdown,
-            )
-
-    @property
-    def nav(self) -> float:
-        """Return the current net asset value (sum of all strategy NAVs)."""
-        return self._snapshot.nav
-
-    @property
-    def quality(self) -> float:
-        """Return the current quality score."""
-        return self._snapshot.quality
-
-    @property
-    def snapshot(self) -> SnapshotModel:
-        """Return the current snapshot."""
-        return self._snapshot
+        self._update_max_drawdown()

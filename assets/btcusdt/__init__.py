@@ -71,15 +71,7 @@ class Asset(AssetService):
         ]
 
     def _get_allocation_by_strategy(self) -> Dict[str, float]:
-        """Get allocation for each enabled strategy using equal weight distribution.
-
-        Returns:
-            Dictionary mapping strategy id to allocation amount.
-        """
-        enabled_count = 1
-        per_strategy = self._allocation / enabled_count if enabled_count > 0 else 0.0
-
         return {
-            "donchian_breakout": per_strategy,
-            "rsi_bollinger_breakout": per_strategy,
+            "donchian_breakout": 500000,
+            "rsi_bollinger_breakout": 500000,
         }
