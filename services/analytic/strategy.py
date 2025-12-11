@@ -58,6 +58,7 @@ class StrategyAnalytic(AnalyticInterface):
     _backtest: bool
     _backtest_expectation: Optional[BacktestExpectationModel]
     _backtest_id: Optional[str]
+    _portfolio_id: Optional[str]
     _closed_orders: int
     _commands_queue: Optional[Queue[Any]]
     _ended_at: datetime.datetime
@@ -82,6 +83,7 @@ class StrategyAnalytic(AnalyticInterface):
         backtest_expectation: Optional[BacktestExpectationModel] = None,
         commands_queue: Optional[Queue[Any]] = None,
         asset_id: Optional[str] = None,
+        portfolio_id: Optional[str] = None,
     ) -> None:
         """Initialize the strategy analytics service.
 
@@ -94,6 +96,7 @@ class StrategyAnalytic(AnalyticInterface):
             backtest_expectation: Expected metric ranges for quality calculation.
             commands_queue: Queue for sending commands to external services.
             asset_id: Identifier of the asset this strategy trades.
+            portfolio_id: Identifier of the parent portfolio.
 
         Raises:
             ValueError: If strategy_id is empty.
@@ -115,6 +118,7 @@ class StrategyAnalytic(AnalyticInterface):
         self._backtest_expectation = backtest_expectation
         self._commands_queue = commands_queue
         self._asset_id = asset_id
+        self._portfolio_id = portfolio_id
 
         self._started = False
         self._tick = None
@@ -124,6 +128,7 @@ class StrategyAnalytic(AnalyticInterface):
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
+            portfolio_id=self._portfolio_id,
             strategy_id=self._strategy_id,
             asset_id=self._asset_id,
             nav=self._orderbook.nav,
@@ -182,13 +187,15 @@ class StrategyAnalytic(AnalyticInterface):
         self._snapshot.nav_history.append(self._snapshot.nav)
         self._perform_calculations()
 
-        if not self._backtest or self._commands_queue is None:
+        if self._tick is None:
             return
 
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
         snapshot_data = self._snapshot.to_dict()
+        snapshot_data["created_at"] = int(self._tick.date.timestamp())
 
         provider = HorizonRouterProvider()
+        assert self._commands_queue is not None
         self._commands_queue.put(
             {
                 "command": Command.EXECUTE,
@@ -271,7 +278,7 @@ class StrategyAnalytic(AnalyticInterface):
         Returns:
             Tuple of (quality_score, quality_method_name).
         """
-        days_elapsed = self._elapsed_days
+        days_elapsed = self._get_elapsed_days()
 
         return get_quality(
             method=self._quality_method,
@@ -287,6 +294,12 @@ class StrategyAnalytic(AnalyticInterface):
             performance_percentage=self._snapshot.performance_percentage,
         )
 
+    def _get_elapsed_days(self) -> int:
+        """Calculate number of days elapsed since tracking started."""
+        if self._tick is None:
+            return 0
+        return (self._tick.date - self._started_at).days
+
     def _is_running_in_live_mode(self) -> bool:
         """Check if running in live (non-simulated) mode."""
         return self._tick is not None and not self._tick.is_simulated
@@ -296,7 +309,7 @@ class StrategyAnalytic(AnalyticInterface):
         snapshot = self._snapshot
         allocation = snapshot.allocation
         nav = snapshot.nav
-        elapsed_days = self._elapsed_days
+        elapsed_days = self._get_elapsed_days()
         performance_history = snapshot.performance_history
         nav_history = snapshot.nav_history
         profit_history = snapshot.profit_history
@@ -325,13 +338,6 @@ class StrategyAnalytic(AnalyticInterface):
                 self._snapshot.max_drawdown,
                 self._snapshot.drawdown,
             )
-
-    @property
-    def _elapsed_days(self) -> int:
-        """Calculate number of days elapsed since tracking started."""
-        if self._tick is None:
-            return 0
-        return (self._tick.date - self._started_at).days
 
     @property
     def nav(self) -> float:

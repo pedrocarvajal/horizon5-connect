@@ -155,13 +155,15 @@ class PortfolioAnalytic(AnalyticInterface):
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
 
-        if not self._backtest or self._commands_queue is None:
+        if self._tick is None:
             return
 
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
         snapshot_data = self._snapshot.to_dict()
+        snapshot_data["created_at"] = int(self._tick.date.timestamp())
         provider = HorizonRouterProvider()
 
+        assert self._commands_queue is not None
         self._commands_queue.put(
             {
                 "command": Command.EXECUTE,

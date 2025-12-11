@@ -2,31 +2,36 @@
 
 from __future__ import annotations
 
-import datetime
 from multiprocessing import Queue
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from enums.timeframe import Timeframe
 from interfaces.analytic import AnalyticInterface
 from interfaces.asset import AssetInterface
+from interfaces.gateway import GatewayInterface
 from interfaces.portfolio import PortfolioInterface
+from interfaces.strategy import StrategyInterface
 from models.tick import TickModel
 from services.analytic import AssetAnalytic
 from services.gateway import GatewayService
 from services.logging import LoggingService
-from services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class AssetService(AssetInterface):
     """Service managing strategies and gateway for a specific trading asset."""
 
+    _allocation: float
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
+    _enabled: bool
     _events_queue: Optional[Queue[Any]]
+    _gateway: GatewayInterface
     _gateway_name: str
-    _last_timestamps: Dict[Timeframe, datetime.datetime]
+    _is_historical_filling: bool
+    _name: str
     _portfolio: Optional[PortfolioInterface]
+    _strategies: List[StrategyInterface]
+    _symbol: str
     _tick: Optional[TickModel]
 
     _analytic: AnalyticInterface
@@ -50,7 +55,6 @@ class AssetService(AssetInterface):
         self._backtest_id = None
         self._portfolio = None
         self._is_historical_filling = False
-        self._last_timestamps = {}
         self._tick = None
 
         self._gateway = GatewayService(
@@ -67,6 +71,39 @@ class AssetService(AssetInterface):
         report = self._analytic.on_end()
         return report if report is not None else {}
 
+    def on_new_day(self) -> None:
+        """Handle a new day event. Cascades to all strategies."""
+        for strategy in self._strategies:
+            strategy.on_new_day()
+
+        self._analytic.on_new_day()
+
+    def on_new_hour(self) -> None:
+        """Handle a new hour event. Cascades to all strategies."""
+        for strategy in self._strategies:
+            strategy.on_new_hour()
+
+        self._analytic.on_new_hour()
+
+    def on_new_minute(self) -> None:
+        """Handle a new minute event. Cascades to all strategies."""
+        for strategy in self._strategies:
+            strategy.on_new_minute()
+
+    def on_new_month(self) -> None:
+        """Handle a new month event. Cascades to all strategies."""
+        for strategy in self._strategies:
+            strategy.on_new_month()
+
+        self._analytic.on_new_month()
+
+    def on_new_week(self) -> None:
+        """Handle a new week event. Cascades to all strategies."""
+        for strategy in self._strategies:
+            strategy.on_new_week()
+
+        self._analytic.on_new_week()
+
     def on_tick(self, tick: TickModel) -> None:
         """Propagate tick data to all enabled strategies."""
         self._tick = tick
@@ -75,57 +112,6 @@ class AssetService(AssetInterface):
             strategy.on_tick(tick)
 
         self._analytic.on_tick(tick)
-        self._check_timeframe_transitions(tick)
-
-    def on_new_hour(self) -> None:
-        """Handle a new hour event for asset-level analytics."""
-        self._analytic.on_new_hour()
-
-    def on_new_day(self) -> None:
-        """Handle a new day event for asset-level analytics."""
-        self._analytic.on_new_day()
-
-    def on_new_week(self) -> None:
-        """Handle a new week event for asset-level analytics."""
-        self._analytic.on_new_week()
-
-    def on_new_month(self) -> None:
-        """Handle a new month event for asset-level analytics."""
-        self._analytic.on_new_month()
-
-    def _check_timeframe_transitions(self, tick: TickModel) -> None:
-        """Check for timeframe transitions and trigger appropriate events."""
-        current_time = tick.date
-
-        for timeframe in Timeframe:
-            if timeframe == Timeframe.ONE_MINUTE:
-                continue
-
-            last_timestamp = self._last_timestamps.get(timeframe)
-
-            if last_timestamp is None:
-                self._last_timestamps[timeframe] = get_truncated_timeframe(current_time, timeframe)
-                continue
-
-            current_period = get_truncated_timeframe(current_time, timeframe)
-
-            if current_period > last_timestamp:
-                self._last_timestamps[timeframe] = current_period
-                self._trigger_timeframe_event(timeframe)
-
-    def _trigger_timeframe_event(self, timeframe: Timeframe) -> None:
-        """Trigger the appropriate event handler for a timeframe transition."""
-        if timeframe == Timeframe.ONE_HOUR:
-            self.on_new_hour()
-
-        elif timeframe == Timeframe.ONE_DAY:
-            self.on_new_day()
-
-        elif timeframe == Timeframe.ONE_WEEK:
-            self.on_new_week()
-
-        elif timeframe == Timeframe.ONE_MONTH:
-            self.on_new_month()
 
     def setup(self, **kwargs: Any) -> None:
         """Configure the asset with runtime parameters and initialize strategies."""
@@ -178,6 +164,7 @@ class AssetService(AssetInterface):
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             commands_queue=self._commands_queue,
+            portfolio_id=self._portfolio.id if self._portfolio else None,
         )
 
     def start_historical_filling(self) -> None:
@@ -187,3 +174,38 @@ class AssetService(AssetInterface):
     def stop_historical_filling(self) -> None:
         """Mark the asset as no longer processing historical data."""
         self._is_historical_filling = False
+
+    @property
+    def allocation(self) -> float:
+        """Return the asset allocation."""
+        return self._allocation
+
+    @property
+    def enabled(self) -> bool:
+        """Return whether asset is enabled."""
+        return self._enabled
+
+    @property
+    def gateway(self) -> GatewayInterface:
+        """Return the gateway for this asset."""
+        return self._gateway
+
+    @property
+    def is_historical_filling(self) -> bool:
+        """Return whether the asset is currently processing historical data."""
+        return self._is_historical_filling
+
+    @property
+    def name(self) -> str:
+        """Return the asset display name."""
+        return self._name
+
+    @property
+    def strategies(self) -> List[StrategyInterface]:
+        """Return the strategies for this asset."""
+        return self._strategies
+
+    @property
+    def symbol(self) -> str:
+        """Return the trading symbol."""
+        return self._symbol

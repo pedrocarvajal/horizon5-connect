@@ -1,6 +1,5 @@
 """Strategy service base class for implementing trading strategies."""
 
-import datetime
 from multiprocessing import Queue
 from typing import Any, Dict, List, Optional
 
@@ -21,8 +20,6 @@ from services.analytic import StrategyAnalytic
 from services.logging import LoggingService
 from services.orderbook import OrderbookService
 
-from .helpers.get_truncated_timeframe import get_truncated_timeframe
-
 
 class StrategyService(StrategyInterface):
     """
@@ -36,7 +33,6 @@ class StrategyService(StrategyInterface):
     The service manages:
     - Order lifecycle through OrderbookService
     - Performance analytics through AnalyticService
-    - Timeframe transitions (minute, hour, day, week, month)
     - Order creation and management
     - Integration with asset and gateway services
 
@@ -54,7 +50,6 @@ class StrategyService(StrategyInterface):
         _analytic: Service for tracking performance analytics.
         _commands_queue: Queue for sending commands to external services.
         _events_queue: Queue for receiving events from external services.
-        _last_timestamps: Dictionary tracking last timestamp for each timeframe.
         _tick: Current market tick data.
         _log: Logging service instance for logging operations.
     """
@@ -66,7 +61,6 @@ class StrategyService(StrategyInterface):
     _candles: Dict[Timeframe, CandleInterface]
     _commands_queue: Optional["Queue[Command]"] = None
     _events_queue: Optional["Queue[Any]"] = None
-    _last_timestamps: Dict[Timeframe, datetime.datetime]
     _leverage: int
     _portfolio: Optional[PortfolioInterface]
     _tick: Optional[TickModel]
@@ -101,7 +95,6 @@ class StrategyService(StrategyInterface):
         self._analytic = None
         self._commands_queue = None
         self._events_queue = None
-        self._last_timestamps = {}
         self._tick = None
 
         self._id = kwargs.get("id", getattr(self, "_id", ""))
@@ -178,8 +171,8 @@ class StrategyService(StrategyInterface):
         """
         Handle a new market tick event.
 
-        Updates the current tick, checks for timeframe transitions, refreshes
-        the orderbook, updates analytics, and processes all candle services.
+        Updates the current tick, refreshes the orderbook, updates analytics,
+        and processes all candle services.
 
         Args:
             tick: The current market tick data.
@@ -188,7 +181,6 @@ class StrategyService(StrategyInterface):
         assert self._analytic is not None
 
         self._tick = tick
-        self._check_timeframe_transitions(tick)
         self._orderbook.refresh(tick)
         self._analytic.on_tick(tick)
 
@@ -318,58 +310,11 @@ class StrategyService(StrategyInterface):
             backtest_expectation=self._backtest_expectation,
             commands_queue=self._commands_queue,
             asset_id=self._asset.symbol,
+            portfolio_id=self._portfolio.id if self._portfolio else None,
         )
 
         self._log.setup_prefix(f"[{self._asset.symbol}|{self._name}]")
         self._log.info(f"Setting up {self.name}")
-
-    def _check_timeframe_transitions(self, tick: TickModel) -> None:
-        """
-        Check for timeframe transitions and trigger appropriate events.
-
-        Compares the current tick's timestamp with the last recorded timestamp
-        for each timeframe. If a new period is detected, triggers the corresponding
-        event handler (on_new_minute, on_new_hour, etc.).
-
-        Args:
-            tick: The current market tick data.
-        """
-        current_time = tick.date
-
-        for timeframe in Timeframe:
-            last_timestamp = self._last_timestamps.get(timeframe)
-
-            if last_timestamp is None:
-                self._last_timestamps[timeframe] = get_truncated_timeframe(current_time, timeframe)
-                continue
-
-            current_period = get_truncated_timeframe(current_time, timeframe)
-
-            if current_period > last_timestamp:
-                self._last_timestamps[timeframe] = current_period
-                self._trigger_timeframe_event(timeframe)
-
-    def _trigger_timeframe_event(self, timeframe: Timeframe) -> None:
-        """
-        Trigger the appropriate event handler for a timeframe transition.
-
-        Args:
-            timeframe: The timeframe that has transitioned to a new period.
-        """
-        if timeframe == Timeframe.ONE_MINUTE:
-            self.on_new_minute()
-
-        elif timeframe == Timeframe.ONE_HOUR:
-            self.on_new_hour()
-
-        elif timeframe == Timeframe.ONE_DAY:
-            self.on_new_day()
-
-        elif timeframe == Timeframe.ONE_WEEK:
-            self.on_new_week()
-
-        elif timeframe == Timeframe.ONE_MONTH:
-            self.on_new_month()
 
     def _validate_setup_parameters(self) -> None:
         """
@@ -399,6 +344,12 @@ class StrategyService(StrategyInterface):
 
         if self._leverage <= 0:
             raise ValueError("Leverage must be greater than 0")
+
+    @property
+    def analytic(self) -> AnalyticInterface:
+        """Return the analytic service for this strategy."""
+        assert self._analytic is not None
+        return self._analytic
 
     @property
     def asset(self) -> AssetInterface:
@@ -445,9 +396,3 @@ class StrategyService(StrategyInterface):
         """Return all orders for this strategy."""
         assert self._orderbook is not None
         return self._orderbook.orders
-
-    @property
-    def analytic(self) -> AnalyticInterface:
-        """Return the analytic service for this strategy."""
-        assert self._analytic is not None
-        return self._analytic

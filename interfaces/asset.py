@@ -13,14 +13,6 @@ from models.tick import TickModel
 class AssetInterface(ABC):
     """Abstract interface (see implementations for details)."""
 
-    _symbol: str
-    _name: str
-    _allocation: float
-    _enabled: bool
-    _is_historical_filling: bool
-    _gateway: "GatewayInterface"
-    _strategies: List["StrategyInterface"]
-
     @abstractmethod
     def __init__(self, allocation: float = 0.0) -> None:
         """Initialize the asset with allocation.
@@ -31,37 +23,42 @@ class AssetInterface(ABC):
         pass
 
     @abstractmethod
-    def setup(self, **kwargs: Any) -> None:
-        """Abstract method."""
-        pass
-
-    def on_tick(self, tick: TickModel) -> None:  # noqa: B027
-        """Abstract method."""
-        pass
-
-    def on_new_hour(self) -> None:  # noqa: B027
-        """Handle a new hour event."""
-        pass
-
-    def on_new_day(self) -> None:  # noqa: B027
-        """Handle a new day event."""
-        pass
-
-    def on_new_week(self) -> None:  # noqa: B027
-        """Handle a new week event."""
-        pass
-
-    def on_new_month(self) -> None:  # noqa: B027
-        """Handle a new month event."""
-        pass
-
     def on_end(self) -> Dict[str, Any]:
         """Abstract method.
 
         Returns:
             Asset report with aggregated performance and strategy reports.
         """
-        return {}
+        pass
+
+    def on_new_day(self) -> None:  # noqa: B027
+        """Handle a new day event."""
+        pass
+
+    def on_new_hour(self) -> None:  # noqa: B027
+        """Handle a new hour event."""
+        pass
+
+    def on_new_minute(self) -> None:  # noqa: B027
+        """Handle a new minute event."""
+        pass
+
+    def on_new_month(self) -> None:  # noqa: B027
+        """Handle a new month event."""
+        pass
+
+    def on_new_week(self) -> None:  # noqa: B027
+        """Handle a new week event."""
+        pass
+
+    def on_tick(self, tick: TickModel) -> None:  # noqa: B027
+        """Abstract method."""
+        pass
+
+    @abstractmethod
+    def setup(self, **kwargs: Any) -> None:
+        """Abstract method."""
+        pass
 
     def start_historical_filling(self) -> None:  # noqa: B027
         """Abstract method."""
@@ -72,36 +69,43 @@ class AssetInterface(ABC):
         pass
 
     @property
-    def symbol(self) -> str:
-        """Return the trading symbol."""
-        return self._symbol
-
-    @property
-    def name(self) -> str:
-        """Return the asset display name."""
-        return self._name
-
-    @property
+    @abstractmethod
     def allocation(self) -> float:
         """Return the asset allocation."""
-        return self._allocation
+        pass
 
     @property
+    @abstractmethod
     def enabled(self) -> bool:
         """Return whether asset is enabled."""
-        return self._enabled
+        pass
 
     @property
+    @abstractmethod
     def gateway(self) -> "GatewayInterface":
         """Return the gateway for this asset."""
-        return self._gateway
+        pass
 
     @property
-    def strategies(self) -> List["StrategyInterface"]:
-        """Return the strategies for this asset."""
-        return self._strategies
-
-    @property
+    @abstractmethod
     def is_historical_filling(self) -> bool:
         """Return whether the asset is currently processing historical data."""
-        return self._is_historical_filling
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the asset display name."""
+        pass
+
+    @property
+    @abstractmethod
+    def strategies(self) -> List["StrategyInterface"]:
+        """Return the strategies for this asset."""
+        pass
+
+    @property
+    @abstractmethod
+    def symbol(self) -> str:
+        """Return the trading symbol."""
+        pass

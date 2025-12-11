@@ -42,6 +42,7 @@ class AssetAnalytic(AnalyticInterface):
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
+    _portfolio_id: Optional[str]
     _snapshot: SnapshotModel
     _started: bool
     _started_at: Optional[datetime.datetime]
@@ -58,6 +59,7 @@ class AssetAnalytic(AnalyticInterface):
         backtest: bool = False,
         backtest_id: Optional[str] = None,
         commands_queue: Optional[Queue[Any]] = None,
+        portfolio_id: Optional[str] = None,
     ) -> None:
         """Initialize the asset analytics service.
 
@@ -68,6 +70,7 @@ class AssetAnalytic(AnalyticInterface):
             backtest: Whether running in backtest mode.
             backtest_id: Backtest identifier (required if backtest is True).
             commands_queue: Queue for sending commands to external services.
+            portfolio_id: Identifier of the parent portfolio.
 
         Raises:
             ValueError: If asset_id is empty.
@@ -87,6 +90,7 @@ class AssetAnalytic(AnalyticInterface):
         self._backtest = backtest
         self._backtest_id = backtest_id
         self._commands_queue = commands_queue
+        self._portfolio_id = portfolio_id
 
         self._started = False
         self._started_at = None
@@ -95,7 +99,9 @@ class AssetAnalytic(AnalyticInterface):
         self._snapshot = SnapshotModel(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
+            portfolio_id=self._portfolio_id,
             strategy_id=self._asset_id,
+            asset_id=self._asset_id,
             nav=self._allocation,
             allocation=self._allocation,
             nav_peak=self._allocation,
@@ -155,13 +161,15 @@ class AssetAnalytic(AnalyticInterface):
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
 
-        if not self._backtest or self._commands_queue is None:
+        if self._tick is None:
             return
 
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
         snapshot_data = self._snapshot.to_dict()
+        snapshot_data["created_at"] = int(self._tick.date.timestamp())
         provider = HorizonRouterProvider()
 
+        assert self._commands_queue is not None
         self._commands_queue.put(
             {
                 "command": Command.EXECUTE,
