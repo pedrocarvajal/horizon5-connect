@@ -1,9 +1,6 @@
 """Low-risk portfolio configuration with conservative asset allocation."""
 
-from assets.bnbusdt import Asset as BNBUSDTAsset
 from assets.btcusdt import Asset as BTCUSDTAsset
-from assets.ethusdt import Asset as ETHUSDTAsset
-from assets.solusdt import Asset as SOLUSDTAsset
 from enums.asset_quality_method import AssetQualityMethod
 from services.portfolio import PortfolioService
 
@@ -23,8 +20,5 @@ class Portfolio(PortfolioService):
     def setup_assets(self) -> None:
         """Configure the portfolio assets for low-risk trading."""
         self._assets = [
-            (BNBUSDTAsset, 250000.0),
-            (BTCUSDTAsset, 250000.0),
-            (ETHUSDTAsset, 250000.0),
-            (SOLUSDTAsset, 250000.0),
+            (BTCUSDTAsset, 1000000.0),
         ]

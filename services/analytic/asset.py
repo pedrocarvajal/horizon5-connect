@@ -176,6 +176,7 @@ class AssetAnalytic(AnalyticInterface):
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
         snapshot_data = self._snapshot.to_dict()
         snapshot_data["created_at"] = int(self._tick.date.timestamp())
+
         provider = HorizonRouterProvider()
 
         assert self._commands_queue is not None

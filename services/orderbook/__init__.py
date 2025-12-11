@@ -185,6 +185,9 @@ class OrderbookService(OrderbookInterface):
             self._log.error("Tick must be set before closing orders.")
             return
 
+        if order.status.is_closed():
+            return
+
         if order.executed_volume == 0:
             self._log.info(f"Order {order.id} not executed, cancelling instead of closing")
             self.cancel(order)

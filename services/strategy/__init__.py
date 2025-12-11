@@ -289,6 +289,8 @@ class StrategyService(StrategyInterface):
         assert self._asset is not None
         assert self._commands_queue is not None
         assert self._events_queue is not None
+
+        self._id = f"{self._asset.symbol}-{self._id}"
         assert not self._backtest or self._backtest_id is not None
 
         self._orderbook = OrderbookService(
