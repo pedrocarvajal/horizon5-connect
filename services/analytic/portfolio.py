@@ -12,6 +12,14 @@ from interfaces.analytic import AnalyticInterface
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
 from providers.horizon_router import HorizonRouterProvider
+from services.analytic.helpers.get_cagr import get_cagr
+from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
+from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
+from services.analytic.helpers.get_r2 import get_r2
+from services.analytic.helpers.get_recovery_factor import get_recovery_factor
+from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
+from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
+from services.analytic.helpers.get_ulcer_index import get_ulcer_index
 from services.logging import LoggingService
 
 if TYPE_CHECKING:
@@ -154,6 +162,7 @@ class PortfolioAnalytic(AnalyticInterface):
         self._refresh()
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
+        self._perform_calculations()
 
         if self._tick is None:
             return
@@ -224,6 +233,52 @@ class PortfolioAnalytic(AnalyticInterface):
         if total_allocation > 0:
             return round(weighted_quality_sum / total_allocation, 4)
         return 0.0
+
+    def _get_elapsed_days(self) -> int:
+        """Calculate number of days elapsed since tracking started."""
+        if self._tick is None or self._started_at is None:
+            return 0
+        return (self._tick.date - self._started_at).days
+
+    def _perform_calculations(self) -> None:
+        """Calculate all financial metrics from aggregated history."""
+        snapshot = self._snapshot
+        allocation = snapshot.allocation
+        nav = snapshot.nav
+        elapsed_days = self._get_elapsed_days()
+        performance_history = snapshot.performance_history
+        nav_history = snapshot.nav_history
+        max_drawdown = snapshot.max_drawdown
+
+        snapshot.r2 = get_r2(performance_history)
+        snapshot.cagr = get_cagr(allocation, nav, elapsed_days)
+        snapshot.calmar_ratio = get_calmar_ratio(snapshot.cagr, max_drawdown)
+        snapshot.expected_shortfall = get_expected_shortfall(nav_history)
+        snapshot.recovery_factor = get_recovery_factor(snapshot.performance_percentage, max_drawdown)
+        snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
+        snapshot.sortino_ratio = get_sortino_ratio(nav_history)
+        snapshot.ulcer_index = get_ulcer_index(nav_history)
+
+        total_allocation = 0.0
+        weighted_profit_factor = 0.0
+        weighted_win_ratio = 0.0
+        weighted_avg_trade_duration = 0.0
+
+        for asset in self._assets:
+            for strategy in asset.strategies:
+                strategy_allocation = strategy.allocation
+                strategy_snapshot = strategy.analytic.snapshot
+
+                if strategy_allocation > 0:
+                    weighted_profit_factor += strategy_snapshot.profit_factor * strategy_allocation
+                    weighted_win_ratio += strategy_snapshot.win_ratio * strategy_allocation
+                    weighted_avg_trade_duration += strategy_snapshot.average_trade_duration * strategy_allocation
+                    total_allocation += strategy_allocation
+
+        if total_allocation > 0:
+            snapshot.profit_factor = weighted_profit_factor / total_allocation
+            snapshot.win_ratio = weighted_win_ratio / total_allocation
+            snapshot.average_trade_duration = weighted_avg_trade_duration / total_allocation
 
     def _refresh(self) -> None:
         """Refresh snapshot by aggregating NAV from all strategies in all assets."""
