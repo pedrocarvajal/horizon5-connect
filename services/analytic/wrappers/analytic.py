@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from abc import abstractmethod
 from multiprocessing import Queue
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from enums.command import Command
 from enums.snapshot_event import SnapshotEvent
@@ -13,15 +13,22 @@ from interfaces.analytic import AnalyticInterface
 from models.snapshot import SnapshotModel
 from models.tick import TickModel
 from providers.horizon_router import HorizonRouterProvider
+from services.analytic.helpers.get_alpha import get_alpha
+from services.analytic.helpers.get_beta import get_beta
 from services.analytic.helpers.get_cagr import get_cagr
 from services.analytic.helpers.get_calmar_ratio import get_calmar_ratio
+from services.analytic.helpers.get_correlation import get_correlation
 from services.analytic.helpers.get_expected_shortfall import get_expected_shortfall
+from services.analytic.helpers.get_information_ratio import get_information_ratio
 from services.analytic.helpers.get_r2 import get_r2
 from services.analytic.helpers.get_recovery_factor import get_recovery_factor
 from services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
 from services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
+from services.analytic.helpers.get_tracking_error import get_tracking_error
 from services.analytic.helpers.get_ulcer_index import get_ulcer_index
 from services.logging import LoggingService
+
+MIN_OBSERVATIONS_FOR_BENCHMARK = 2
 
 
 class AnalyticWrapper(AnalyticInterface):
@@ -62,6 +69,10 @@ class AnalyticWrapper(AnalyticInterface):
         self._refresh()
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
+
+        if self._tick is not None:
+            self._snapshot.benchmark_price_history.append(self._tick.price)
+
         self._perform_calculations()
         self._calculate_daily_performance()
 
@@ -100,6 +111,10 @@ class AnalyticWrapper(AnalyticInterface):
         if not self._started:
             self._started = True
             self._started_at = self._tick.date
+            self._snapshot.benchmark_initial_price = tick.price
+            self._snapshot.benchmark_current_price = tick.price
+        else:
+            self._snapshot.benchmark_current_price = tick.price
 
     def _calculate_daily_performance(self) -> None:
         """Calculate daily performance metrics and update snapshot."""
@@ -146,6 +161,63 @@ class AnalyticWrapper(AnalyticInterface):
         snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
         snapshot.sortino_ratio = get_sortino_ratio(nav_history)
         snapshot.ulcer_index = get_ulcer_index(nav_history)
+
+        self._perform_benchmark_calculations()
+
+    def _perform_benchmark_calculations(self) -> None:
+        """Calculate benchmark comparison metrics.
+
+        Updates alpha, beta, correlation, tracking_error, and information_ratio
+        on the snapshot using strategy NAV history vs benchmark price history.
+        """
+        snapshot = self._snapshot
+        nav_history = snapshot.nav_history
+        benchmark_price_history = snapshot.benchmark_price_history
+        allocation = snapshot.allocation
+
+        min_observations = MIN_OBSERVATIONS_FOR_BENCHMARK
+
+        if len(nav_history) < min_observations or len(benchmark_price_history) < min_observations:
+            return
+
+        if snapshot.benchmark_initial_price == 0:
+            return
+
+        strategy_returns: List[float] = []
+        benchmark_returns: List[float] = []
+
+        previous_nav = allocation
+        previous_benchmark_price = snapshot.benchmark_initial_price
+
+        min_length = min(len(nav_history), len(benchmark_price_history))
+
+        for i in range(min_length):
+            current_nav = nav_history[i]
+            current_benchmark_price = benchmark_price_history[i]
+
+            if previous_nav > 0:
+                strategy_return = (current_nav - previous_nav) / previous_nav
+                strategy_returns.append(strategy_return)
+
+            if previous_benchmark_price > 0:
+                benchmark_return = (current_benchmark_price - previous_benchmark_price) / previous_benchmark_price
+                benchmark_returns.append(benchmark_return)
+
+            previous_nav = current_nav
+            previous_benchmark_price = current_benchmark_price
+
+        if len(strategy_returns) < min_observations or len(benchmark_returns) < min_observations:
+            return
+
+        min_returns_length = min(len(strategy_returns), len(benchmark_returns))
+        strategy_returns = strategy_returns[:min_returns_length]
+        benchmark_returns = benchmark_returns[:min_returns_length]
+
+        snapshot.beta = get_beta(strategy_returns, benchmark_returns)
+        snapshot.correlation = get_correlation(strategy_returns, benchmark_returns)
+        snapshot.tracking_error = get_tracking_error(strategy_returns, benchmark_returns)
+        snapshot.alpha = get_alpha(strategy_returns, benchmark_returns, snapshot.beta)
+        snapshot.information_ratio = get_information_ratio(snapshot.alpha, snapshot.tracking_error)
 
     @abstractmethod
     def _perform_calculations(self) -> None:

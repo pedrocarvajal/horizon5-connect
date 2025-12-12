@@ -12,38 +12,43 @@ from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
 from services.candle import CandleService
-from services.logging import LoggingService
 from services.strategy import StrategyService
+from strategies.ema5_breakout.enums import OrderOpeningMode
 
 
 class EMA5BreakoutStrategy(StrategyService):
-    """Trading strategy based on EMA5 breakout above previous day's maximum.
+    """Trading strategy based on EMA5 breakout with MA200 trend filter.
 
     Entry Rules:
-    - Opens BUY order when current EMA5 breaks above previous day's EMA5 max
-    - Only executes in live mode
+    - EMA5 crosses above previous day's EMA5 maximum
+    - Price above MA200 (trend filter)
+    - Configurable order opening modes (ONE_AT_A_TIME, ONE_PER_DAY, ONE_PER_WEEK)
+    - Only BUY orders (long-only strategy)
 
     Exit Rules:
-    - Take profit: Configurable % above entry (default: 3%)
-    - Stop loss: Configurable % below entry (default: 15%)
-    - Recovery mechanism with multiple attempts if initial trades fail
+    - Initial stop loss: percentage-based below entry
+    - Trailing stop: activated after price reaches activation threshold
+    - Trailing exit level: follows EMA5 upward, closes when price crosses below
 
     Attributes:
         _enabled: Strategy activation flag.
         _name: Strategy identifier.
         _settings: Configuration parameters.
         _backtest_expectation: Expected thresholds for quality calculation.
+        _candles: Candle services for the trading timeframe.
         _previous_day_ema5_max: Maximum EMA5 value from previous day.
-        _candles: Candle services for different timeframes.
     """
 
+    _MIN_CANDLES_REQUIRED: int = 2
+    _MIN_CANDLES_FOR_PREVIOUS_DAY: int = 24
+
     _SETTINGS: ClassVar[Dict[str, Any]] = {
-        "main_volume_percentage": 0.10,
-        "main_take_profit_percentage": 0.03,
-        "main_stop_loss_percentage": 0.15,
-        "recovery_maximum_number_of_openings": 10,
-        "recovery_take_profit_percentage": 0.03,
-        "recovery_stop_loss_percentage": 0.15,
+        "order_opening_mode": OrderOpeningMode.ONE_AT_A_TIME,
+        "volume_percentage": 0.10,
+        "ema_period": 5,
+        "ma_trend_period": 200,
+        "stop_loss_percentage": 0.15,
+        "trailing_activation_percentage": 0.03,
     }
 
     _enabled = False
@@ -55,16 +60,14 @@ class EMA5BreakoutStrategy(StrategyService):
 
         Args:
             **kwargs: Keyword arguments including optional 'settings' dict with:
-                - main_volume_percentage: Order size as % of NAV (default: 0.10)
-                - main_take_profit_percentage: TP % above entry (default: 0.03)
-                - main_stop_loss_percentage: SL % below entry (default: 0.15)
-                - recovery_maximum_number_of_openings: Max recovery attempts (default: 10)
-                - recovery_take_profit_percentage: Recovery TP % (default: 0.03)
-                - recovery_stop_loss_percentage: Recovery SL % (default: 0.15)
+                - order_opening_mode: Order opening mode (default: ONE_AT_A_TIME)
+                - volume_percentage: Order size as % of NAV (default: 0.10)
+                - ema_period: EMA period for entry signal (default: 5)
+                - ma_trend_period: MA period for trend filter (default: 200)
+                - stop_loss_percentage: Stop loss as % below entry (default: 0.15)
+                - trailing_activation_percentage: % gain to activate trailing (default: 0.03)
         """
         super().__init__(**kwargs)
-
-        self._log = LoggingService()
 
         self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
@@ -78,15 +81,24 @@ class EMA5BreakoutStrategy(StrategyService):
         self._settings = {**self._SETTINGS, **settings}
         self._previous_day_ema5_max: Optional[float] = None
 
+        ema_period = self._settings.get("ema_period", 5)
+        ma_trend_period = self._settings.get("ma_trend_period", 200)
+
         self._candles = {
             Timeframe.ONE_HOUR: CandleService(
                 timeframe=Timeframe.ONE_HOUR,
                 indicators=[
                     MAIndicator(
-                        key="ema5",
-                        period=5,
+                        key="ema",
+                        period=ema_period,
                         price_to_use="close_price",
                         is_exponential=True,
+                    ),
+                    MAIndicator(
+                        key="ma_trend",
+                        period=ma_trend_period,
+                        price_to_use="close_price",
+                        is_exponential=False,
                     ),
                 ],
             )
@@ -102,8 +114,9 @@ class EMA5BreakoutStrategy(StrategyService):
         self._tick = tick
 
     def on_new_hour(self) -> None:
-        """Handle new hour event by checking entry conditions for breakout."""
+        """Handle new hour event by checking trailing exit and entry conditions."""
         super().on_new_hour()
+        self._check_trailing_exit()
         self._check_entry_conditions()
 
     def on_new_day(self) -> None:
@@ -124,119 +137,151 @@ class EMA5BreakoutStrategy(StrategyService):
             self._log.info(f"Order: {order.id}, was opened.")
 
         if order.status.is_closed():
-            max_layers = self._settings.get("recovery_maximum_number_of_openings", 0)
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
             self._log.info(f"Order: {order.id}, was closed, with profit: {profit:.2f} ({profit_percentage:.2f}%).")
 
-            if profit_percentage < 0 and max_layers > 0:
-                self._open_recovery_order(closed_order=order)
+    def _can_open_new_order(self) -> bool:
+        """Check if a new order can be opened based on configured mode.
 
-    def _open_recovery_order(self, closed_order: OrderModel) -> None:
+        Returns:
+            True if order can be opened according to mode constraints.
+        """
+        assert self._tick is not None
+        order_opening_mode = self._settings.get("order_opening_mode", OrderOpeningMode.ONE_AT_A_TIME)
+
+        if order_opening_mode == OrderOpeningMode.ONE_AT_A_TIME:
+            return len(self.orderbook.where(side=OrderSide.BUY, status=OrderStatus.OPEN)) == 0
+
+        if order_opening_mode == OrderOpeningMode.ONE_PER_DAY:
+            today = self._tick.date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            for order in self.orderbook.where(side=OrderSide.BUY):
+                if order.created_at and order.created_at >= today:
+                    return False
+
+            return True
+
+        if order_opening_mode == OrderOpeningMode.ONE_PER_WEEK:
+            current_date = self._tick.date.replace(hour=0, minute=0, second=0, microsecond=0)
+            days_since_monday = current_date.weekday()
+            week_start = current_date - datetime.timedelta(days=days_since_monday)
+
+            for order in self.orderbook.where(side=OrderSide.BUY):
+                if order.created_at and order.created_at >= week_start:
+                    return False
+
+            return True
+
+        return True
+
+    def _check_trailing_exit(self) -> None:
+        """Check and update trailing stop for open orders."""
         assert self._tick is not None
 
-        max_layers = self._settings.get("recovery_maximum_number_of_openings", 0)
-        layer = closed_order.variables.get("layer", 0)
-        next_layer = layer + 1
-        current_price = self._tick.price
-        losses = abs(closed_order.profit)
-        take_profit_percentage = self._settings.get("recovery_take_profit_percentage", 0.03)
-        take_profit_price = current_price + (current_price * take_profit_percentage)
-        stop_loss_percentage = self._settings.get("recovery_stop_loss_percentage", 0.15)
-        stop_loss_price = current_price - (current_price * stop_loss_percentage)
-
-        volume = self._calculate_volume_based_on_target_price(
-            losses=losses,
-            entry_price=self._tick.price,
-            take_profit_price=take_profit_price,
-        )
-
-        if next_layer > max_layers:
-            self._log.warning(f"Maximum number of layers reached: {max_layers}")
+        open_orders = self.orderbook.where(side=OrderSide.BUY, status=OrderStatus.OPEN)
+        if len(open_orders) == 0:
             return
 
-        self.open_order(
-            OrderSide.BUY,
-            current_price,
-            take_profit_price,
-            stop_loss_price,
-            volume,
-            variables={
-                "layer": next_layer,
-            },
-        )
+        candle_service = self._candles[Timeframe.ONE_HOUR]
+        assert isinstance(candle_service, CandleService)
+        candles = candle_service.candles
+
+        if len(candles) < self._MIN_CANDLES_REQUIRED:
+            return
+
+        if "ema" not in candles[-1].indicators:
+            return
+
+        current_price = self._tick.price
+        current_ema = candles[-1].indicators["ema"]["value"]
+        activation_percentage = self._settings.get("trailing_activation_percentage", 0.03)
+
+        for order in open_orders:
+            activation_price = order.price + (order.price * activation_percentage)
+            trailing_active = order.variables.get("trailing_active", False)
+            trailing_exit_level = order.variables.get("trailing_exit_level", 0.0)
+
+            if not trailing_active and current_price >= activation_price:
+                order.variables["trailing_active"] = True
+                order.variables["trailing_exit_level"] = current_ema
+                self._log.info(
+                    f"Trailing activated: order={order.id}, price={current_price:.2f}, EMA={current_ema:.2f}"
+                )
+                continue
+
+            if trailing_active:
+                if current_ema > trailing_exit_level:
+                    order.variables["trailing_exit_level"] = current_ema
+                    self._log.info(f"Trailing updated: order={order.id}, EMA={current_ema:.2f}")
+                elif current_price <= trailing_exit_level:
+                    self._log.info(
+                        f"Trailing exit: order={order.id}, price={current_price:.2f}, level={trailing_exit_level:.2f}"
+                    )
+                    self.orderbook.close(order)
 
     def _check_entry_conditions(self) -> None:
+        """Check entry conditions and open order if all conditions are met."""
         assert self._tick is not None
 
         if not self._previous_day_ema5_max:
             return
 
-        if len(self.orderbook.where(side=OrderSide.BUY, status=OrderStatus.OPEN)) > 0:
+        if not self._can_open_new_order():
             return
 
         current_price = self._tick.price
         candle_service = self._candles[Timeframe.ONE_HOUR]
         assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
-        current_ema5 = candles[-1].indicators["ema5"]["value"]
-        previous_ema5 = candles[-2].indicators["ema5"]["value"]
+        current_ema = candles[-1].indicators["ema"]["value"]
+        previous_ema = candles[-2].indicators["ema"]["value"]
 
-        if previous_ema5 < self._previous_day_ema5_max and current_ema5 > self._previous_day_ema5_max:
-            take_profit_percentage = self._settings.get("main_take_profit_percentage", 0.03)
-            stop_loss_percentage = self._settings.get("main_stop_loss_percentage", 0.15)
-            take_profit_price = current_price + (current_price * take_profit_percentage)
+        if "ma_trend" not in candles[-1].indicators:
+            return
+
+        current_ma_trend = candles[-1].indicators["ma_trend"]["value"]
+
+        if current_price <= current_ma_trend:
+            return
+
+        if previous_ema < self._previous_day_ema5_max and current_ema > self._previous_day_ema5_max:
+            stop_loss_percentage = self._settings.get("stop_loss_percentage", 0.15)
             stop_loss_price = current_price - (current_price * stop_loss_percentage)
 
-            if self.is_live:
-                self._log.info(
-                    (
-                        f"Breakout: {self._tick.date} | "
-                        f"Opening price: {self._tick.price} | "
-                        f"Previous day EMA5 max: {self._previous_day_ema5_max}"
-                    ),
-                )
-
-            volume_percentage = self._settings.get("main_volume_percentage", 0.0)
-            volume = self.nav / self._tick.price
-            volume = volume * volume_percentage
+            volume_percentage = self._settings.get("volume_percentage", 0.10)
+            volume = (self.nav / current_price) * volume_percentage
 
             self.open_order(
                 OrderSide.BUY,
-                self._tick.price,
-                take_profit_price,
+                current_price,
+                0.0,
                 stop_loss_price,
                 volume,
-                variables={
-                    "layer": 0,
-                },
             )
 
     def _calculate_previous_day_ema5_max(self, tick: TickModel) -> None:
-        min_candles_required = 24
+        """Calculate maximum EMA5 value from previous day.
+
+        Args:
+            tick: Current market tick for date reference.
+        """
         today = tick.date.replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday = today - datetime.timedelta(days=1)
         candle_service = self._candles[Timeframe.ONE_HOUR]
         assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
-        ema5s = [candle.indicators["ema5"] for candle in candles[-min_candles_required:] if "ema5" in candle.indicators]
+        emas = [
+            candle.indicators["ema"]
+            for candle in candles[-self._MIN_CANDLES_FOR_PREVIOUS_DAY :]
+            if "ema" in candle.indicators
+        ]
 
-        if len(ema5s) < min_candles_required:
-            self._log.warning(f"Not enough EMA5 values ({len(ema5s)}) to calculate.")
+        if len(emas) < self._MIN_CANDLES_FOR_PREVIOUS_DAY:
+            self._log.warning(f"Not enough EMA values ({len(emas)}) to calculate.")
             return
 
         self._previous_day_ema5_max = max(
-            [ema5.get("value") for ema5 in ema5s if ema5.get("date") >= yesterday and ema5.get("date") < today]
+            [ema.get("value") for ema in emas if ema.get("date") >= yesterday and ema.get("date") < today]
         )
-
-    def _calculate_volume_based_on_target_price(
-        self,
-        losses: float,
-        entry_price: float,
-        take_profit_price: float,
-    ) -> float:
-        if take_profit_price <= entry_price:
-            return 0.0
-
-        return losses / (take_profit_price - entry_price)

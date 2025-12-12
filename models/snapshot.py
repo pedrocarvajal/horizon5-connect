@@ -57,9 +57,18 @@ class SnapshotModel(BaseModel):
     daily_performance_percentage: float = Field(default=0)
     quality: float = Field(default=0, ge=0, le=1)
 
+    benchmark_initial_price: float = Field(default=0, ge=0)
+    benchmark_current_price: float = Field(default=0, ge=0)
+    alpha: float = Field(default=0)
+    beta: float = Field(default=0)
+    correlation: float = Field(default=0, ge=-1, le=1)
+    tracking_error: float = Field(default=0, ge=0)
+    information_ratio: float = Field(default=0)
+
     performance_history: List[float] = Field(default_factory=lambda: [])
     nav_history: List[float] = Field(default_factory=lambda: [])
     profit_history: List[float] = Field(default_factory=lambda: [])
+    benchmark_price_history: List[float] = Field(default_factory=lambda: [])
 
     created_at: Optional[datetime.datetime] = None
 
@@ -106,6 +115,13 @@ class SnapshotModel(BaseModel):
                 "average_trade_duration": self.average_trade_duration,
                 "daily_performance": self.daily_performance,
                 "daily_performance_percentage": self.daily_performance_percentage,
+                "benchmark_performance": self.benchmark_performance,
+                "benchmark_performance_percentage": self.benchmark_performance_percentage,
+                "alpha": self.alpha,
+                "beta": self.beta,
+                "correlation": self.correlation,
+                "tracking_error": self.tracking_error,
+                "information_ratio": self.information_ratio,
             },
         }
 
@@ -152,3 +168,24 @@ class SnapshotModel(BaseModel):
             return 0.0
 
         return (self.nav - self.nav_peak) / self.nav_peak
+
+    @property
+    def benchmark_performance(self) -> float:
+        """Calculate absolute benchmark performance from initial price.
+
+        Returns:
+            Benchmark performance in currency units.
+        """
+        return self.benchmark_current_price - self.benchmark_initial_price
+
+    @property
+    def benchmark_performance_percentage(self) -> float:
+        """Calculate benchmark performance as percentage.
+
+        Returns:
+            Benchmark performance percentage (0.0 if initial price is 0).
+        """
+        if self.benchmark_initial_price == 0:
+            return 0.0
+
+        return self.benchmark_performance / self.benchmark_initial_price

@@ -154,6 +154,8 @@ class StrategyAnalytic(AnalyticWrapper):
             "num_trades": self._closed_orders,
             "quality": quality_score,
             "quality_method": quality_method_name,
+            "benchmark_initial_price": self._snapshot.benchmark_initial_price,
+            "benchmark_final_price": self._snapshot.benchmark_current_price,
         }
 
         return report

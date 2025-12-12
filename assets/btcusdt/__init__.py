@@ -8,6 +8,7 @@ from services.asset import AssetService
 from services.logging import LoggingService
 from strategies.donchian_breakout import DonchianBreakoutStrategy
 from strategies.ema5_breakout import EMA5BreakoutStrategy
+from strategies.ema5_breakout.enums import OrderOpeningMode
 from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
 
 
@@ -35,10 +36,10 @@ class Asset(AssetService):
             DonchianBreakoutStrategy(
                 id="donchian_breakout",
                 allocation=allocations.get("donchian_breakout", 0.0),
-                leverage=3,
-                enabled=False,
+                leverage=10,
+                enabled=True,
                 settings={
-                    "volume_percentage": 0.60,
+                    "volume_percentage": 1,
                     "sma_period": 200,
                     "donchian_entry_period": 20,
                     "donchian_exit_period": 20,
@@ -54,10 +55,10 @@ class Asset(AssetService):
             RSIBollingerBreakoutStrategy(
                 id="rsi_bollinger_breakout",
                 allocation=allocations.get("rsi_bollinger_breakout", 0.0),
-                leverage=3,
-                enabled=False,
+                leverage=10,
+                enabled=True,
                 settings={
-                    "volume_percentage": 0.75,
+                    "volume_percentage": 1,
                     "rsi_period": 10,
                     "adx_period": 14,
                     "ema_period": 150,
@@ -72,21 +73,21 @@ class Asset(AssetService):
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
                 allocation=allocations.get("ema5_breakout", 0.0),
-                leverage=100,
+                leverage=10,
                 enabled=True,
                 settings={
-                    "main_volume_percentage": 0.05,
-                    "main_take_profit_percentage": 0.03,
-                    "main_stop_loss_percentage": 0.15,
-                    "recovery_maximum_number_of_openings": 5,
-                    "recovery_take_profit_percentage": 0.03,
-                    "recovery_stop_loss_percentage": 0.15,
+                    "order_opening_mode": OrderOpeningMode.ONE_PER_DAY,
+                    "volume_percentage": 0.05,
+                    "ema_period": 6,
+                    "ma_trend_period": 200,
+                    "stop_loss_percentage": 1000,
+                    "trailing_activation_percentage": 0.03,
                 },
             ),
         ]
 
     def _get_allocation_by_strategy(self) -> Dict[str, float]:
-        enabled_strategies: int = 1
+        enabled_strategies: int = 3
 
         return {
             "donchian_breakout": self.allocation / enabled_strategies,

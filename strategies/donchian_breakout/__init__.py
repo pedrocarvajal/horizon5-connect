@@ -14,7 +14,6 @@ from models.backtest_expectation import BacktestExpectationModel
 from models.order import OrderModel
 from models.tick import TickModel
 from services.candle import CandleService
-from services.logging import LoggingService
 from services.strategy import StrategyService
 
 
@@ -69,8 +68,6 @@ class DonchianBreakoutStrategy(StrategyService):
                 - dynamic_atr: Use current ATR vs entry ATR (default: False)
         """
         super().__init__(**kwargs)
-
-        self._log = LoggingService()
 
         self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(

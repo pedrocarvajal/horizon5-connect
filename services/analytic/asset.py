@@ -128,6 +128,13 @@ class AssetAnalytic(AnalyticWrapper):
             "max_drawdown": self._snapshot.max_drawdown,
             "quality": quality_score,
             "quality_method": "weighted_average",
+            "benchmark_performance": self._snapshot.benchmark_performance,
+            "benchmark_performance_percentage": self._snapshot.benchmark_performance_percentage,
+            "alpha": self._snapshot.alpha,
+            "beta": self._snapshot.beta,
+            "correlation": self._snapshot.correlation,
+            "tracking_error": self._snapshot.tracking_error,
+            "information_ratio": self._snapshot.information_ratio,
             "strategies": strategies_reports,
         }
 

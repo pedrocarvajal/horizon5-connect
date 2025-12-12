@@ -134,6 +134,12 @@ class StrategyService(StrategyInterface):
         """
         assert self._orderbook is not None
         assert self._analytic is not None
+        assert self._tick is not None
+        assert self._asset is not None
+
+        date_str = self._tick.date.strftime("%Y-%m-%d")
+        self._log.setup_prefix(f"({date_str})[{self._asset.symbol}|{self._name}]")
+
         self._orderbook.clean()
         self._analytic.on_new_day()
 
