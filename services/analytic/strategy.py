@@ -145,6 +145,7 @@ class StrategyAnalytic(AnalyticWrapper):
         days_elapsed = (self._ended_at - self._started_at).days
         quality_score, quality_method_name = self._calculate_quality()
         self._snapshot.quality = quality_score
+        self._snapshot.days_elapsed = days_elapsed
 
         report: Dict[str, Any] = {
             **self._snapshot.to_dict(),

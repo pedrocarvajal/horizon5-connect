@@ -56,6 +56,7 @@ class SnapshotModel(BaseModel):
     daily_performance: float = Field(default=0)
     daily_performance_percentage: float = Field(default=0)
     quality: float = Field(default=0, ge=0, le=1)
+    days_elapsed: int = Field(default=0, ge=0)
 
     benchmark_initial_price: float = Field(default=0, ge=0)
     benchmark_current_price: float = Field(default=0, ge=0)
@@ -115,6 +116,8 @@ class SnapshotModel(BaseModel):
                 "average_trade_duration": self.average_trade_duration,
                 "daily_performance": self.daily_performance,
                 "daily_performance_percentage": self.daily_performance_percentage,
+                "quality": self.quality,
+                "days_elapsed": self.days_elapsed,
                 "benchmark_performance": self.benchmark_performance,
                 "benchmark_performance_percentage": self.benchmark_performance_percentage,
                 "alpha": self.alpha,
