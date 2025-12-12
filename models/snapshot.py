@@ -49,6 +49,9 @@ class SnapshotModel(BaseModel):
     sortino_ratio: float = Field(default=0)
     ulcer_index: float = Field(default=0, ge=0)
     win_ratio: float = Field(default=0, ge=0, le=1)
+    total_orders: int = Field(default=0, ge=0)
+    total_buy_orders: int = Field(default=0, ge=0)
+    total_sell_orders: int = Field(default=0, ge=0)
     average_trade_duration: float = Field(default=0, ge=0)
     daily_performance: float = Field(default=0)
     daily_performance_percentage: float = Field(default=0)
@@ -97,6 +100,9 @@ class SnapshotModel(BaseModel):
                 "sortino_ratio": self.sortino_ratio,
                 "ulcer_index": self.ulcer_index,
                 "win_ratio": self.win_ratio,
+                "total_orders": self.total_orders,
+                "total_buy_orders": self.total_buy_orders,
+                "total_sell_orders": self.total_sell_orders,
                 "average_trade_duration": self.average_trade_duration,
                 "daily_performance": self.daily_performance,
                 "daily_performance_percentage": self.daily_performance_percentage,

@@ -7,6 +7,7 @@ from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
 from services.logging import LoggingService
 from strategies.donchian_breakout import DonchianBreakoutStrategy
+from strategies.ema5_breakout import EMA5BreakoutStrategy
 from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
 
 
@@ -35,7 +36,7 @@ class Asset(AssetService):
                 id="donchian_breakout",
                 allocation=allocations.get("donchian_breakout", 0.0),
                 leverage=3,
-                enabled=True,
+                enabled=False,
                 settings={
                     "volume_percentage": 0.60,
                     "sma_period": 200,
@@ -54,7 +55,7 @@ class Asset(AssetService):
                 id="rsi_bollinger_breakout",
                 allocation=allocations.get("rsi_bollinger_breakout", 0.0),
                 leverage=3,
-                enabled=True,
+                enabled=False,
                 settings={
                     "volume_percentage": 0.75,
                     "rsi_period": 10,
@@ -68,10 +69,27 @@ class Asset(AssetService):
                     "stop_loss_atr_multiplier": 2.0,
                 },
             ),
+            EMA5BreakoutStrategy(
+                id="ema5_breakout",
+                allocation=allocations.get("ema5_breakout", 0.0),
+                leverage=100,
+                enabled=True,
+                settings={
+                    "main_volume_percentage": 0.05,
+                    "main_take_profit_percentage": 0.03,
+                    "main_stop_loss_percentage": 0.15,
+                    "recovery_maximum_number_of_openings": 5,
+                    "recovery_take_profit_percentage": 0.03,
+                    "recovery_stop_loss_percentage": 0.15,
+                },
+            ),
         ]
 
     def _get_allocation_by_strategy(self) -> Dict[str, float]:
+        enabled_strategies: int = 1
+
         return {
-            "donchian_breakout": 500000,
-            "rsi_bollinger_breakout": 500000,
+            "donchian_breakout": self.allocation / enabled_strategies,
+            "rsi_bollinger_breakout": self.allocation / enabled_strategies,
+            "ema5_breakout": self.allocation / enabled_strategies,
         }

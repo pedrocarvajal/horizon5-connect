@@ -166,6 +166,9 @@ class AssetAnalytic(AnalyticWrapper):
         weighted_profit_factor = 0.0
         weighted_win_ratio = 0.0
         weighted_avg_trade_duration = 0.0
+        total_orders = 0
+        total_buy_orders = 0
+        total_sell_orders = 0
 
         for strategy in self._strategies:
             strategy_allocation = strategy.allocation
@@ -177,10 +180,18 @@ class AssetAnalytic(AnalyticWrapper):
                 weighted_avg_trade_duration += strategy_snapshot.average_trade_duration * strategy_allocation
                 total_allocation += strategy_allocation
 
+            total_orders += strategy_snapshot.total_orders
+            total_buy_orders += strategy_snapshot.total_buy_orders
+            total_sell_orders += strategy_snapshot.total_sell_orders
+
         if total_allocation > 0:
             self._snapshot.profit_factor = weighted_profit_factor / total_allocation
             self._snapshot.win_ratio = weighted_win_ratio / total_allocation
             self._snapshot.average_trade_duration = weighted_avg_trade_duration / total_allocation
+
+        self._snapshot.total_orders = total_orders
+        self._snapshot.total_buy_orders = total_buy_orders
+        self._snapshot.total_sell_orders = total_sell_orders
 
     def _refresh(self) -> None:
         """Refresh snapshot by aggregating from child strategies."""

@@ -99,6 +99,8 @@ class StrategyAnalytic(AnalyticWrapper):
         self._started_at = None
         self._tick = None
         self._closed_orders = 0
+        self._buy_orders = 0
+        self._sell_orders = 0
         self._trade_durations = []
         self._previous_day_nav = self._orderbook.nav
 
@@ -179,6 +181,13 @@ class StrategyAnalytic(AnalyticWrapper):
             self._closed_orders += 1
             self._snapshot.profit_history.append(order.profit)
 
+            if order.side is not None:
+                if order.side.is_buy():
+                    self._buy_orders += 1
+
+                elif order.side.is_sell():
+                    self._sell_orders += 1
+
             if order.created_at is not None and order.updated_at is not None:
                 duration_seconds = (order.updated_at - order.created_at).total_seconds()
                 duration_minutes = duration_seconds / 60
@@ -222,6 +231,9 @@ class StrategyAnalytic(AnalyticWrapper):
 
         snapshot.profit_factor = get_profit_factor(profit_history)
         snapshot.win_ratio = get_win_ratio(profit_history)
+        snapshot.total_orders = self._closed_orders
+        snapshot.total_buy_orders = self._buy_orders
+        snapshot.total_sell_orders = self._sell_orders
         snapshot.average_trade_duration = get_average_trade_duration(self._trade_durations)
 
     def _refresh(self) -> None:
