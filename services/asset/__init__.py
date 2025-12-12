@@ -15,6 +15,8 @@ from services.analytic import AssetAnalytic
 from services.gateway import GatewayService
 from services.logging import LoggingService
 
+MAX_LEVERAGE: int = 1000
+
 
 class AssetService(AssetInterface):
     """Service managing strategies and gateway for a specific trading asset."""
@@ -28,6 +30,7 @@ class AssetService(AssetInterface):
     _gateway: GatewayInterface
     _gateway_name: str
     _is_historical_filling: bool
+    _leverage: int
     _name: str
     _portfolio: Optional[PortfolioInterface]
     _strategies: List[StrategyInterface]
@@ -37,17 +40,22 @@ class AssetService(AssetInterface):
     _analytic: AnalyticInterface
     _log: LoggingService
 
-    def __init__(self, allocation: float = 0.0, enabled: bool = True) -> None:
+    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 1) -> None:
         """Initialize the asset service with default configuration.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
             enabled: Whether this asset is enabled for execution.
+            leverage: Leverage multiplier for trading (default: 1).
         """
         self._log = LoggingService()
 
+        assert allocation >= 0, "Allocation must be >= 0"
+        assert 1 <= leverage < MAX_LEVERAGE, f"Leverage must be >= 1 and < {MAX_LEVERAGE}"
+
         self._allocation = allocation
         self._enabled = enabled
+        self._leverage = leverage
         self._strategies = []
         self._commands_queue = None
         self._events_queue = None
@@ -209,3 +217,8 @@ class AssetService(AssetInterface):
     def symbol(self) -> str:
         """Return the trading symbol."""
         return self._symbol
+
+    @property
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this asset."""
+        return self._leverage

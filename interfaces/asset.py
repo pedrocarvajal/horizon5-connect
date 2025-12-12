@@ -109,3 +109,9 @@ class AssetInterface(ABC):
     def symbol(self) -> str:
         """Return the trading symbol."""
         pass
+
+    @property
+    @abstractmethod
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this asset."""
+        pass

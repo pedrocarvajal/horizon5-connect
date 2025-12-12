@@ -297,6 +297,9 @@ class StrategyService(StrategyInterface):
         assert self._events_queue is not None
         assert not self._backtest or self._backtest_id is not None
 
+        if hasattr(self._asset, "leverage"):
+            self._leverage = self._asset.leverage
+
         self._orderbook = OrderbookService(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
@@ -402,3 +405,8 @@ class StrategyService(StrategyInterface):
         """Return all orders for this strategy."""
         assert self._orderbook is not None
         return self._orderbook.orders
+
+    @property
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this strategy."""
+        return self._leverage

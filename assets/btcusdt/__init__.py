@@ -1,11 +1,10 @@
 """BTCUSDT asset configuration for Binance exchange trading."""
 
-from typing import Dict, List
+from typing import List
 
 from enums.asset_quality_method import AssetQualityMethod
 from interfaces.strategy import StrategyInterface
 from services.asset import AssetService
-from services.logging import LoggingService
 from strategies.donchian_breakout import DonchianBreakoutStrategy
 from strategies.ema5_breakout import EMA5BreakoutStrategy
 from strategies.ema5_breakout.enums import OrderOpeningMode
@@ -20,23 +19,23 @@ class Asset(AssetService):
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
-    def __init__(self, allocation: float = 0.0) -> None:
+    def __init__(self, allocation: float = 0.0, leverage: int = 10) -> None:
         """Initialize BTCUSDT asset with trading strategies.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
+            leverage: Leverage multiplier for trading (default: 10).
         """
-        super().__init__(allocation=allocation)
+        super().__init__(allocation=allocation, leverage=leverage)
 
-        self._log = LoggingService()
+        self._setup_strategies()
+        self._setup_allocation()
 
-        allocations = self._get_allocation_by_strategy()
-
+    def _setup_strategies(self) -> None:
         self._strategies = [
             DonchianBreakoutStrategy(
                 id="donchian_breakout",
-                allocation=allocations.get("donchian_breakout", 0.0),
-                leverage=10,
+                allocation=0.0,
                 enabled=True,
                 settings={
                     "volume_percentage": 1,
@@ -54,8 +53,7 @@ class Asset(AssetService):
             ),
             RSIBollingerBreakoutStrategy(
                 id="rsi_bollinger_breakout",
-                allocation=allocations.get("rsi_bollinger_breakout", 0.0),
-                leverage=10,
+                allocation=0.0,
                 enabled=True,
                 settings={
                     "volume_percentage": 1,
@@ -72,8 +70,7 @@ class Asset(AssetService):
             ),
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
-                allocation=allocations.get("ema5_breakout", 0.0),
-                leverage=10,
+                allocation=0.0,
                 enabled=True,
                 settings={
                     "order_opening_mode": OrderOpeningMode.ONE_PER_DAY,
@@ -86,11 +83,9 @@ class Asset(AssetService):
             ),
         ]
 
-    def _get_allocation_by_strategy(self) -> Dict[str, float]:
-        enabled_strategies: int = 3
+    def _setup_allocation(self) -> None:
+        enabled_strategies = [s for s in self._strategies if s.enabled]
+        allocation_per_strategy = self.allocation / min(len(enabled_strategies), 1)
 
-        return {
-            "donchian_breakout": self.allocation / enabled_strategies,
-            "rsi_bollinger_breakout": self.allocation / enabled_strategies,
-            "ema5_breakout": self.allocation / enabled_strategies,
-        }
+        for strategy in enabled_strategies:
+            strategy.allocation = allocation_per_strategy

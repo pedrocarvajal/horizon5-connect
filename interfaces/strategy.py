@@ -155,3 +155,9 @@ class StrategyInterface(ABC):
         """Return the analytic service for this strategy."""
         assert self._analytic is not None
         return self._analytic
+
+    @property
+    @abstractmethod
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this strategy."""
+        pass

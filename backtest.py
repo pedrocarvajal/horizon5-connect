@@ -118,8 +118,8 @@ def create_backtest(
                 StrategySettingsModel(
                     id=strategy.id,
                     enabled=strategy.enabled,
-                    allocation=getattr(strategy, "_allocation", 0.0),
-                    leverage=getattr(strategy, "_leverage", 1),
+                    allocation=strategy.allocation,
+                    leverage=asset_instance.leverage,
                     settings=strategy_settings,
                 )
             )
