@@ -31,7 +31,7 @@ class TicksService(TicksInterface):
 
     _PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
     _SECONDS_PER_MINUTE: int = 60
-    _TIMELINE_START_DATE: datetime.datetime = datetime.datetime(2000, 6, 1, 0, 0, 0, tzinfo=TIMEZONE)
+    _TIMELINE_START_DATE: datetime.datetime = datetime.datetime(2018, 6, 1, 0, 0, 0, tzinfo=TIMEZONE)
 
     _asset: Optional[AssetInterface] = None
     _is_download_disabled: bool = False

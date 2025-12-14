@@ -3,13 +3,13 @@
 from collections.abc import Callable
 from datetime import datetime
 from time import sleep
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.services.gateway.gateways.metaapi.components.base import BaseComponent
 from vendor.services.gateway.models.gateway_kline import GatewayKlineModel
 
-TIMEFRAME_SECONDS = {
+TIMEFRAME_SECONDS: dict[str, int] = {
     "1m": 60,
     "5m": 300,
     "15m": 900,
@@ -28,6 +28,9 @@ class KlineComponent(BaseComponent):
 
     Retrieves historical candlestick data from MetaAPI for MetaTrader accounts.
     Handles pagination, data adaptation to internal models, and rate limiting.
+
+    Attributes:
+        Inherits _config and _log from BaseComponent.
     """
 
     def get_klines(
@@ -37,15 +40,16 @@ class KlineComponent(BaseComponent):
         from_date: Optional[int],
         to_date: Optional[int],
         *,
-        callback: Callable[[List[GatewayKlineModel]], None],
+        callback: Callable[[list[GatewayKlineModel]], None],
         limit: int = 1000,
     ) -> None:
         """
         Retrieve historical klines from MetaAPI.
 
         Fetches klines for the specified symbol and timeframe within the given
-        date range. Handles pagination automatically and delivers results via
-        callback as batches are retrieved.
+        date range. MetaAPI returns data in reverse chronological order, so this
+        method accumulates all data and delivers it in forward chronological order
+        (oldest to newest) to match the behavior of other gateways like Binance.
 
         Args:
             symbol: Trading symbol (e.g., "XAUUSD", "EURUSD").
@@ -55,7 +59,12 @@ class KlineComponent(BaseComponent):
             callback: Callback function that receives batches of klines.
             limit: Maximum klines per API request (default: 1000, max: 1000).
         """
-        if not self._validate_params(symbol, timeframe, from_date, to_date):
+        if not self._validate_get_klines_params(
+            symbol=symbol,
+            timeframe=timeframe,
+            from_date=from_date,
+            to_date=to_date,
+        ):
             callback([])
             return
 
@@ -64,7 +73,9 @@ class KlineComponent(BaseComponent):
             callback([])
             return
 
+        all_klines: list[GatewayKlineModel] = []
         current_end = self._to_iso_string(to_date)
+        total_range = to_date - from_date if from_date and to_date else 1
 
         while True:
             klines = self._fetch_klines_batch(
@@ -75,22 +86,43 @@ class KlineComponent(BaseComponent):
             )
 
             if not klines:
-                callback([])
                 break
 
-            filtered_klines = [kline for kline in klines if kline.open_time >= from_date]
-
-            if filtered_klines:
-                filtered_klines.sort(key=lambda k: k.open_time)
-                callback(filtered_klines)
-
+            filtered_klines = (
+                [kline for kline in klines if kline.open_time >= from_date] if from_date is not None else klines
+            )
+            all_klines.extend(filtered_klines)
             oldest_kline = min(klines, key=lambda k: k.open_time)
-            if oldest_kline.open_time <= from_date:
-                callback([])
+            downloaded_range = to_date - oldest_kline.open_time if to_date else 0
+            progress = min((downloaded_range / total_range) * 100, 100.0) if total_range > 0 else 100.0
+            current_oldest = datetime.fromtimestamp(oldest_kline.open_time, tz=TIMEZONE)
+            target_date = datetime.fromtimestamp(from_date, tz=TIMEZONE) if from_date else None
+
+            log_message = (
+                f"[MetaAPI] {symbol} | Reached: {current_oldest:%Y-%m-%d %H:%M} | "
+                + f"Target: {target_date:%Y-%m-%d %H:%M} | Progress: {progress:.2f}%"
+            )
+
+            self._log.info(log_message)
+
+            if from_date is not None and oldest_kline.open_time <= from_date:
                 break
 
             current_end = self._to_iso_string(oldest_kline.open_time)
-            sleep(0.25)
+            sleep(0.1)
+
+        if not all_klines:
+            callback([])
+            return
+
+        all_klines.sort(key=lambda k: k.open_time)
+        batch_size = limit
+
+        for i in range(0, len(all_klines), batch_size):
+            batch = all_klines[i : i + batch_size]
+            callback(batch)
+
+        callback([])
 
     def _fetch_klines_batch(
         self,
@@ -98,7 +130,7 @@ class KlineComponent(BaseComponent):
         timeframe: str,
         start_time: Optional[str],
         limit: int,
-    ) -> List[GatewayKlineModel]:
+    ) -> list[GatewayKlineModel]:
         """
         Fetch a single batch of klines from MetaAPI.
 
@@ -109,7 +141,8 @@ class KlineComponent(BaseComponent):
             limit: Maximum number of klines.
 
         Returns:
-            List of GatewayKlineModel instances.
+            list[GatewayKlineModel]: List of kline models. Returns empty list if
+                request fails or error occurs.
         """
         endpoint = (
             f"/users/current/accounts/{self._config.account_id}"
@@ -117,7 +150,7 @@ class KlineComponent(BaseComponent):
             f"/timeframes/{timeframe}/candles"
         )
 
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
 
         if start_time:
             params["startTime"] = start_time
@@ -135,12 +168,15 @@ class KlineComponent(BaseComponent):
 
     def _adapt_klines_batch(
         self,
-        response: List[Dict[str, Any]],
+        response: list[dict[str, Any]],
         symbol: str,
         timeframe: str,
-    ) -> List[GatewayKlineModel]:
+    ) -> list[GatewayKlineModel]:
         """
         Adapt MetaAPI response to GatewayKlineModel list.
+
+        Converts MetaAPI candle format to internal GatewayKlineModel instances.
+        Each candle contains: time, open, high, low, close, tickVolume.
 
         Args:
             response: List of candle objects from MetaAPI.
@@ -148,10 +184,10 @@ class KlineComponent(BaseComponent):
             timeframe: Timeframe for calculating close_time.
 
         Returns:
-            List of adapted GatewayKlineModel instances.
+            list[GatewayKlineModel]: List of adapted kline models.
         """
         timeframe_seconds = TIMEFRAME_SECONDS.get(timeframe, 3600)
-        klines: List[GatewayKlineModel] = []
+        klines: list[GatewayKlineModel] = []
 
         for item in response:
             open_time = self._parse_iso_timestamp(item.get("time", ""))
@@ -218,14 +254,25 @@ class KlineComponent(BaseComponent):
         dt = datetime.fromtimestamp(timestamp, tz=TIMEZONE)
         return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    def _validate_params(
+    def _validate_get_klines_params(
         self,
         symbol: str,
         timeframe: str,
         from_date: Optional[int],
         to_date: Optional[int],
     ) -> bool:
-        """Validate get_klines parameters."""
+        """
+        Validate parameters for get_klines method.
+
+        Args:
+            symbol: Trading symbol to validate.
+            timeframe: Timeframe string to validate.
+            from_date: Start timestamp to validate.
+            to_date: End timestamp to validate.
+
+        Returns:
+            bool: True if all validations pass, False otherwise.
+        """
         if not symbol:
             self._log.error("symbol is required")
             return False
