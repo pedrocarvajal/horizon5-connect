@@ -186,9 +186,8 @@ class DonchianBreakoutStrategy(StrategyService):
             self._atr_at_entry = 0.0
 
     def _check_entry_conditions(self) -> None:
-        assert self._tick is not None
-
         candle_service = self._candles.get(Timeframe.FOUR_HOURS)
+
         if not isinstance(candle_service, CandleService):
             return
 
@@ -235,7 +234,8 @@ class DonchianBreakoutStrategy(StrategyService):
             self._open_long_order(current_atr)
 
     def _check_trailing_exit(self) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         trailing_enabled = self._settings.get("trailing_enabled", True)
         if not trailing_enabled:
@@ -303,7 +303,8 @@ class DonchianBreakoutStrategy(StrategyService):
         return closed_candle.indicators["atr"]["value"]
 
     def _open_long_order(self, atr: float) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         current_price = self._tick.price
         tp_multiplier = self._settings.get("take_profit_atr_multiplier", 2.5)

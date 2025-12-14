@@ -131,7 +131,10 @@ class EMA5BreakoutStrategy(StrategyService):
     def on_new_day(self) -> None:
         """Handle new day event by calculating previous day's EMA5 maximum."""
         super().on_new_day()
-        assert self._tick is not None
+
+        if self._tick is None:
+            return
+
         self._calculate_previous_day_ema5_max(self._tick)
 
     def on_transaction(self, order: OrderModel) -> None:
@@ -156,7 +159,8 @@ class EMA5BreakoutStrategy(StrategyService):
                 self._open_recovery_order(closed_order=order)
 
     def _can_open_new_order(self) -> bool:
-        assert self._tick is not None
+        if self._tick is None:
+            return False
 
         allow_multiple = self._settings.get("entry_allow_multiple", False)
         waiting_time = self._settings.get("entry_waiting_time", 0)
@@ -228,7 +232,8 @@ class EMA5BreakoutStrategy(StrategyService):
             )
 
     def _open_recovery_order(self, closed_order: OrderModel) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         maximum_layers = self._settings.get("recovery_maximum_layers", 10)
         current_layer = closed_order.variables.get("layer", 0)

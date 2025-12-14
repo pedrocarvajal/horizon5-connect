@@ -169,7 +169,8 @@ class RSIBollingerBreakoutStrategy(StrategyService):
             self._log.info(f"Order: {order.id}, was closed, profit: {profit:.2f} ({profit_percentage:.2f}%)")
 
     def _check_entry_conditions(self) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         candle_service = self._candles.get(Timeframe.FOUR_HOURS)
         if not isinstance(candle_service, CandleService):
@@ -216,7 +217,8 @@ class RSIBollingerBreakoutStrategy(StrategyService):
             self._open_long_order(current_atr)
 
     def _open_long_order(self, atr: float) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         current_price = self._tick.price
         tp_multiplier = self._settings.get("take_profit_atr_multiplier", 3.5)
