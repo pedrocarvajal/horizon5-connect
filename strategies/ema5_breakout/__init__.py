@@ -1,6 +1,7 @@
 """EMA5 breakout trading strategy implementation."""
 
 import datetime
+from time import sleep
 from typing import Any, ClassVar, Dict, Optional
 
 from vendor.enums.order_side import OrderSide
@@ -128,6 +129,13 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_new_hour()
         self._check_entry_conditions()
 
+        if self._tick is None:
+            return
+
+        candle_service = self._candles[Timeframe.ONE_HOUR]
+        last_candle = candle_service.candles[-1]
+        self._log.debug(f"New hour processed: {last_candle}")
+
     def on_new_day(self) -> None:
         """Handle new day event by calculating previous day's EMA5 maximum."""
         super().on_new_day()
@@ -222,6 +230,16 @@ class EMA5BreakoutStrategy(StrategyService):
             entry_volume = self._settings.get("entry_volume", 0.1)
             volume = entry_volume * 100
 
+            self._log.info(
+                f"Opening main order: price={current_price:.5f}, "
+                + f"date={self._tick.date}, "
+                + f"current_ema={current_ema}, "
+                + f"previous_day_ema5_max={self._previous_day_ema5_max}, "
+                + f"tp={take_profit_price:.5f} ({take_profit_method.name}:{take_profit_value}), "
+                + f"sl={stop_loss_price:.5f} ({stop_loss_method.name}:{stop_loss_value}), "
+                + f"volume={volume:.2f}"
+            )
+
             self.open_order(
                 OrderSide.BUY,
                 current_price,
@@ -241,6 +259,7 @@ class EMA5BreakoutStrategy(StrategyService):
 
         if next_layer > maximum_layers:
             self._log.warning(f"Maximum recovery layers reached: {maximum_layers}")
+            sleep(10)
             return
 
         current_price = self._tick.price

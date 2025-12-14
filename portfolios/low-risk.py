@@ -24,7 +24,7 @@ class Portfolio(PortfolioService):
             {
                 "asset": BTCUSDTAsset,
                 "allocation": 100_000,
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "asset": XAUUSDAsset,

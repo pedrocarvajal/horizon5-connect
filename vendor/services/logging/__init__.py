@@ -6,7 +6,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, ClassVar, Dict
 
-from colorama import Fore, Style, just_fix_windows_console
+from colorama import Back, Fore, Style, just_fix_windows_console
 from rich.console import Console
 from rich.json import JSON
 
@@ -22,9 +22,9 @@ class ColoredFormatter(logging.Formatter):
     LEVEL_COLORS: ClassVar[Dict[int, str]] = {
         logging.DEBUG: Fore.CYAN,
         logging.INFO: Fore.WHITE,
-        logging.WARNING: Fore.YELLOW,
-        logging.ERROR: Fore.RED,
-        logging.CRITICAL: Fore.RED + Style.BRIGHT,
+        logging.WARNING: Back.LIGHTYELLOW_EX + Fore.BLACK,
+        logging.ERROR: Back.LIGHTYELLOW_EX + Fore.RED,
+        logging.CRITICAL: Back.LIGHTYELLOW_EX + Fore.RED + Style.BRIGHT,
         SUCCESS_LEVEL: Fore.GREEN,
     }
 
