@@ -96,7 +96,7 @@ class StreamComponent(BaseComponent):
 
         return TickModel(
             is_simulated=False,
-            price=price,
+            close_price=price,
             bid_price=best_bid,
             ask_price=best_ask,
             date=datetime.datetime.now(tz=TIMEZONE),

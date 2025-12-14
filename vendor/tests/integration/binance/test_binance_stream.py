@@ -32,7 +32,7 @@ class TestBinanceStream(BinanceWrapper):
         asyncio.run(test_with_timeout())
         assert len(all_ticks) > 0, f"Should receive at least 1 tick, got {len(all_ticks)}"
         assert all(isinstance(t, TickModel) for t in all_ticks), "All ticks should be TickModel"
-        assert all_ticks[0].price > 0, f"Price should be > 0, got {all_ticks[0].price}"
+        assert all_ticks[0].close_price > 0, f"Close price should be > 0, got {all_ticks[0].close_price}"
         assert all_ticks[0].bid_price > 0, f"Bid price should be > 0, got {all_ticks[0].bid_price}"
         assert all_ticks[0].ask_price > 0, f"Ask price should be > 0, got {all_ticks[0].ask_price}"
         assert all_ticks[0].date is not None, "Date should not be None"

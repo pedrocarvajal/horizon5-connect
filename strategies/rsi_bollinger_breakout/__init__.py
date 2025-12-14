@@ -220,7 +220,7 @@ class RSIBollingerBreakoutStrategy(StrategyService):
         if self._tick is None:
             return
 
-        current_price = self._tick.price
+        current_price = self._tick.close_price
         tp_multiplier = self._settings.get("take_profit_atr_multiplier", 3.5)
         sl_multiplier = self._settings.get("stop_loss_atr_multiplier", 2.5)
 

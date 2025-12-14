@@ -71,7 +71,7 @@ class AnalyticWrapper(AnalyticInterface):
         self._snapshot.nav_history.append(self._snapshot.nav)
 
         if self._tick is not None:
-            self._snapshot.benchmark_price_history.append(self._tick.price)
+            self._snapshot.benchmark_price_history.append(self._tick.close_price)
 
         self._perform_calculations()
         self._calculate_daily_performance()
@@ -111,10 +111,10 @@ class AnalyticWrapper(AnalyticInterface):
         if not self._started:
             self._started = True
             self._started_at = self._tick.date
-            self._snapshot.benchmark_initial_price = tick.price
-            self._snapshot.benchmark_current_price = tick.price
+            self._snapshot.benchmark_initial_price = tick.close_price
+            self._snapshot.benchmark_current_price = tick.close_price
         else:
-            self._snapshot.benchmark_current_price = tick.price
+            self._snapshot.benchmark_current_price = tick.close_price
 
     def _calculate_daily_performance(self) -> None:
         """Calculate daily performance metrics and update snapshot."""

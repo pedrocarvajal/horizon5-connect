@@ -101,7 +101,7 @@ class OrderModel(BaseModel):
         Returns:
             True if TP conditions met.
         """
-        return self.status.is_open() and self.take_profit_price > 0 and tick.price >= self.take_profit_price
+        return self.status.is_open() and self.take_profit_price > 0 and tick.close_price >= self.take_profit_price
 
     def check_if_ready_to_close_stop_loss(self, tick: TickModel) -> bool:
         """Check if order should close at stop loss.
@@ -112,7 +112,7 @@ class OrderModel(BaseModel):
         Returns:
             True if SL conditions met.
         """
-        return self.status.is_open() and self.stop_loss_price > 0 and tick.price <= self.stop_loss_price
+        return self.status.is_open() and self.stop_loss_price > 0 and tick.close_price <= self.stop_loss_price
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert order to dictionary representation.

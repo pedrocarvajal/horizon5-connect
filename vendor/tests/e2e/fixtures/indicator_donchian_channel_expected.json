@@ -1,12 +1,12 @@
 [
-  { "close": 42864.0, "donchian_upper": 43705.4, "donchian_lower": 42375.9, "donchian_middle": 43040.65 },
-  { "close": 43341.8, "donchian_upper": 43705.4, "donchian_lower": 42375.9, "donchian_middle": 43040.65 },
-  { "close": 43459.7, "donchian_upper": 43660.2, "donchian_lower": 42375.9, "donchian_middle": 43018.05 },
-  { "close": 43705.0, "donchian_upper": 43705.0, "donchian_lower": 42375.9, "donchian_middle": 43040.45 },
-  { "close": 43500.0, "donchian_upper": 43705.0, "donchian_lower": 42375.9, "donchian_middle": 43040.45 },
-  { "close": 43316.4, "donchian_upper": 43705.0, "donchian_lower": 42375.9, "donchian_middle": 43040.45 },
-  { "close": 42534.0, "donchian_upper": 43705.0, "donchian_lower": 42375.9, "donchian_middle": 43040.45 },
-  { "close": 42472.8, "donchian_upper": 43705.0, "donchian_lower": 42286.2, "donchian_middle": 42995.6 },
-  { "close": 42634.8, "donchian_upper": 43705.0, "donchian_lower": 42286.2, "donchian_middle": 42995.6 },
-  { "close": 42560.5, "donchian_upper": 43705.0, "donchian_lower": 42286.2, "donchian_middle": 42995.6 }
+  { "close": 42864.0, "donchian_upper": 43750.0, "donchian_lower": 42341.0, "donchian_middle": 43045.5 },
+  { "close": 43341.8, "donchian_upper": 43750.0, "donchian_lower": 42341.0, "donchian_middle": 43045.5 },
+  { "close": 43459.7, "donchian_upper": 43675.6, "donchian_lower": 42341.0, "donchian_middle": 43008.3 },
+  { "close": 43705.0, "donchian_upper": 43748.6, "donchian_lower": 42341.0, "donchian_middle": 43044.8 },
+  { "close": 43500.0, "donchian_upper": 43748.6, "donchian_lower": 42341.0, "donchian_middle": 43044.8 },
+  { "close": 43316.4, "donchian_upper": 43748.6, "donchian_lower": 42341.0, "donchian_middle": 43044.8 },
+  { "close": 42534.0, "donchian_upper": 43748.6, "donchian_lower": 42341.0, "donchian_middle": 43044.8 },
+  { "close": 42472.8, "donchian_upper": 43748.6, "donchian_lower": 42257.6, "donchian_middle": 43003.1 },
+  { "close": 42634.8, "donchian_upper": 43748.6, "donchian_lower": 42257.6, "donchian_middle": 43003.1 },
+  { "close": 42560.5, "donchian_upper": 43748.6, "donchian_lower": 42257.6, "donchian_middle": 43003.1 }
 ]

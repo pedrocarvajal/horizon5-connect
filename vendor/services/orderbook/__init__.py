@@ -216,7 +216,7 @@ class OrderbookService(OrderbookInterface):
         profit = order.profit
 
         order.status = OrderStatus.CLOSED
-        order.close_price = self._tick.price
+        order.close_price = self._tick.close_price
         order.updated_at = self._tick.date
 
         with self._balance_lock:
@@ -373,7 +373,7 @@ class OrderbookService(OrderbookInterface):
 
         for order_id in open_order_ids:
             order = self._orders[order_id]
-            order.close_price = tick.price
+            order.close_price = tick.close_price
             order.updated_at = tick.date
 
             ready_to_close_take_profit = order.check_if_ready_to_close_take_profit(tick)

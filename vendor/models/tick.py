@@ -1,27 +1,30 @@
 """Market tick data model with price and timestamp information."""
 
 import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
 
 class TickModel(BaseModel):
-    """Market tick with bid/ask prices and timestamp.
+    """Market tick with OHLC prices and timestamp.
 
     Attributes:
         is_simulated: Whether tick is from backtest or live production.
-        price: Current market price.
-        bid_price: Bid price.
-        ask_price: Ask price.
+        open_price: Open price from source candle (for correct OHLC aggregation).
+        high_price: High price from source candle (for correct OHLC aggregation).
+        low_price: Low price from source candle (for correct OHLC aggregation).
+        close_price: Close price (current market price).
+        bid_price: Bid price (for live trading).
+        ask_price: Ask price (for live trading).
         date: Tick timestamp.
     """
 
-    is_simulated: bool = Field(
-        default=True,
-        description="True if tick is from backtest/simulation, False if from live production",
-    )
-    price: float = Field(default=0.0, ge=0)
+    is_simulated: bool = Field(default=True, description="True if tick is from backtest/simulation")
+    open_price: Optional[float] = Field(default=None, ge=0)
+    high_price: Optional[float] = Field(default=None, ge=0)
+    low_price: Optional[float] = Field(default=None, ge=0)
+    close_price: float = Field(default=0.0, ge=0)
     bid_price: float = Field(default=0.0, ge=0)
     ask_price: float = Field(default=0.0, ge=0)
     date: datetime.datetime

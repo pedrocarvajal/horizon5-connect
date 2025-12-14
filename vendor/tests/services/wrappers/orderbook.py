@@ -53,7 +53,7 @@ class OrderbookWrapper(unittest.TestCase):
         self._transactions.append(order)
 
     def _create_tick(self, price: float) -> TickModel:
-        return TickModel(price=price, date=datetime.datetime.now(tz=TIMEZONE))
+        return TickModel(close_price=price, date=datetime.datetime.now(tz=TIMEZONE))
 
     def _create_order(
         self,

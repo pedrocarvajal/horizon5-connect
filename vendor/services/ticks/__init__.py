@@ -83,7 +83,7 @@ class TicksService(TicksInterface):
 
                 ticks[symbol] = TickModel(
                     date=tick_date,
-                    price=close_price,
+                    close_price=close_price,
                     is_simulated=True,
                 )
 
@@ -155,13 +155,15 @@ class TicksService(TicksInterface):
 
         for tick_row in filtered_ticks.iter_rows(named=True):
             date = self._get_datetime_from_timestamp(tick_row["timestamp"])
-            price = tick_row["close"]
-
             tick = TickModel(
                 date=date,
-                price=price,
+                open_price=tick_row["open"],
+                high_price=tick_row["high"],
+                low_price=tick_row["low"],
+                close_price=tick_row["close"],
                 is_simulated=True,
             )
+
             response.append(tick)
 
         return response

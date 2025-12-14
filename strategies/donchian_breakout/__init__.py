@@ -246,7 +246,7 @@ class DonchianBreakoutStrategy(StrategyService):
             return
 
         order = open_orders[0]
-        current_bid = self._tick.price
+        current_bid = self._tick.close_price
 
         dynamic_atr = self._settings.get("dynamic_atr", False)
         atr_value = self._get_current_atr() if dynamic_atr else self._atr_at_entry
@@ -306,7 +306,7 @@ class DonchianBreakoutStrategy(StrategyService):
         if self._tick is None:
             return
 
-        current_price = self._tick.price
+        current_price = self._tick.close_price
         tp_multiplier = self._settings.get("take_profit_atr_multiplier", 2.5)
         sl_multiplier = self._settings.get("stop_loss_atr_multiplier", 1.5)
         trailing_enabled = self._settings.get("trailing_enabled", True)

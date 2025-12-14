@@ -37,11 +37,15 @@ class MetaApiWrapper(unittest.TestCase):
         auth_token = get_env("METAAPI_AUTH_TOKEN")
         account_id = get_env("METAAPI_ACCOUNT_ID")
 
-        assert auth_token is not None, (
-            "METAAPI_AUTH_TOKEN must be configured for tests. Set METAAPI_AUTH_TOKEN in environment variables"
-        )
-        assert auth_token != "", "METAAPI_AUTH_TOKEN must not be empty. Set METAAPI_AUTH_TOKEN in environment variables"
-        assert account_id is not None, (
-            "METAAPI_ACCOUNT_ID must be configured for tests. Set METAAPI_ACCOUNT_ID in environment variables"
-        )
-        assert account_id != "", "METAAPI_ACCOUNT_ID must not be empty. Set METAAPI_ACCOUNT_ID in environment variables"
+        if auth_token is None:
+            self.skipTest(
+                "METAAPI_AUTH_TOKEN must be configured for tests. Set METAAPI_AUTH_TOKEN in environment variables"
+            )
+        if auth_token == "":
+            self.skipTest("METAAPI_AUTH_TOKEN must not be empty. Set METAAPI_AUTH_TOKEN in environment variables")
+        if account_id is None:
+            self.skipTest(
+                "METAAPI_ACCOUNT_ID must be configured for tests. Set METAAPI_ACCOUNT_ID in environment variables"
+            )
+        if account_id == "":
+            self.skipTest("METAAPI_ACCOUNT_ID must not be empty. Set METAAPI_ACCOUNT_ID in environment variables")

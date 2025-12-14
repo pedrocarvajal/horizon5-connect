@@ -109,6 +109,11 @@ class CandleService(CandleInterface):
                     candle.indicators[indicator.key] = latest_value.to_dict()
 
     def _compute(self, tick: TickModel) -> None:
+        tick_open = tick.open_price if tick.open_price is not None else tick.close_price
+        tick_high = tick.high_price if tick.high_price is not None else tick.close_price
+        tick_low = tick.low_price if tick.low_price is not None else tick.close_price
+        tick_close = tick.close_price
+
         if len(self._candles) == 0 or tick.date >= self._candles[-1].close_time:
             if len(self._candles) > 0:
                 self._attach_indicators_to_candle(self._candles[-1])
@@ -121,10 +126,10 @@ class CandleService(CandleInterface):
             candle = CandleModel(
                 open_time=aligned_time,
                 close_time=aligned_time + candle_duration,
-                open_price=tick.price,
-                high_price=tick.price,
-                low_price=tick.price,
-                close_price=tick.price,
+                open_price=tick_open,
+                high_price=tick_high,
+                low_price=tick_low,
+                close_price=tick_close,
                 indicators={},
             )
 
@@ -132,9 +137,9 @@ class CandleService(CandleInterface):
 
         else:
             candle = self._candles[-1]
-            candle.high_price = max(candle.high_price, tick.price)
-            candle.low_price = min(candle.low_price, tick.price)
-            candle.close_price = tick.price
+            candle.high_price = max(candle.high_price, tick_high)
+            candle.low_price = min(candle.low_price, tick_low)
+            candle.close_price = tick_close
 
     @property
     def candles(self) -> List[CandleModel]:

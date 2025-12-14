@@ -154,7 +154,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
         assert len(ticks) > 0, "Should return ticks"
 
         for tick in ticks:
-            assert tick.price > 0, f"Price should be > 0, got {tick.price}"
+            assert tick.close_price > 0, f"Close price should be > 0, got {tick.close_price}"
             assert tick.is_simulated is True, "Ticks should be marked as simulated"
             assert from_date <= tick.date <= to_date, f"Tick date {tick.date} should be in range"
 
@@ -373,7 +373,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
 
             if self._SYMBOL in ticks_dict:
                 tick = ticks_dict[self._SYMBOL]
-                assert tick.price > 0, f"Price should be > 0, got {tick.price}"
+                assert tick.close_price > 0, f"Close price should be > 0, got {tick.close_price}"
                 assert tick.is_simulated is True, "Should be marked as simulated"
                 assert tick.date == tick_date, "Tick date should match iteration date"
 

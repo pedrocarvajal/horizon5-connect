@@ -1,7 +1,6 @@
 """EMA5 breakout trading strategy implementation."""
 
 import datetime
-from time import sleep
 from typing import Any, ClassVar, Dict, Optional
 
 from vendor.enums.order_side import OrderSide
@@ -129,13 +128,6 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_new_hour()
         self._check_entry_conditions()
 
-        if self._tick is None:
-            return
-
-        candle_service = self._candles[Timeframe.ONE_HOUR]
-        last_candle = candle_service.candles[-1]
-        self._log.debug(f"New hour processed: {last_candle}")
-
     def on_new_day(self) -> None:
         """Handle new day event by calculating previous day's EMA5 maximum."""
         super().on_new_day()
@@ -164,7 +156,9 @@ class EMA5BreakoutStrategy(StrategyService):
             self._log.info(f"Order: {order.id}, was closed, with profit: {profit:.2f} ({profit_percentage:.2f}%).")
 
             if recovery_enabled and profit < 0:
-                self._open_recovery_order(closed_order=order)
+                previous_accumulated = order.variables.get("accumulated_losses", 0.0)
+                accumulated_losses = previous_accumulated + abs(profit)
+                self._open_recovery_order(closed_order=order, accumulated_losses=accumulated_losses)
 
     def _can_open_new_order(self) -> bool:
         if self._tick is None:
@@ -201,7 +195,7 @@ class EMA5BreakoutStrategy(StrategyService):
         if not self._can_open_new_order():
             return
 
-        current_price = self._tick.price
+        current_price = self._tick.close_price
         candle_service = self._candles[Timeframe.ONE_HOUR]
         candles = candle_service.candles
         current_ema = candles[-1].indicators["ema"]["value"]
@@ -249,7 +243,7 @@ class EMA5BreakoutStrategy(StrategyService):
                 variables={"layer": 0},
             )
 
-    def _open_recovery_order(self, closed_order: OrderModel) -> None:
+    def _open_recovery_order(self, closed_order: OrderModel, accumulated_losses: float) -> None:
         if self._tick is None:
             return
 
@@ -258,12 +252,13 @@ class EMA5BreakoutStrategy(StrategyService):
         next_layer = current_layer + 1
 
         if next_layer > maximum_layers:
-            self._log.warning(f"Maximum recovery layers reached: {maximum_layers}")
-            sleep(10)
+            self._log.warning(
+                f"Maximum recovery layers reached: {maximum_layers}, accumulated losses: {accumulated_losses:.2f}"
+            )
             return
 
-        current_price = self._tick.price
-        losses = abs(closed_order.profit)
+        current_price = self._tick.close_price
+        losses = accumulated_losses
 
         stop_loss_value = self._settings.get("recovery_stop_loss", 0.15)
         stop_loss_method = self._settings.get("recovery_stop_loss_method", TpSlMethod.PERCENTAGE)
@@ -298,7 +293,10 @@ class EMA5BreakoutStrategy(StrategyService):
             take_profit_price,
             stop_loss_price,
             volume,
-            variables={"layer": next_layer},
+            variables={
+                "layer": next_layer,
+                "accumulated_losses": accumulated_losses,
+            },
         )
 
     def _calculate_volume_for_recovery(
