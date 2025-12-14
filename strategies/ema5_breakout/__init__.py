@@ -38,11 +38,15 @@ class EMA5BreakoutStrategy(StrategyService):
 
     _MIN_CANDLES_REQUIRED: int = 2
     _MIN_CANDLES_FOR_PREVIOUS_DAY: int = 24
+    _WEEKDAY_MONDAY: int = 0
+    _WEEKDAY_FRIDAY: int = 4
+    _WEEKDAY_SATURDAY: int = 5
+    _WEEKDAY_SUNDAY: int = 6
 
     _SETTINGS: ClassVar[Dict[str, Any]] = {
         "entry_allow_multiple": False,
         "entry_waiting_time": 0,
-        "entry_volume_percentage": 0.10,
+        "entry_volume": 0.1,
         "entry_ema_period": 5,
         "main_stop_loss": 0.15,
         "main_stop_loss_method": TpSlMethod.PERCENTAGE,
@@ -67,7 +71,7 @@ class EMA5BreakoutStrategy(StrategyService):
             **kwargs: Keyword arguments including optional 'settings' dict with:
                 - entry_allow_multiple: Allow multiple concurrent orders (default: False)
                 - entry_waiting_time: Minimum minutes between orders (default: 0)
-                - entry_volume_percentage: Order size as % of NAV (default: 0.10)
+                - entry_volume: Order size in lots (default: 0.1, where 1 lot = 100 units)
                 - entry_ema_period: EMA period for entry signal (default: 5)
                 - main_stop_loss: Stop loss value (default: 0.15)
                 - main_stop_loss_method: TpSlMethod for stop loss (default: PERCENTAGE)
@@ -176,7 +180,8 @@ class EMA5BreakoutStrategy(StrategyService):
         return time_since_last_order >= minimum_waiting_time
 
     def _check_entry_conditions(self) -> None:
-        assert self._tick is not None
+        if self._tick is None:
+            return
 
         if not self._previous_day_ema5_max:
             return
@@ -186,7 +191,6 @@ class EMA5BreakoutStrategy(StrategyService):
 
         current_price = self._tick.price
         candle_service = self._candles[Timeframe.ONE_HOUR]
-        assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
         current_ema = candles[-1].indicators["ema"]["value"]
         previous_ema = candles[-2].indicators["ema"]["value"]
@@ -211,8 +215,8 @@ class EMA5BreakoutStrategy(StrategyService):
                 side=OrderSide.BUY,
             )
 
-            volume_percentage = self._settings.get("entry_volume_percentage", 0.10)
-            volume = (self.nav / current_price) * volume_percentage
+            entry_volume = self._settings.get("entry_volume", 0.1)
+            volume = entry_volume * 100
 
             self.open_order(
                 OrderSide.BUY,
@@ -286,23 +290,33 @@ class EMA5BreakoutStrategy(StrategyService):
 
     def _calculate_previous_day_ema5_max(self, tick: TickModel) -> None:
         today_start = tick.date.replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday_start = today_start - datetime.timedelta(days=1)
+        weekday = today_start.weekday()
+
+        if weekday == self._WEEKDAY_MONDAY:
+            days_back = 3
+        elif weekday == self._WEEKDAY_SUNDAY:
+            days_back = 2
+        elif weekday == self._WEEKDAY_SATURDAY:
+            days_back = 1
+        else:
+            days_back = 1
+
+        previous_trading_day_start = today_start - datetime.timedelta(days=days_back)
+        previous_trading_day_end = previous_trading_day_start + datetime.timedelta(days=1)
 
         candle_service = self._candles[Timeframe.ONE_HOUR]
-        assert isinstance(candle_service, CandleService)
         candles = candle_service.candles
-
-        recent_candles = candles[-self._MIN_CANDLES_FOR_PREVIOUS_DAY :]
-        emas_with_indicator = [candle.indicators["ema"] for candle in recent_candles if "ema" in candle.indicators]
-
-        if len(emas_with_indicator) < self._MIN_CANDLES_FOR_PREVIOUS_DAY:
-            self._log.warning(f"Not enough EMA values ({len(emas_with_indicator)}) to calculate.")
-            return
+        recent_candles = candles[-72:]
 
         previous_day_ema_values = [
-            ema.get("value")
-            for ema in emas_with_indicator
-            if ema.get("date") is not None and ema.get("date") >= yesterday_start and ema.get("date") < today_start
+            candle.indicators["ema"]["value"]
+            for candle in recent_candles
+            if "ema" in candle.indicators
+            and candle.open_time >= previous_trading_day_start
+            and candle.open_time < previous_trading_day_end
         ]
+
+        if not previous_day_ema_values:
+            return
 
         self._previous_day_ema5_max = max(previous_day_ema_values)

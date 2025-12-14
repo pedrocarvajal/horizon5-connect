@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 import polars
 
 from vendor.configs.timezone import TIMEZONE
-from vendor.helpers.get_progress_between_dates import get_progress_between_dates
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.ticks import TicksInterface
 from vendor.models.tick import TickModel
@@ -199,41 +198,41 @@ class TicksService(TicksInterface):
         self._log.info(f"From date: {download_from_date}")
         self._log.info(f"To date: {download_to_date}")
 
-        current_date = None
-        actual_start_timestamp: Optional[int] = None
+        oldest_timestamp: Optional[int] = None
+        newest_timestamp: Optional[int] = None
+        start_timestamp = int(download_from_date.timestamp())
         end_timestamp = int(download_to_date.timestamp())
         klines: List[GatewayKlineModel] = []
         asset = self._asset
         assert asset is not None
 
         def _process_klines(new_klines: List[GatewayKlineModel]) -> None:
-            nonlocal current_date
+            nonlocal oldest_timestamp
+            nonlocal newest_timestamp
             nonlocal klines
-            nonlocal actual_start_timestamp
 
             if not new_klines:
                 return
 
             klines.extend(new_klines)
 
-            if actual_start_timestamp is None:
-                actual_start_timestamp = klines[0].close_time
+            batch_timestamps = [k.open_time for k in new_klines]
+            batch_oldest = min(batch_timestamps)
+            batch_newest = max(batch_timestamps)
 
-            current_date = klines[-1].close_time
-            progress = min(
-                get_progress_between_dates(
-                    start_date_in_timestamp=actual_start_timestamp,
-                    end_date_in_timestamp=end_timestamp,
-                    current_date_in_timestamp=current_date,
-                )
-                * 100,
-                100.0,
-            )
+            if newest_timestamp is None or batch_newest > newest_timestamp:
+                newest_timestamp = batch_newest
 
-            current_date_formatted = self._get_formatted_timestamp(current_date)
-            end_date_formatted = self._get_formatted_timestamp(end_timestamp)
-            start_date_formatted = self._get_formatted_timestamp(actual_start_timestamp)
-            times = f"Start: {start_date_formatted} | Current: {current_date_formatted} | End: {end_date_formatted}"
+            if oldest_timestamp is None or batch_oldest < oldest_timestamp:
+                oldest_timestamp = batch_oldest
+
+            total_range = end_timestamp - start_timestamp
+            downloaded_range = newest_timestamp - oldest_timestamp
+            progress = min((downloaded_range / total_range) * 100, 100.0) if total_range > 0 else 100.0
+
+            oldest_formatted = self._get_formatted_timestamp(oldest_timestamp)
+            newest_formatted = self._get_formatted_timestamp(newest_timestamp)
+            times = f"Oldest: {oldest_formatted} | Newest: {newest_formatted}"
 
             self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
 

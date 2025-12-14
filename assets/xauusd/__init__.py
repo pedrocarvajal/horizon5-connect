@@ -39,7 +39,7 @@ class Asset(AssetService):
                 settings={
                     "entry_allow_multiple": False,
                     "entry_waiting_time": 0,
-                    "entry_volume_percentage": 0.10,
+                    "entry_volume": 0.25,
                     "entry_ema_period": 5,
                     "main_take_profit": 3,
                     "main_take_profit_method": TpSlMethod.FIXED,

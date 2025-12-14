@@ -39,7 +39,8 @@ class PortfolioService(PortfolioInterface):
         self._backtest_id = None
         self._commands_queue = None
         self._events_queue = None
-        self._id = ""
+        if not hasattr(self, "_id") or not self._id:
+            self._id = ""
         self._last_timestamps = {}
         self._log = LoggingService()
 
