@@ -3,8 +3,6 @@
 from typing import List
 
 from strategies.donchian_breakout import DonchianBreakoutStrategy
-from strategies.ema5_breakout import EMA5BreakoutStrategy
-from strategies.ema5_breakout.enums import OrderOpeningMode
 from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.interfaces.strategy import StrategyInterface
@@ -66,19 +64,6 @@ class Asset(AssetService):
                     "adx_threshold": 22.0,
                     "take_profit_atr_multiplier": 3.8,
                     "stop_loss_atr_multiplier": 2.0,
-                },
-            ),
-            EMA5BreakoutStrategy(
-                id="ema5_breakout",
-                allocation=0.0,
-                enabled=True,
-                settings={
-                    "order_opening_mode": OrderOpeningMode.ONE_PER_DAY,
-                    "volume_percentage": 0.05,
-                    "ema_period": 6,
-                    "ma_trend_period": 200,
-                    "stop_loss_percentage": 1000,
-                    "trailing_activation_percentage": 0.03,
                 },
             ),
         ]
