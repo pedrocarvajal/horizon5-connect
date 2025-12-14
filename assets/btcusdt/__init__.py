@@ -17,14 +17,15 @@ class Asset(AssetService):
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
-    def __init__(self, allocation: float = 0.0, leverage: int = 10) -> None:
+    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 10) -> None:
         """Initialize BTCUSDT asset with trading strategies.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
+            enabled: Whether this asset is enabled for execution.
             leverage: Leverage multiplier for trading (default: 10).
         """
-        super().__init__(allocation=allocation, leverage=leverage)
+        super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
 
         self._setup_strategies()
         self._setup_allocation()

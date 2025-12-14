@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from multiprocessing import Queue
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.enums.backtest_event import BacktestEvent
@@ -127,17 +127,20 @@ class BacktestService(BacktestInterface):
             "portfolio": self._portfolio,
         }
 
-        enabled_asset_instances: List[Tuple[AssetInterface, float]] = []
+        enabled_asset_instances: List[AssetInterface] = []
         download_tasks: List[DownloadTask] = []
 
-        for asset_class, allocation in self._portfolio.assets:
-            asset_instance = asset_class(allocation=allocation)
+        for asset_config in self._portfolio.assets:
+            asset_class = asset_config["asset"]
+            allocation = asset_config["allocation"]
+            enabled = asset_config.get("enabled", True)
 
-            if not asset_instance.enabled:
-                self._log.warning(f"Asset {asset_instance.symbol} is not enabled")
+            if not enabled:
+                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
                 continue
 
-            enabled_asset_instances.append((asset_instance, allocation))
+            asset_instance = asset_class(allocation=allocation, enabled=enabled)
+            enabled_asset_instances.append(asset_instance)
             download_tasks.append(
                 DownloadTask(
                     asset=asset_instance,
@@ -160,7 +163,7 @@ class BacktestService(BacktestInterface):
             on_all_complete=_on_all_downloads_complete,
         )
 
-        for asset_instance, _allocation in enabled_asset_instances:
+        for asset_instance in enabled_asset_instances:
             tick_service = tick_services_by_symbol.get(asset_instance.symbol)
 
             if tick_service is None:

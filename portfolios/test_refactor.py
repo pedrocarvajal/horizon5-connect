@@ -20,5 +20,5 @@ class Portfolio(PortfolioService):
     def setup_assets(self) -> None:
         """Configure portfolio with single BTCUSDT asset."""
         self._assets = [
-            (BTCUSDTAsset, 200000.0),
+            {"asset": BTCUSDTAsset, "allocation": 200000.0, "enabled": True},
         ]

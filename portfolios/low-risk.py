@@ -21,6 +21,14 @@ class Portfolio(PortfolioService):
     def setup_assets(self) -> None:
         """Configure the portfolio assets for low-risk trading."""
         self._assets = [
-            (BTCUSDTAsset, 500_000),
-            (XAUUSDAsset, 500_000),
+            {
+                "asset": BTCUSDTAsset,
+                "allocation": 500_000,
+                "enabled": False,
+            },
+            {
+                "asset": XAUUSDAsset,
+                "allocation": 500_000,
+                "enabled": True,
+            },
         ]

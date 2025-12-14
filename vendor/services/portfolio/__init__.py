@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from vendor.enums.timeframe import Timeframe
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
-from vendor.interfaces.portfolio import PortfolioInterface
+from vendor.interfaces.portfolio import AssetConfig, PortfolioInterface
 from vendor.models.tick import TickModel
 from vendor.services.analytic import PortfolioAnalytic
 from vendor.services.logging import LoggingService
@@ -20,26 +20,28 @@ class PortfolioService(PortfolioInterface):
     """Service for managing a portfolio of trading assets."""
 
     _analytic: Optional[AnalyticInterface]
+    _assets: List[AssetConfig]
     _asset_instances: List[AssetInterface]
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
+    _id: str
     _last_timestamps: Dict[Timeframe, datetime.datetime]
-
     _log: LoggingService
 
     def __init__(self) -> None:
         """Initialize the portfolio with an empty asset list."""
+        self._analytic = None
         self._assets = []
         self._asset_instances = []
-        self._log = LoggingService()
-        self._analytic = None
         self._backtest = False
         self._backtest_id = None
         self._commands_queue = None
         self._events_queue = None
+        self._id = ""
         self._last_timestamps = {}
+        self._log = LoggingService()
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
@@ -121,12 +123,16 @@ class PortfolioService(PortfolioInterface):
         if self._events_queue is None:
             raise ValueError("Events queue is required")
 
-        for asset_class, allocation in self._assets:
-            asset_instance = asset_class(allocation=allocation)
+        for asset_config in self._assets:
+            asset_class = asset_config["asset"]
+            allocation = asset_config["allocation"]
+            enabled = asset_config.get("enabled", True)
 
-            if not asset_instance.enabled:
-                self._log.warning(f"Asset {asset_instance.symbol} is not enabled")
+            if not enabled:
+                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
                 continue
+
+            asset_instance = asset_class(allocation=allocation, enabled=enabled)
 
             asset_instance.setup(**kwargs)
             self._asset_instances.append(asset_instance)

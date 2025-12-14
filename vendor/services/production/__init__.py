@@ -69,13 +69,17 @@ class ProductionService(ProductionInterface):
         if not self._portfolio or not self._commands_queue or not self._events_queue:
             raise ValueError("Service not properly setup")
 
-        for asset_class, allocation in self._portfolio.assets:
-            asset_instance = asset_class(allocation=allocation)
+        for asset_config in self._portfolio.assets:
+            asset_class = asset_config["asset"]
+            allocation = asset_config["allocation"]
+            enabled = asset_config.get("enabled", True)
 
-            if asset_instance.enabled:
-                self._assets.append(asset_instance)
-            else:
-                self._log.warning(f"Asset {asset_instance.symbol} is not enabled")
+            if not enabled:
+                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
+                continue
+
+            asset_instance = asset_class(allocation=allocation, enabled=enabled)
+            self._assets.append(asset_instance)
 
         if not self._assets:
             raise ValueError("No enabled assets found in portfolio")

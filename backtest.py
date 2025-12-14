@@ -104,12 +104,15 @@ def create_backtest(
     horizon_router = HorizonRouterProvider()
     asset_settings_list: List[AssetSettingsModel] = []
 
-    for asset_class, allocation in portfolio.assets:
-        asset_instance = asset_class(allocation=allocation)
+    for asset_config in portfolio.assets:
+        asset_class = asset_config["asset"]
+        allocation = asset_config["allocation"]
+        enabled = asset_config.get("enabled", True)
 
-        if not asset_instance.enabled:
+        if not enabled:
             continue
 
+        asset_instance = asset_class(allocation=allocation, enabled=enabled)
         strategy_settings_list: List[StrategySettingsModel] = []
 
         for strategy in asset_instance.strategies:
@@ -216,12 +219,15 @@ if __name__ == "__main__":
     log = LoggingService()
 
     has_enabled_assets = False
-    for asset_class, allocation in portfolio.assets:
-        instance = asset_class(allocation=allocation)
-        if instance.enabled:
+    for asset_config in portfolio.assets:
+        asset_class = asset_config["asset"]
+        allocation = asset_config["allocation"]
+        enabled = asset_config.get("enabled", True)
+
+        if enabled:
             has_enabled_assets = True
         else:
-            log.warning(f"Asset {instance.symbol} is not enabled")
+            log.warning(f"Asset {asset_class.__name__} is not enabled")
 
     if not has_enabled_assets:
         parser.error("No enabled assets found in portfolio.")

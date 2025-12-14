@@ -1,17 +1,27 @@
 """Portfolio interface for multi-asset container."""
 
 from abc import ABC
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Type
+
+from typing_extensions import NotRequired, TypedDict
 
 from vendor.interfaces.asset import AssetInterface
 from vendor.models.tick import TickModel
+
+
+class AssetConfig(TypedDict):
+    """Configuration for an asset in a portfolio."""
+
+    asset: Type[AssetInterface]
+    allocation: float
+    enabled: NotRequired[bool]
 
 
 class PortfolioInterface(ABC):
     """Abstract interface for portfolio containing multiple trading assets."""
 
     _id: str
-    _assets: List[Tuple[Type[AssetInterface], float]]
+    _assets: List[AssetConfig]
     _asset_instances: List[AssetInterface]
 
     @property
@@ -20,8 +30,8 @@ class PortfolioInterface(ABC):
         return self._id
 
     @property
-    def assets(self) -> List[Tuple[Type[AssetInterface], float]]:
-        """Return the list of asset classes with their allocations."""
+    def assets(self) -> List[AssetConfig]:
+        """Return the list of asset configurations."""
         return self._assets
 
     @property

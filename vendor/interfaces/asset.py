@@ -14,11 +14,12 @@ class AssetInterface(ABC):
     """Abstract interface (see implementations for details)."""
 
     @abstractmethod
-    def __init__(self, allocation: float = 0.0) -> None:
+    def __init__(self, allocation: float = 0.0, enabled: bool = True) -> None:
         """Initialize the asset with allocation.
 
         Args:
             allocation: Total allocation for this asset.
+            enabled: Whether this asset is enabled for execution.
         """
         pass
 

@@ -3,8 +3,8 @@
 from typing import List
 
 from strategies.ema5_breakout import EMA5BreakoutStrategy
-from strategies.ema5_breakout.enums import OrderOpeningMode
 from vendor.enums.asset_quality_method import AssetQualityMethod
+from vendor.enums.tp_sl_method import TpSlMethod
 from vendor.interfaces.strategy import StrategyInterface
 from vendor.services.asset import AssetService
 
@@ -17,14 +17,15 @@ class Asset(AssetService):
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
-    def __init__(self, allocation: float = 0.0, leverage: int = 100) -> None:
+    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 100) -> None:
         """Initialize XAUUSD asset with EMA5 breakout strategy.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
+            enabled: Whether this asset is enabled for execution.
             leverage: Leverage multiplier for trading (default: 100 for forex/commodities).
         """
-        super().__init__(allocation=allocation, leverage=leverage)
+        super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
 
         self._setup_strategies()
         self._setup_allocation()
@@ -36,12 +37,20 @@ class Asset(AssetService):
                 allocation=0.0,
                 enabled=True,
                 settings={
-                    "order_opening_mode": OrderOpeningMode.ONE_PER_DAY,
-                    "volume_percentage": 0.05,
-                    "ema_period": 6,
-                    "ma_trend_period": 200,
-                    "stop_loss_percentage": 0.02,
-                    "trailing_activation_percentage": 0.01,
+                    "entry_allow_multiple": False,
+                    "entry_waiting_time": 0,
+                    "entry_volume_percentage": 0.10,
+                    "entry_ema_period": 5,
+                    "main_take_profit": 3,
+                    "main_take_profit_method": TpSlMethod.FIXED,
+                    "main_stop_loss": 15,
+                    "main_stop_loss_method": TpSlMethod.FIXED,
+                    "recovery_enabled": True,
+                    "recovery_maximum_layers": 10,
+                    "recovery_stop_loss": 15,
+                    "recovery_stop_loss_method": TpSlMethod.FIXED,
+                    "recovery_take_profit": 5,
+                    "recovery_take_profit_method": TpSlMethod.FIXED,
                 },
             ),
         ]
