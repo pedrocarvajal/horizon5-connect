@@ -1,8 +1,8 @@
 """Test portfolio for backtest refactor validation."""
 
 from assets.btcusdt import Asset as BTCUSDTAsset
-from enums.asset_quality_method import AssetQualityMethod
-from services.portfolio import PortfolioService
+from vendor.enums.asset_quality_method import AssetQualityMethod
+from vendor.services.portfolio import PortfolioService
 
 
 class Portfolio(PortfolioService):

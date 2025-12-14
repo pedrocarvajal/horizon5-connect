@@ -1,0 +1,98 @@
+"""Price Velocity indicator measuring rate of price change over time."""
+
+import datetime
+from typing import List, Optional
+
+from vendor.interfaces.indicator import IndicatorInterface
+from vendor.models.candle import CandleModel
+from vendor.models.tick import TickModel
+from vendor.services.logging import LoggingService
+
+from .models.value import PriceVelocityValueModel
+
+
+class PriceVelocityIndicator(IndicatorInterface):
+    """Indicator measuring the first derivative of price (rate of change)."""
+
+    _MIN_TICKS_REQUIRED: int = 2
+    _INITIAL_VELOCITY: float = 0.0
+
+    _name: str = "Price Velocity"
+    _key: str
+    _window_size: int
+    _candles: List[CandleModel]
+    _price_to_use: str
+    _values: List[PriceVelocityValueModel]
+    _prices: List[float]
+    _velocities: List[float]
+
+    def __init__(
+        self,
+        key: str,
+        window_size: int = 5,
+        price_to_use: str = "close_price",
+        candles: Optional[List[CandleModel]] = None,
+    ) -> None:
+        """Initialize the Price Velocity indicator with configuration parameters."""
+        self._key = key
+        self._window_size = window_size
+        self._price_to_use = price_to_use
+        self._candles = candles if candles is not None else []
+        self._values = []
+        self._prices = []
+        self._velocities = []
+
+        self._log = LoggingService()
+
+    def on_tick(self, tick: TickModel) -> None:
+        """Process incoming tick and refresh indicator if candle closed."""
+        super().on_tick(tick)
+
+        if len(self._candles) < self._MIN_TICKS_REQUIRED:
+            return
+
+        if (
+            len(self._candles) > 0
+            and tick.date >= self._candles[-1].close_time
+            and self._should_refresh(self._candles[-1].close_time)
+        ):
+            self.refresh()
+
+    def refresh(self) -> None:
+        """Recalculate velocity based on current price changes."""
+        if len(self._candles) < self._MIN_TICKS_REQUIRED:
+            return
+
+        current_price = getattr(self._candles[-1], self._price_to_use)
+        self._prices.append(current_price)
+
+        if len(self._prices) < self._MIN_TICKS_REQUIRED:
+            value = PriceVelocityValueModel()
+            value.date = self._candles[-1].close_time
+            value.value = self._INITIAL_VELOCITY
+            self._values.append(value)
+            return
+
+        velocity = self._prices[-1] - self._prices[-2]
+        self._velocities.append(velocity)
+
+        window_start = max(0, len(self._velocities) - self._window_size)
+        window_velocities = self._velocities[window_start:]
+
+        value = PriceVelocityValueModel()
+        value.date = self._candles[-1].close_time
+        value.value = sum(window_velocities) / len(window_velocities)
+
+        self._values.append(value)
+
+    def _should_refresh(self, candle_close_time: datetime.datetime) -> bool:
+        if len(self._values) == 0:
+            return True
+
+        last_date = self._values[-1].date
+        return last_date is None or last_date < candle_close_time
+
+    @property
+    def values(self) -> List[PriceVelocityValueModel]:
+        """Return the list of calculated velocity values."""
+        return self._values

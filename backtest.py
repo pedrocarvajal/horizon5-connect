@@ -10,23 +10,23 @@ from multiprocessing import Process, Queue
 from threading import Thread
 from typing import Any, Dict, List, Optional
 
-from configs.timezone import TIMEZONE
-from enums.backtest_event import BacktestEvent
-from enums.backtest_status import BacktestStatus
-from helpers.get_portfolio_by_path import get_portfolio_by_path
-from helpers.parse_date import parse_date
-from interfaces.portfolio import PortfolioInterface
-from models.backtest_settings import (
+from vendor.configs.timezone import TIMEZONE
+from vendor.enums.backtest_event import BacktestEvent
+from vendor.enums.backtest_status import BacktestStatus
+from vendor.helpers.get_portfolio_by_path import get_portfolio_by_path
+from vendor.helpers.parse_date import parse_date
+from vendor.interfaces.portfolio import PortfolioInterface
+from vendor.models.backtest_settings import (
     AssetSettingsModel,
     BacktestSettingsModel,
     PortfolioSettingsModel,
     StrategySettingsModel,
 )
-from providers.horizon_router import HorizonRouterProvider
-from services.authentication import AuthenticationService
-from services.backtest import BacktestService
-from services.commands import CommandService
-from services.logging import LoggingService
+from vendor.providers.horizon_router import HorizonRouterProvider
+from vendor.services.authentication import AuthenticationService
+from vendor.services.backtest import BacktestService
+from vendor.services.commands import CommandService
+from vendor.services.logging import LoggingService
 
 
 class EventHandler:

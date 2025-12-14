@@ -6,8 +6,8 @@ import argparse
 from multiprocessing import Process, Queue
 from typing import Any
 
-from services.commands import CommandService
-from services.production import ProductionService
+from vendor.services.commands import CommandService
+from vendor.services.production import ProductionService
 
 
 class Production(ProductionService):

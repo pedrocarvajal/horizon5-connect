@@ -61,8 +61,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN", "PLR2004", "PT027", "PTH"]
-"scripts/*" = ["ALL"]
+"vendor/tests/*" = ["ANN", "PLR2004", "PT027", "PTH"]
+"vendor/scripts/*" = ["ALL"]
 "services/analytic/helpers/*" = ["PLR2004"]
 
 [tool.ruff.format]
@@ -100,18 +100,18 @@ strict_optional = true
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
 include = [
-    "services",
-    "helpers",
-    "models",
-    "enums",
-    "interfaces",
-    "configs",
-    "indicators",
-    "providers",
+    "vendor/services",
+    "vendor/helpers",
+    "vendor/models",
+    "vendor/enums",
+    "vendor/interfaces",
+    "vendor/configs",
+    "vendor/indicators",
+    "vendor/providers",
     "assets",
     "portfolios",
     "strategies",
-    "tests",
+    "vendor/tests",
     "backtest.py",
     "production.py",
 ]
@@ -122,12 +122,12 @@ exclude = [
     ".pytest_cache",
     ".ruff_cache",
     "__pycache__",
-    "logs",
-    "docs",
-    "libraries",
-    "storage",
+    "vendor/logs",
+    "vendor/docs",
+    "vendor/libraries",
+    "vendor/storage",
     "trash",
-    "scripts",
+    "vendor/scripts",
     ".cursor",
     ".vscode",
     ".claude",

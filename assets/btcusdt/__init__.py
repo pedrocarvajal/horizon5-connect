@@ -2,13 +2,13 @@
 
 from typing import List
 
-from enums.asset_quality_method import AssetQualityMethod
-from interfaces.strategy import StrategyInterface
-from services.asset import AssetService
 from strategies.donchian_breakout import DonchianBreakoutStrategy
 from strategies.ema5_breakout import EMA5BreakoutStrategy
 from strategies.ema5_breakout.enums import OrderOpeningMode
 from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
+from vendor.enums.asset_quality_method import AssetQualityMethod
+from vendor.interfaces.strategy import StrategyInterface
+from vendor.services.asset import AssetService
 
 
 class Asset(AssetService):

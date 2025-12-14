@@ -3,17 +3,17 @@
 import datetime
 from typing import Any, ClassVar, Dict, Optional
 
-from enums.order_side import OrderSide
-from enums.order_status import OrderStatus
-from enums.quality_method import QualityMethod
-from enums.timeframe import Timeframe
-from indicators.ma import MAIndicator
-from models.backtest_expectation import BacktestExpectationModel
-from models.order import OrderModel
-from models.tick import TickModel
-from services.candle import CandleService
-from services.strategy import StrategyService
 from strategies.ema5_breakout.enums import OrderOpeningMode
+from vendor.enums.order_side import OrderSide
+from vendor.enums.order_status import OrderStatus
+from vendor.enums.quality_method import QualityMethod
+from vendor.enums.timeframe import Timeframe
+from vendor.indicators.ma import MAIndicator
+from vendor.models.backtest_expectation import BacktestExpectationModel
+from vendor.models.order import OrderModel
+from vendor.models.tick import TickModel
+from vendor.services.candle import CandleService
+from vendor.services.strategy import StrategyService
 
 
 class EMA5BreakoutStrategy(StrategyService):

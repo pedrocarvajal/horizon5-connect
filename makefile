@@ -1,25 +1,25 @@
 .PHONY: run-tests run-tests-e2e run-tests-integration run-tests-unit run-linter-checks run-linter-fixes run-submodules-synchronization run-submodules-push
 
 run-tests:
-	./scripts/make/run-tests.sh
+	./vendor/scripts/make/run-tests.sh
 
 run-tests-e2e:
-	./scripts/make/run-tests-e2e.sh
+	./vendor/scripts/make/run-tests-e2e.sh
 
 run-tests-integration:
-	./scripts/make/run-tests-integration.sh
+	./vendor/scripts/make/run-tests-integration.sh
 
 run-tests-unit:
-	./scripts/make/run-tests-unit.sh
+	./vendor/scripts/make/run-tests-unit.sh
 
 run-linter-checks:
-	./scripts/make/run-linter-checks.sh $(if $(FILE),--file $(FILE)) $(if $(FOLDER),--folder $(FOLDER))
+	./vendor/scripts/make/run-linter-checks.sh $(if $(FILE),--file $(FILE)) $(if $(FOLDER),--folder $(FOLDER))
 
 run-linter-fixes:
-	./scripts/make/run-linter-fixes.sh
+	./vendor/scripts/make/run-linter-fixes.sh
 
 run-submodules-synchronization:
-	./scripts/make/run-submodules-synchronization.sh
+	./vendor/scripts/make/run-submodules-synchronization.sh
 
 run-submodules-push:
-	./scripts/make/run-submodules-push.sh
+	./vendor/scripts/make/run-submodules-push.sh

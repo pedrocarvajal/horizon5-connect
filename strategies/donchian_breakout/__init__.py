@@ -2,19 +2,19 @@
 
 from typing import Any, Dict
 
-from enums.order_side import OrderSide
-from enums.order_status import OrderStatus
-from enums.quality_method import QualityMethod
-from enums.timeframe import Timeframe
-from indicators.adx import ADXIndicator
-from indicators.atr import ATRIndicator
-from indicators.donchian_channel import DonchianChannelIndicator
-from indicators.ma import MAIndicator
-from models.backtest_expectation import BacktestExpectationModel
-from models.order import OrderModel
-from models.tick import TickModel
-from services.candle import CandleService
-from services.strategy import StrategyService
+from vendor.enums.order_side import OrderSide
+from vendor.enums.order_status import OrderStatus
+from vendor.enums.quality_method import QualityMethod
+from vendor.enums.timeframe import Timeframe
+from vendor.indicators.adx import ADXIndicator
+from vendor.indicators.atr import ATRIndicator
+from vendor.indicators.donchian_channel import DonchianChannelIndicator
+from vendor.indicators.ma import MAIndicator
+from vendor.models.backtest_expectation import BacktestExpectationModel
+from vendor.models.order import OrderModel
+from vendor.models.tick import TickModel
+from vendor.services.candle import CandleService
+from vendor.services.strategy import StrategyService
 
 
 class DonchianBreakoutStrategy(StrategyService):
