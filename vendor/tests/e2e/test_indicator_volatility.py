@@ -8,7 +8,7 @@ from vendor.tests.e2e.wrappers.indicator import WrapperIndicator
 
 
 class TestIndicatorVolatility(WrapperIndicator):
-    _EXPECTED_TOTAL_CANDLES: int = 743
+    _EXPECTED_TOTAL_CANDLES: int = 744
     _EXPECTED_LAST_CANDLES: int = 10
     _PRICE_TOLERANCE: float = 0.0001
 
