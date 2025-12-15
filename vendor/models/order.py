@@ -59,6 +59,7 @@ class OrderModel(BaseModel):
     take_profit_price: float = Field(default=0.0, ge=0)
     stop_loss_price: float = Field(default=0.0, ge=0)
 
+    leverage: int = Field(default=1, ge=1)
     commission: float = Field(default=0.0, ge=0)
     commission_percentage: float = Field(default=0.0, ge=0)
 
@@ -251,11 +252,12 @@ class OrderModel(BaseModel):
     @computed_field
     @property
     def profit_percentage(self) -> float:
-        """Calculate profit as percentage of entry price."""
-        if self.price == 0:
+        """Calculate profit as percentage of account allocation.
+
+        This represents the impact of the trade on the overall account.
+        Example: $100 profit on $100,000 account = 0.1% profit_percentage.
+        """
+        if self.asset is None or self.asset.allocation == 0:
             return 0.0
 
-        if self.side is not None and self.side.is_sell():
-            return (self.price - self.close_price) / self.price
-
-        return (self.close_price - self.price) / self.price
+        return self.profit / self.asset.allocation

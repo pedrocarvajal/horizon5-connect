@@ -1,26 +1,25 @@
 """Calculate quality score relative to benchmark performance."""
 
-from typing import List, Tuple
+from typing import List
+
+from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
 
 DAYS_PER_YEAR = 365
 MIN_OBSERVATIONS = 2
 
 
 def get_quality_vs_benchmark(
+    method: QualityVsBenchmarkMethod,
     alpha: float,
     information_ratio: float,
     strategy_nav_history: List[float],
     benchmark_price_history: List[float],
     benchmark_initial_price: float,
-) -> Tuple[float, str]:
+) -> float:
     """Calculate quality score comparing strategy performance against benchmark.
 
-    Uses weighted average of three components:
-        - Alpha quality (0.35): Measures excess return over benchmark
-        - Information ratio quality (0.35): Risk-adjusted alpha
-        - Excess Sharpe quality (0.30): Strategy Sharpe vs benchmark Sharpe
-
     Args:
+        method: Method to use for quality calculation.
         alpha: Excess return over benchmark after beta adjustment.
         information_ratio: Alpha divided by tracking error.
         strategy_nav_history: Historical NAV values for the strategy.
@@ -28,8 +27,7 @@ def get_quality_vs_benchmark(
         benchmark_initial_price: Initial benchmark price for return calculation.
 
     Returns:
-        Tuple of (quality_score, method_name).
-        Score is normalized to [0, 1] range.
+        Quality score normalized to [0, 1] range.
 
     Interpretation:
         > 0.80: Excellent - significantly outperforms benchmark
@@ -39,10 +37,24 @@ def get_quality_vs_benchmark(
         < 0.20: Poor - significantly worse than benchmark
     """
     if len(strategy_nav_history) < MIN_OBSERVATIONS or len(benchmark_price_history) < MIN_OBSERVATIONS:
-        return 0.0, "fqs_benchmark"
+        return 0.0
 
     if benchmark_initial_price == 0:
-        return 0.0, "fqs_benchmark"
+        return 0.0
+
+    if method == QualityVsBenchmarkMethod.ALPHA:
+        return round(_calculate_alpha_quality(alpha), 4)
+
+    if method == QualityVsBenchmarkMethod.INFORMATION_RATIO:
+        return round(_calculate_information_ratio_quality(information_ratio), 4)
+
+    if method == QualityVsBenchmarkMethod.EXCESS_SHARPE:
+        excess_sharpe_quality = _calculate_excess_sharpe_quality(
+            strategy_nav_history,
+            benchmark_price_history,
+            benchmark_initial_price,
+        )
+        return round(excess_sharpe_quality, 4)
 
     alpha_quality = _calculate_alpha_quality(alpha)
     information_ratio_quality = _calculate_information_ratio_quality(information_ratio)
@@ -54,7 +66,7 @@ def get_quality_vs_benchmark(
 
     weighted_score = alpha_quality * 0.35 + information_ratio_quality * 0.35 + excess_sharpe_quality * 0.30
 
-    return round(weighted_score, 4), "fqs_benchmark"
+    return round(weighted_score, 4)
 
 
 def _calculate_alpha_quality(alpha: float) -> float:

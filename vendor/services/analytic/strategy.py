@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from vendor.enums.command import Command
 from vendor.enums.quality_method import QualityMethod
+from vendor.enums.snapshot_event import SnapshotEvent
+from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
@@ -56,6 +58,7 @@ class StrategyAnalytic(AnalyticWrapper):
         backtest: bool = False,
         backtest_id: Optional[str] = None,
         quality_method: QualityMethod = QualityMethod.FQS,
+        quality_vs_benchmark_method: QualityVsBenchmarkMethod = QualityVsBenchmarkMethod.FQS_BENCHMARK,
         backtest_expectation: Optional[BacktestExpectationModel] = None,
         commands_queue: Optional[Queue[Any]] = None,
         asset_id: Optional[str] = None,
@@ -69,6 +72,7 @@ class StrategyAnalytic(AnalyticWrapper):
             backtest: Whether running in backtest mode.
             backtest_id: Backtest identifier (required if backtest is True).
             quality_method: Method for calculating quality score.
+            quality_vs_benchmark_method: Method for calculating quality vs benchmark score.
             backtest_expectation: Expected metric ranges for quality calculation.
             commands_queue: Queue for sending commands to external services.
             asset_id: Identifier of the asset this strategy trades.
@@ -91,6 +95,7 @@ class StrategyAnalytic(AnalyticWrapper):
         self._backtest = backtest
         self._backtest_id = backtest_id
         self._quality_method = quality_method
+        self._quality_vs_benchmark_method = quality_vs_benchmark_method
         self._backtest_expectation = backtest_expectation
         self._commands_queue = commands_queue
         self._asset_id = asset_id
@@ -106,27 +111,16 @@ class StrategyAnalytic(AnalyticWrapper):
         self._previous_day_nav = self._orderbook.nav
 
         self._snapshot = SnapshotModel(
-            backtest=self._backtest,
-            backtest_id=self._backtest_id,
-            portfolio_id=self._portfolio_id,
             strategy_id=self._strategy_id,
+            portfolio_id=self._portfolio_id,
             asset_id=self._asset_id,
-            nav=self._orderbook.nav,
-            allocation=self._orderbook.allocation,
-            nav_peak=self._orderbook.nav,
-            r2=0,
-            cagr=0,
-            calmar_ratio=0,
-            expected_shortfall=0,
-            max_drawdown=0,
-            profit_factor=0,
-            recovery_factor=0,
-            sharpe_ratio=0,
-            sortino_ratio=0,
-            ulcer_index=0,
-            win_ratio=0,
-            average_trade_duration=0,
-            quality=0,
+            backtest_id=self._backtest_id,
+            is_backtest=self._backtest,
+            capital_allocation=self._orderbook.allocation,
+            capital_nav=self._orderbook.nav,
+            capital_nav_peak=self._orderbook.nav,
+            capital_balance=self._orderbook.allocation,
+            capital_balance_peak=self._orderbook.allocation,
         )
 
     def on_end(self) -> Optional[Dict[str, Any]]:
@@ -145,24 +139,29 @@ class StrategyAnalytic(AnalyticWrapper):
         self._perform_calculations()
 
         days_elapsed = (self._ended_at - self._started_at).days
-        quality_score, quality_method_name = self._calculate_quality()
-        quality_vs_benchmark_score, quality_vs_benchmark_method = self._calculate_quality_vs_benchmark()
-        self._snapshot.quality = quality_score
-        self._snapshot.quality_vs_benchmark = quality_vs_benchmark_score
-        self._snapshot.days_elapsed = days_elapsed
+        quality_score, _ = self._calculate_quality()
+        quality_vs_benchmark_score = self._calculate_quality_vs_benchmark()
+        self._snapshot.score_quality = quality_score
+        self._snapshot.score_quality_vs_benchmark = quality_vs_benchmark_score
+        self._snapshot.time_days_elapsed = days_elapsed
+        self._snapshot.event = SnapshotEvent.BACKTEST_END
+
+        snapshot_data = {
+            "strategy_id": self._snapshot.strategy_id,
+            "portfolio_id": self._snapshot.portfolio_id,
+            "asset_id": self._snapshot.asset_id,
+            "backtest_id": self._snapshot.backtest_id,
+            "backtest": self._snapshot.is_backtest,
+            "event": self._snapshot.event.value,
+            "data": self._snapshot.to_dict(),
+            "created_at": int(self._tick.date.timestamp()),
+        }
+
+        self._send_snapshot_to_queue(snapshot_data)
 
         report: Dict[str, Any] = {
+            "strategy_id": self._strategy_id,
             **self._snapshot.to_dict(),
-            "started_at": str(self._started_at),
-            "ended_at": str(self._ended_at),
-            "days_elapsed": days_elapsed,
-            "num_trades": self._closed_orders,
-            "quality": quality_score,
-            "quality_method": quality_method_name,
-            "quality_vs_benchmark": quality_vs_benchmark_score,
-            "quality_vs_benchmark_method": quality_vs_benchmark_method,
-            "benchmark_initial_price": self._snapshot.benchmark_initial_price,
-            "benchmark_final_price": self._snapshot.benchmark_current_price,
         }
 
         return report
@@ -171,7 +170,7 @@ class StrategyAnalytic(AnalyticWrapper):
         """Handle a new month event. Logs monthly performance in live mode."""
         performance = self._snapshot.performance
         performance_percentage = self._snapshot.performance_percentage * 100
-        max_drawdown_percentage = self._snapshot.max_drawdown * 100
+        max_drawdown_percentage = self._snapshot.performance_max_drawdown * 100
 
         if self._is_running_in_live_mode():
             message = (
@@ -188,7 +187,14 @@ class StrategyAnalytic(AnalyticWrapper):
         """
         if order.status.is_closed():
             self._closed_orders += 1
-            self._snapshot.profit_history.append(order.profit)
+            self._snapshot.history_profit.append(order.profit)
+            self._snapshot.capital_balance += order.profit
+            self._snapshot.capital_balance_peak = max(
+                self._snapshot.capital_balance_peak,
+                self._snapshot.capital_balance,
+            )
+
+            self._snapshot.history_balance.append(self._snapshot.capital_balance)
 
             if order.side is not None:
                 if order.side.is_buy():
@@ -217,27 +223,28 @@ class StrategyAnalytic(AnalyticWrapper):
             method=self._quality_method,
             expectations=self._backtest_expectation or BacktestExpectationModel.default(),
             days_elapsed=days_elapsed,
-            r_squared=self._snapshot.r2,
-            max_drawdown=self._snapshot.max_drawdown,
-            profit_factor=self._snapshot.profit_factor,
+            r_squared=self._snapshot.performance_r_squared,
+            max_drawdown=self._snapshot.performance_max_drawdown,
+            profit_factor=self._snapshot.trade_profit_factor,
             num_trades=self._closed_orders,
-            recovery_factor=self._snapshot.recovery_factor,
-            win_ratio=self._snapshot.win_ratio,
-            trade_duration=self._snapshot.average_trade_duration,
+            recovery_factor=self._snapshot.performance_recovery_factor,
+            win_ratio=self._snapshot.trade_win_ratio,
+            trade_duration=self._snapshot.trade_average_duration,
             performance_percentage=self._snapshot.performance_percentage,
         )
 
-    def _calculate_quality_vs_benchmark(self) -> Tuple[float, str]:
+    def _calculate_quality_vs_benchmark(self) -> float:
         """Calculate quality score comparing strategy performance against benchmark.
 
         Returns:
-            Tuple of (quality_vs_benchmark_score, method_name).
+            Quality score between 0 and 1.
         """
         return get_quality_vs_benchmark(
-            alpha=self._snapshot.alpha,
-            information_ratio=self._snapshot.information_ratio,
-            strategy_nav_history=self._snapshot.nav_history,
-            benchmark_price_history=self._snapshot.benchmark_price_history,
+            method=self._quality_vs_benchmark_method,
+            alpha=self._snapshot.benchmark_alpha,
+            information_ratio=self._snapshot.benchmark_information_ratio,
+            strategy_nav_history=self._snapshot.history_nav,
+            benchmark_price_history=self._snapshot.history_benchmark_price,
             benchmark_initial_price=self._snapshot.benchmark_initial_price,
         )
 
@@ -250,20 +257,20 @@ class StrategyAnalytic(AnalyticWrapper):
         self._perform_base_calculations()
 
         snapshot = self._snapshot
-        profit_history = snapshot.profit_history
+        profit_history = snapshot.history_profit
 
-        snapshot.profit_factor = get_profit_factor(profit_history)
-        snapshot.win_ratio = get_win_ratio(profit_history)
-        snapshot.total_orders = self._closed_orders
-        snapshot.total_buy_orders = self._buy_orders
-        snapshot.total_sell_orders = self._sell_orders
-        snapshot.average_trade_duration = get_average_trade_duration(self._trade_durations)
+        snapshot.trade_profit_factor = get_profit_factor(profit_history)
+        snapshot.trade_win_ratio = get_win_ratio(profit_history)
+        snapshot.trade_total_orders = self._closed_orders
+        snapshot.trade_buy_orders = self._buy_orders
+        snapshot.trade_sell_orders = self._sell_orders
+        snapshot.trade_average_duration = get_average_trade_duration(self._trade_durations)
 
     def _refresh(self) -> None:
         """Refresh snapshot data from orderbook."""
-        self._snapshot.nav = self._orderbook.nav
-        self._snapshot.allocation = self._orderbook.allocation
-        self._snapshot.nav_peak = max(self._snapshot.nav_peak, self._snapshot.nav)
+        self._snapshot.capital_nav = self._orderbook.nav
+        self._snapshot.capital_allocation = self._orderbook.allocation
+        self._snapshot.capital_nav_peak = max(self._snapshot.capital_nav_peak, self._snapshot.capital_nav)
         self._update_max_drawdown()
 
     def _send_order_to_backend(self, order: OrderModel) -> None:

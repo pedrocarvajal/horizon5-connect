@@ -12,92 +12,131 @@ from vendor.services.logging import LoggingService
 class SnapshotModel(BaseModel):
     """Performance snapshot with financial metrics and historical tracking.
 
-    Attributes:
-        backtest: Whether snapshot is from backtest.
-        strategy_id: Associated strategy identifier.
-        event: Snapshot trigger event.
-        allocation: Capital allocation.
-        nav: Net asset value.
-        nav_peak: Historical NAV peak.
-        r2: R-squared coefficient.
-        cagr: Compound annual growth rate.
-        sharpe_ratio: Risk-adjusted return metric.
-        max_drawdown: Maximum drawdown from peak.
-        performance_history: Historical performance values.
-        nav_history: Historical NAV values.
-        profit_history: Historical profit values.
+    Organized in logical blocks:
+        - Identifiers: IDs and metadata
+        - Capital: NAV, allocation, monetary values
+        - Performance: Returns, drawdown, CAGR
+        - Risk: Sharpe, Sortino, Expected Shortfall
+        - Trade: Orders, win ratio, profit factor
+        - Benchmark: Comparisons vs benchmark
+        - Score: Quality scores
+        - History: Historical data arrays
+        - Time: Dates and durations
     """
 
-    backtest: bool = Field(default=False)
-    backtest_id: Optional[str] = None
-    portfolio_id: Optional[str] = None
+    # =========================================================================
+    # IDENTIFIERS - IDs and metadata
+    # =========================================================================
     strategy_id: str = Field(...)
+    portfolio_id: Optional[str] = None
     asset_id: Optional[str] = None
+    backtest_id: Optional[str] = None
+    is_backtest: bool = Field(default=False)
     event: Optional[SnapshotEvent] = Field(default=None)
-    allocation: float = Field(default=0, ge=0)
-    nav: float = Field(default=0, ge=0)
-    nav_peak: float = Field(default=0, ge=0)
-    benchmark_initial_price: float = Field(default=0, ge=0)
-    benchmark_current_price: float = Field(default=0, ge=0)
 
-    r2: float = Field(default=0, ge=0, le=1)
-    cagr: float = Field(default=0)
-    calmar_ratio: float = Field(default=0)
-    expected_shortfall: float = Field(default=0, le=0)
-    max_drawdown: float = Field(default=0, le=0)
-    profit_factor: float = Field(default=0, ge=0)
-    recovery_factor: float = Field(default=0, ge=0)
-    sharpe_ratio: float = Field(default=0)
-    sortino_ratio: float = Field(default=0)
-    ulcer_index: float = Field(default=0, ge=0)
-    win_ratio: float = Field(default=0, ge=0, le=1)
-    total_orders: int = Field(default=0, ge=0)
-    total_buy_orders: int = Field(default=0, ge=0)
-    total_sell_orders: int = Field(default=0, ge=0)
-    average_trade_duration: float = Field(default=0, ge=0)
-    daily_performance: float = Field(default=0)
-    daily_performance_percentage: float = Field(default=0)
-    days_elapsed: int = Field(default=0, ge=0)
-    quality: float = Field(default=0, ge=0, le=1)
-    quality_vs_benchmark: float = Field(
+    # =========================================================================
+    # CAPITAL - NAV, allocation, monetary values
+    # =========================================================================
+    capital_allocation: float = Field(default=0, ge=0)
+    capital_nav: float = Field(default=0, ge=0)
+    capital_nav_peak: float = Field(default=0, ge=0)
+    capital_balance: float = Field(
         default=0,
         ge=0,
-        le=1,
-        description=(
-            "Quality score comparing strategy vs benchmark. Combines alpha, information ratio, and excess Sharpe."
-        ),
+        description="Closed balance (realized P&L). Used for balance curve vs equity curve.",
+    )
+    capital_balance_peak: float = Field(
+        default=0,
+        ge=0,
+        description="Historical peak of closed balance.",
     )
 
-    alpha: float = Field(
+    # =========================================================================
+    # PERFORMANCE - Returns, drawdown, CAGR
+    # =========================================================================
+    performance_r_squared: float = Field(default=0, ge=0, le=1)
+    performance_cagr: float = Field(default=0)
+    performance_max_drawdown: float = Field(default=0, le=0)
+    performance_recovery_factor: float = Field(default=0, ge=0)
+    performance_daily: float = Field(default=0)
+    performance_daily_percentage: float = Field(default=0)
+
+    # =========================================================================
+    # RISK - Sharpe, Sortino, Expected Shortfall, Ulcer
+    # =========================================================================
+    risk_sharpe_ratio: float = Field(default=0)
+    risk_sortino_ratio: float = Field(default=0)
+    risk_calmar_ratio: float = Field(default=0)
+    risk_expected_shortfall: float = Field(default=0, le=0)
+    risk_ulcer_index: float = Field(default=0, ge=0)
+
+    # =========================================================================
+    # TRADE - Orders, win ratio, profit factor, duration
+    # =========================================================================
+    trade_profit_factor: float = Field(default=0, ge=0)
+    trade_win_ratio: float = Field(default=0, ge=0, le=1)
+    trade_total_orders: int = Field(default=0, ge=0)
+    trade_buy_orders: int = Field(default=0, ge=0)
+    trade_sell_orders: int = Field(default=0, ge=0)
+    trade_average_duration: float = Field(default=0, ge=0)
+
+    # =========================================================================
+    # BENCHMARK - Comparisons vs benchmark
+    # =========================================================================
+    benchmark_initial_price: float = Field(default=0, ge=0)
+    benchmark_current_price: float = Field(default=0, ge=0)
+    benchmark_alpha: float = Field(
         default=0,
         description="Excess return over benchmark after adjusting for beta. Positive alpha indicates outperformance.",
     )
-    beta: float = Field(
+    benchmark_beta: float = Field(
         default=0,
         description="Sensitivity to benchmark movements. Beta > 1 means more volatile than benchmark.",
     )
-    correlation: float = Field(
+    benchmark_correlation: float = Field(
         default=0,
         ge=-1,
         le=1,
         description="Linear relationship between strategy and benchmark returns. Range: -1 (inverse) to 1 (perfect).",
     )
-    tracking_error: float = Field(
+    benchmark_tracking_error: float = Field(
         default=0,
         ge=0,
         description="Standard deviation of return differences vs benchmark. Lower means closer tracking.",
     )
-    information_ratio: float = Field(
+    benchmark_information_ratio: float = Field(
         default=0,
         description="Alpha divided by tracking error. Measures risk-adjusted excess return vs benchmark.",
     )
 
-    performance_history: List[float] = Field(default_factory=lambda: [])
-    nav_history: List[float] = Field(default_factory=lambda: [])
-    profit_history: List[float] = Field(default_factory=lambda: [])
-    benchmark_price_history: List[float] = Field(default_factory=lambda: [])
+    # =========================================================================
+    # SCORE - Quality scores
+    # =========================================================================
+    score_quality: float = Field(default=0, ge=0, le=1)
+    score_quality_vs_benchmark: float = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Quality score comparing strategy vs benchmark.",
+    )
 
-    created_at: Optional[datetime.datetime] = None
+    # =========================================================================
+    # HISTORY - Historical data arrays
+    # =========================================================================
+    history_performance: List[float] = Field(default_factory=lambda: [])
+    history_nav: List[float] = Field(default_factory=lambda: [])
+    history_profit: List[float] = Field(default_factory=lambda: [])
+    history_benchmark_price: List[float] = Field(default_factory=lambda: [])
+    history_balance: List[float] = Field(
+        default_factory=lambda: [],
+        description="Historical closed balance values for balance curve.",
+    )
+
+    # =========================================================================
+    # TIME - Dates and durations
+    # =========================================================================
+    time_days_elapsed: int = Field(default=0, ge=0)
+    time_created_at: Optional[datetime.datetime] = None
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize snapshot model and setup logging.
@@ -110,61 +149,51 @@ class SnapshotModel(BaseModel):
         self._log = LoggingService()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert snapshot to dictionary representation for API.
+        """Convert snapshot metrics to dictionary representation.
+
+        Returns only metrics, without identifiers (IDs should be added at report level).
 
         Returns:
-            Dictionary with identifiers at root level and metrics in 'data' field.
+            Dictionary with all snapshot metrics.
         """
-        result: Dict[str, Any] = {
-            "strategy_id": self.strategy_id,
-            "event": self.event.value if self.event else None,
-            "backtest": self.backtest,
-            "data": {
-                "nav": self.nav,
-                "allocation": self.allocation,
-                "performance": self.performance,
-                "performance_percentage": self.performance_percentage,
-                "nav_peak": self.nav_peak,
-                "r2": self.r2,
-                "cagr": self.cagr,
-                "calmar_ratio": self.calmar_ratio,
-                "expected_shortfall": self.expected_shortfall,
-                "max_drawdown": self.max_drawdown,
-                "profit_factor": self.profit_factor,
-                "recovery_factor": self.recovery_factor,
-                "sharpe_ratio": self.sharpe_ratio,
-                "sortino_ratio": self.sortino_ratio,
-                "ulcer_index": self.ulcer_index,
-                "win_ratio": self.win_ratio,
-                "total_orders": self.total_orders,
-                "total_buy_orders": self.total_buy_orders,
-                "total_sell_orders": self.total_sell_orders,
-                "average_trade_duration": self.average_trade_duration,
-                "daily_performance": self.daily_performance,
-                "daily_performance_percentage": self.daily_performance_percentage,
-                "quality": self.quality,
-                "quality_vs_benchmark": self.quality_vs_benchmark,
-                "days_elapsed": self.days_elapsed,
-                "benchmark_performance": self.benchmark_performance,
-                "benchmark_performance_percentage": self.benchmark_performance_percentage,
-                "alpha": self.alpha,
-                "beta": self.beta,
-                "correlation": self.correlation,
-                "tracking_error": self.tracking_error,
-                "information_ratio": self.information_ratio,
-            },
+        return {
+            "capital_allocation": self.capital_allocation,
+            "capital_nav": self.capital_nav,
+            "capital_nav_peak": self.capital_nav_peak,
+            "capital_balance": self.capital_balance,
+            "capital_balance_peak": self.capital_balance_peak,
+            "performance": self.performance,
+            "performance_percentage": self.performance_percentage,
+            "performance_r_squared": self.performance_r_squared,
+            "performance_cagr": self.performance_cagr,
+            "performance_max_drawdown": self.performance_max_drawdown,
+            "performance_recovery_factor": self.performance_recovery_factor,
+            "performance_daily": self.performance_daily,
+            "performance_daily_percentage": self.performance_daily_percentage,
+            "risk_sharpe_ratio": self.risk_sharpe_ratio,
+            "risk_sortino_ratio": self.risk_sortino_ratio,
+            "risk_calmar_ratio": self.risk_calmar_ratio,
+            "risk_expected_shortfall": self.risk_expected_shortfall,
+            "risk_ulcer_index": self.risk_ulcer_index,
+            "trade_profit_factor": self.trade_profit_factor,
+            "trade_win_ratio": self.trade_win_ratio,
+            "trade_total_orders": self.trade_total_orders,
+            "trade_buy_orders": self.trade_buy_orders,
+            "trade_sell_orders": self.trade_sell_orders,
+            "trade_average_duration": self.trade_average_duration,
+            "benchmark_initial_price": self.benchmark_initial_price,
+            "benchmark_current_price": self.benchmark_current_price,
+            "benchmark_performance": self.benchmark_performance,
+            "benchmark_performance_percentage": self.benchmark_performance_percentage,
+            "benchmark_alpha": self.benchmark_alpha,
+            "benchmark_beta": self.benchmark_beta,
+            "benchmark_correlation": self.benchmark_correlation,
+            "benchmark_tracking_error": self.benchmark_tracking_error,
+            "benchmark_information_ratio": self.benchmark_information_ratio,
+            "score_quality": self.score_quality,
+            "score_quality_vs_benchmark": self.score_quality_vs_benchmark,
+            "time_days_elapsed": self.time_days_elapsed,
         }
-
-        if self.backtest_id:
-            result["backtest_id"] = self.backtest_id
-
-        if self.portfolio_id:
-            result["portfolio_id"] = self.portfolio_id
-
-        if self.asset_id:
-            result["asset_id"] = self.asset_id
-
-        return result
 
     @property
     def performance(self) -> float:
@@ -173,7 +202,7 @@ class SnapshotModel(BaseModel):
         Returns:
             Performance in currency units.
         """
-        return self.nav - self.allocation
+        return self.capital_nav - self.capital_allocation
 
     @property
     def performance_percentage(self) -> float:
@@ -182,10 +211,10 @@ class SnapshotModel(BaseModel):
         Returns:
             Performance percentage (0.0 if allocation is 0).
         """
-        if self.allocation == 0:
+        if self.capital_allocation == 0:
             return 0.0
 
-        return self.performance / self.allocation
+        return self.performance / self.capital_allocation
 
     @property
     def drawdown(self) -> float:
@@ -194,10 +223,10 @@ class SnapshotModel(BaseModel):
         Returns:
             Drawdown as negative percentage (0.0 if no peak).
         """
-        if self.nav_peak == 0:
+        if self.capital_nav_peak == 0:
             return 0.0
 
-        return (self.nav - self.nav_peak) / self.nav_peak
+        return (self.capital_nav - self.capital_nav_peak) / self.capital_nav_peak
 
     @property
     def benchmark_performance(self) -> float:

@@ -67,21 +67,30 @@ class AnalyticWrapper(AnalyticInterface):
         and sends snapshot to backend.
         """
         self._refresh()
-        self._snapshot.performance_history.append(self._snapshot.performance)
-        self._snapshot.nav_history.append(self._snapshot.nav)
+        self._snapshot.history_performance.append(self._snapshot.performance)
+        self._snapshot.history_nav.append(self._snapshot.capital_nav)
         self._perform_calculations()
         self._calculate_daily_performance()
 
         if not self._tick:
             return
 
-        self._snapshot.benchmark_price_history.append(self._tick.close_price)
+        self._snapshot.history_benchmark_price.append(self._tick.close_price)
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
-        snapshot_data = self._snapshot.to_dict()
-        snapshot_data["created_at"] = int(self._tick.date.timestamp())
+
+        snapshot_data = {
+            "strategy_id": self._snapshot.strategy_id,
+            "portfolio_id": self._snapshot.portfolio_id,
+            "asset_id": self._snapshot.asset_id,
+            "backtest_id": self._snapshot.backtest_id,
+            "backtest": self._snapshot.is_backtest,
+            "event": self._snapshot.event.value if self._snapshot.event else None,
+            "data": self._snapshot.to_dict(),
+            "created_at": int(self._tick.date.timestamp()),
+        }
 
         self._send_snapshot_to_queue(snapshot_data)
-        self._previous_day_nav = self._snapshot.nav
+        self._previous_day_nav = self._snapshot.capital_nav
 
     def on_new_hour(self) -> None:
         """Handle a new hour event."""
@@ -106,15 +115,15 @@ class AnalyticWrapper(AnalyticInterface):
 
     def _calculate_daily_performance(self) -> None:
         """Calculate daily performance metrics and update snapshot."""
-        current_nav = self._snapshot.nav
+        current_nav = self._snapshot.capital_nav
         previous_nav = self._previous_day_nav
 
         if previous_nav > 0:
-            self._snapshot.daily_performance = current_nav - previous_nav
-            self._snapshot.daily_performance_percentage = (current_nav - previous_nav) / previous_nav
+            self._snapshot.performance_daily = current_nav - previous_nav
+            self._snapshot.performance_daily_percentage = (current_nav - previous_nav) / previous_nav
         else:
-            self._snapshot.daily_performance = 0.0
-            self._snapshot.daily_performance_percentage = 0.0
+            self._snapshot.performance_daily = 0.0
+            self._snapshot.performance_daily_percentage = 0.0
 
     def _send_snapshot_to_queue(self, snapshot_data: dict[str, Any]) -> None:
         if not self._commands_queue:
@@ -147,21 +156,21 @@ class AnalyticWrapper(AnalyticInterface):
         sharpe_ratio, sortino_ratio, and ulcer_index on the snapshot.
         """
         snapshot = self._snapshot
-        allocation = snapshot.allocation
-        nav = snapshot.nav
+        allocation = snapshot.capital_allocation
+        nav = snapshot.capital_nav
         elapsed_days = self._get_elapsed_days()
-        performance_history = snapshot.performance_history
-        nav_history = snapshot.nav_history
-        max_drawdown = snapshot.max_drawdown
+        performance_history = snapshot.history_performance
+        nav_history = snapshot.history_nav
+        max_drawdown = snapshot.performance_max_drawdown
 
-        snapshot.r2 = get_r2(performance_history)
-        snapshot.cagr = get_cagr(allocation, nav, elapsed_days)
-        snapshot.calmar_ratio = get_calmar_ratio(snapshot.cagr, max_drawdown)
-        snapshot.expected_shortfall = get_expected_shortfall(nav_history)
-        snapshot.recovery_factor = get_recovery_factor(snapshot.performance_percentage, max_drawdown)
-        snapshot.sharpe_ratio = get_sharpe_ratio(nav_history)
-        snapshot.sortino_ratio = get_sortino_ratio(nav_history)
-        snapshot.ulcer_index = get_ulcer_index(nav_history)
+        snapshot.performance_r_squared = get_r2(performance_history)
+        snapshot.performance_cagr = get_cagr(allocation, nav, elapsed_days)
+        snapshot.risk_calmar_ratio = get_calmar_ratio(snapshot.performance_cagr, max_drawdown)
+        snapshot.risk_expected_shortfall = get_expected_shortfall(nav_history)
+        snapshot.performance_recovery_factor = get_recovery_factor(snapshot.performance_percentage, max_drawdown)
+        snapshot.risk_sharpe_ratio = get_sharpe_ratio(nav_history)
+        snapshot.risk_sortino_ratio = get_sortino_ratio(nav_history)
+        snapshot.risk_ulcer_index = get_ulcer_index(nav_history)
 
         self._perform_benchmark_calculations()
 
@@ -172,9 +181,9 @@ class AnalyticWrapper(AnalyticInterface):
         on the snapshot using strategy NAV history vs benchmark price history.
         """
         snapshot = self._snapshot
-        nav_history = snapshot.nav_history
-        benchmark_price_history = snapshot.benchmark_price_history
-        allocation = snapshot.allocation
+        nav_history = snapshot.history_nav
+        benchmark_price_history = snapshot.history_benchmark_price
+        allocation = snapshot.capital_allocation
 
         min_observations = MIN_OBSERVATIONS_FOR_BENCHMARK
 
@@ -214,11 +223,13 @@ class AnalyticWrapper(AnalyticInterface):
         strategy_returns = strategy_returns[:min_returns_length]
         benchmark_returns = benchmark_returns[:min_returns_length]
 
-        snapshot.beta = get_beta(strategy_returns, benchmark_returns)
-        snapshot.correlation = get_correlation(strategy_returns, benchmark_returns)
-        snapshot.tracking_error = get_tracking_error(strategy_returns, benchmark_returns)
-        snapshot.alpha = get_alpha(strategy_returns, benchmark_returns, snapshot.beta)
-        snapshot.information_ratio = get_information_ratio(snapshot.alpha, snapshot.tracking_error)
+        snapshot.benchmark_beta = get_beta(strategy_returns, benchmark_returns)
+        snapshot.benchmark_correlation = get_correlation(strategy_returns, benchmark_returns)
+        snapshot.benchmark_tracking_error = get_tracking_error(strategy_returns, benchmark_returns)
+        snapshot.benchmark_alpha = get_alpha(strategy_returns, benchmark_returns, snapshot.benchmark_beta)
+        snapshot.benchmark_information_ratio = get_information_ratio(
+            snapshot.benchmark_alpha, snapshot.benchmark_tracking_error
+        )
 
     @abstractmethod
     def _perform_calculations(self) -> None:
@@ -241,20 +252,20 @@ class AnalyticWrapper(AnalyticInterface):
     def _update_max_drawdown(self) -> None:
         """Update max drawdown if current drawdown is lower."""
         if self._snapshot.drawdown < 0:
-            self._snapshot.max_drawdown = min(
-                self._snapshot.max_drawdown,
+            self._snapshot.performance_max_drawdown = min(
+                self._snapshot.performance_max_drawdown,
                 self._snapshot.drawdown,
             )
 
     @property
     def nav(self) -> float:
         """Return the current net asset value."""
-        return self._snapshot.nav
+        return self._snapshot.capital_nav
 
     @property
     def quality(self) -> float:
         """Return the current quality score."""
-        return self._snapshot.quality
+        return self._snapshot.score_quality
 
     @property
     def snapshot(self) -> SnapshotModel:

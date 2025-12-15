@@ -282,6 +282,7 @@ class StrategyService(StrategyInterface):
         order.backtest = self._backtest
         order.backtest_id = self._backtest_id
         order.symbol = self._asset.symbol
+        order.leverage = self._orderbook.leverage
         order.side = side
         order.price = price
         order.take_profit_price = take_profit_price
