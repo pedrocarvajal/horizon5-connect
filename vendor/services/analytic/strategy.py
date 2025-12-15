@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from vendor.enums.command import Command
 from vendor.enums.quality_method import QualityMethod
-from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
+from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel

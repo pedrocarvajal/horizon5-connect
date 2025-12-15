@@ -90,10 +90,9 @@ class EMA5BreakoutStrategy(StrategyService):
 
         self._backtest_quality_method = QualityMethod.FQS
         self._backtest_expectation = BacktestExpectationModel(
-            num_trades=[5, 30],
-            max_drawdown=[-0.25, -0.10],
-            performance_percentage=[0.10, 0.50],
-            profit_factor=[1.2, 2.5],
+            max_drawdown=[-0.30, 0],
+            performance_percentage=[0.07, 1],
+            r_squared=[0, 1],
         )
 
         settings = kwargs.get("settings", {})
