@@ -3,6 +3,7 @@
 from typing import List
 
 from strategies.ema5_breakout import EMA5BreakoutStrategy
+from strategies.turtle_trading import TurtleTradingStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.enums.tp_sl_method import TpSlMethod
 from vendor.interfaces.strategy import StrategyInterface
@@ -39,7 +40,7 @@ class Asset(AssetService):
                 settings={
                     "entry_allow_multiple": False,
                     "entry_waiting_time": 0,
-                    "entry_volume": 0.50,
+                    "entry_volume": 0.25,
                     "entry_ema_period": 5,
                     "main_take_profit": 3,
                     "main_take_profit_method": TpSlMethod.FIXED,
@@ -51,6 +52,17 @@ class Asset(AssetService):
                     "recovery_stop_loss_method": TpSlMethod.FIXED,
                     "recovery_take_profit": 5,
                     "recovery_take_profit_method": TpSlMethod.FIXED,
+                },
+            ),
+            TurtleTradingStrategy(
+                id="turtle_trading",
+                allocation=0.0,
+                enabled=True,
+                settings={
+                    "volume_percentage": 0.25,
+                    "donchian_entry_period": 100,
+                    "donchian_exit_period": 35,
+                    "allow_short": False,
                 },
             ),
         ]

@@ -65,7 +65,8 @@ class TestCandleAggregation(MetaApiWrapper):
     def test_compare_1h_candles_september_2024_to_today(self) -> None:
         """Compare broker 1h candles with aggregated 1h candles from September 2024 to today."""
         from_date = datetime.datetime(2024, 9, 1, 0, 0, 0, tzinfo=TIMEZONE)
-        to_date = datetime.datetime.now(tz=TIMEZONE)
+        now = datetime.datetime.now(tz=TIMEZONE)
+        to_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         self._log.info("=" * 80)
         self._log.info("STEP 1: Downloading 1h candles from broker (MetaAPI)")

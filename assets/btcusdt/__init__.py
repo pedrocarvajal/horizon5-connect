@@ -71,7 +71,7 @@ class Asset(AssetService):
 
     def _setup_allocation(self) -> None:
         enabled_strategies = [s for s in self._strategies if s.enabled]
-        allocation_per_strategy = self.allocation / min(len(enabled_strategies), 1)
+        allocation_per_strategy = self.allocation / max(len(enabled_strategies), 1)
 
         for strategy in enabled_strategies:
             strategy.allocation = allocation_per_strategy
