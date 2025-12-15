@@ -3,6 +3,7 @@
 from typing import List
 
 from strategies.ema5_breakout import EMA5BreakoutStrategy
+from strategies.meb_faber_timing import MebFaberTimingStrategy
 from strategies.turtle_trading import TurtleTradingStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.enums.tp_sl_method import TpSlMethod
@@ -63,6 +64,15 @@ class Asset(AssetService):
                     "donchian_entry_period": 100,
                     "donchian_exit_period": 35,
                     "allow_short": False,
+                },
+            ),
+            MebFaberTimingStrategy(
+                id="meb_faber_timing",
+                allocation=0.0,
+                enabled=True,
+                settings={
+                    "volume_percentage": 1.0,
+                    "sma_period": 10,
                 },
             ),
         ]
