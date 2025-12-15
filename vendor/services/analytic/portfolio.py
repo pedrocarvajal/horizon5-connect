@@ -111,7 +111,9 @@ class PortfolioAnalytic(AnalyticWrapper):
                 assets_reports[asset.symbol] = asset_report
 
         quality_score = self._calculate_weighted_quality(assets_reports)
+        quality_vs_benchmark_score = self._calculate_weighted_quality_vs_benchmark(assets_reports)
         self._snapshot.quality = quality_score
+        self._snapshot.quality_vs_benchmark = quality_vs_benchmark_score
 
         report: Dict[str, Any] = {
             "portfolio_id": self._portfolio_id,
@@ -122,6 +124,8 @@ class PortfolioAnalytic(AnalyticWrapper):
             "max_drawdown": self._snapshot.max_drawdown,
             "quality": quality_score,
             "quality_method": "weighted_average",
+            "quality_vs_benchmark": quality_vs_benchmark_score,
+            "quality_vs_benchmark_method": "weighted_average",
             "benchmark_performance": self._snapshot.benchmark_performance,
             "benchmark_performance_percentage": self._snapshot.benchmark_performance_percentage,
             "alpha": self._snapshot.alpha,
@@ -164,6 +168,32 @@ class PortfolioAnalytic(AnalyticWrapper):
 
             if asset_allocation > 0:
                 weighted_quality_sum += asset_quality * asset_allocation
+                total_allocation += asset_allocation
+
+        if total_allocation > 0:
+            return round(weighted_quality_sum / total_allocation, 4)
+
+        return 0.0
+
+    def _calculate_weighted_quality_vs_benchmark(self, assets_reports: Dict[str, Any]) -> float:
+        """Calculate weighted average quality_vs_benchmark from asset reports.
+
+        Args:
+            assets_reports: Dictionary of asset reports with quality_vs_benchmark scores.
+
+        Returns:
+            Weighted average quality_vs_benchmark score based on allocation.
+        """
+        total_allocation = 0.0
+        weighted_quality_sum = 0.0
+
+        for asset in self._assets:
+            asset_allocation = asset.allocation
+            asset_report = assets_reports.get(asset.symbol, {})
+            asset_quality_vs_benchmark = asset_report.get("quality_vs_benchmark", 0.0)
+
+            if asset_allocation > 0:
+                weighted_quality_sum += asset_quality_vs_benchmark * asset_allocation
                 total_allocation += asset_allocation
 
         if total_allocation > 0:

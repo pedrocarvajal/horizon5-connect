@@ -16,6 +16,7 @@ from vendor.providers.horizon_router import HorizonRouterProvider
 from vendor.services.analytic.helpers.get_average_trade_duration import get_average_trade_duration
 from vendor.services.analytic.helpers.get_profit_factor import get_profit_factor
 from vendor.services.analytic.helpers.get_quality import get_quality
+from vendor.services.analytic.helpers.get_quality_vs_benchmark import get_quality_vs_benchmark
 from vendor.services.analytic.helpers.get_win_ratio import get_win_ratio
 from vendor.services.analytic.wrappers.analytic import AnalyticWrapper
 from vendor.services.logging import LoggingService
@@ -145,7 +146,9 @@ class StrategyAnalytic(AnalyticWrapper):
 
         days_elapsed = (self._ended_at - self._started_at).days
         quality_score, quality_method_name = self._calculate_quality()
+        quality_vs_benchmark_score, quality_vs_benchmark_method = self._calculate_quality_vs_benchmark()
         self._snapshot.quality = quality_score
+        self._snapshot.quality_vs_benchmark = quality_vs_benchmark_score
         self._snapshot.days_elapsed = days_elapsed
 
         report: Dict[str, Any] = {
@@ -156,6 +159,8 @@ class StrategyAnalytic(AnalyticWrapper):
             "num_trades": self._closed_orders,
             "quality": quality_score,
             "quality_method": quality_method_name,
+            "quality_vs_benchmark": quality_vs_benchmark_score,
+            "quality_vs_benchmark_method": quality_vs_benchmark_method,
             "benchmark_initial_price": self._snapshot.benchmark_initial_price,
             "benchmark_final_price": self._snapshot.benchmark_current_price,
         }
@@ -210,7 +215,7 @@ class StrategyAnalytic(AnalyticWrapper):
 
         return get_quality(
             method=self._quality_method,
-            expectations=self._backtest_expectation,
+            expectations=self._backtest_expectation or BacktestExpectationModel.default(),
             days_elapsed=days_elapsed,
             r_squared=self._snapshot.r2,
             max_drawdown=self._snapshot.max_drawdown,
@@ -220,6 +225,20 @@ class StrategyAnalytic(AnalyticWrapper):
             win_ratio=self._snapshot.win_ratio,
             trade_duration=self._snapshot.average_trade_duration,
             performance_percentage=self._snapshot.performance_percentage,
+        )
+
+    def _calculate_quality_vs_benchmark(self) -> Tuple[float, str]:
+        """Calculate quality score comparing strategy performance against benchmark.
+
+        Returns:
+            Tuple of (quality_vs_benchmark_score, method_name).
+        """
+        return get_quality_vs_benchmark(
+            alpha=self._snapshot.alpha,
+            information_ratio=self._snapshot.information_ratio,
+            strategy_nav_history=self._snapshot.nav_history,
+            benchmark_price_history=self._snapshot.benchmark_price_history,
+            benchmark_initial_price=self._snapshot.benchmark_initial_price,
         )
 
     def _is_running_in_live_mode(self) -> bool:

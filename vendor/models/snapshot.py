@@ -37,6 +37,8 @@ class SnapshotModel(BaseModel):
     allocation: float = Field(default=0, ge=0)
     nav: float = Field(default=0, ge=0)
     nav_peak: float = Field(default=0, ge=0)
+    benchmark_initial_price: float = Field(default=0, ge=0)
+    benchmark_current_price: float = Field(default=0, ge=0)
 
     r2: float = Field(default=0, ge=0, le=1)
     cagr: float = Field(default=0)
@@ -55,16 +57,40 @@ class SnapshotModel(BaseModel):
     average_trade_duration: float = Field(default=0, ge=0)
     daily_performance: float = Field(default=0)
     daily_performance_percentage: float = Field(default=0)
-    quality: float = Field(default=0, ge=0, le=1)
     days_elapsed: int = Field(default=0, ge=0)
+    quality: float = Field(default=0, ge=0, le=1)
+    quality_vs_benchmark: float = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description=(
+            "Quality score comparing strategy vs benchmark. Combines alpha, information ratio, and excess Sharpe."
+        ),
+    )
 
-    benchmark_initial_price: float = Field(default=0, ge=0)
-    benchmark_current_price: float = Field(default=0, ge=0)
-    alpha: float = Field(default=0)
-    beta: float = Field(default=0)
-    correlation: float = Field(default=0, ge=-1, le=1)
-    tracking_error: float = Field(default=0, ge=0)
-    information_ratio: float = Field(default=0)
+    alpha: float = Field(
+        default=0,
+        description="Excess return over benchmark after adjusting for beta. Positive alpha indicates outperformance.",
+    )
+    beta: float = Field(
+        default=0,
+        description="Sensitivity to benchmark movements. Beta > 1 means more volatile than benchmark.",
+    )
+    correlation: float = Field(
+        default=0,
+        ge=-1,
+        le=1,
+        description="Linear relationship between strategy and benchmark returns. Range: -1 (inverse) to 1 (perfect).",
+    )
+    tracking_error: float = Field(
+        default=0,
+        ge=0,
+        description="Standard deviation of return differences vs benchmark. Lower means closer tracking.",
+    )
+    information_ratio: float = Field(
+        default=0,
+        description="Alpha divided by tracking error. Measures risk-adjusted excess return vs benchmark.",
+    )
 
     performance_history: List[float] = Field(default_factory=lambda: [])
     nav_history: List[float] = Field(default_factory=lambda: [])
@@ -117,6 +143,7 @@ class SnapshotModel(BaseModel):
                 "daily_performance": self.daily_performance,
                 "daily_performance_percentage": self.daily_performance_percentage,
                 "quality": self.quality,
+                "quality_vs_benchmark": self.quality_vs_benchmark,
                 "days_elapsed": self.days_elapsed,
                 "benchmark_performance": self.benchmark_performance,
                 "benchmark_performance_percentage": self.benchmark_performance_percentage,

@@ -118,7 +118,9 @@ class AssetAnalytic(AnalyticWrapper):
                 strategies_reports[strategy.id] = strategy_report
 
         quality_score = self._calculate_weighted_quality(strategies_reports)
+        quality_vs_benchmark_score = self._calculate_weighted_quality_vs_benchmark(strategies_reports)
         self._snapshot.quality = quality_score
+        self._snapshot.quality_vs_benchmark = quality_vs_benchmark_score
 
         report: Dict[str, Any] = {
             "allocation": self._snapshot.allocation,
@@ -128,6 +130,8 @@ class AssetAnalytic(AnalyticWrapper):
             "max_drawdown": self._snapshot.max_drawdown,
             "quality": quality_score,
             "quality_method": "weighted_average",
+            "quality_vs_benchmark": quality_vs_benchmark_score,
+            "quality_vs_benchmark_method": "weighted_average",
             "benchmark_performance": self._snapshot.benchmark_performance,
             "benchmark_performance_percentage": self._snapshot.benchmark_performance_percentage,
             "alpha": self._snapshot.alpha,
@@ -159,6 +163,31 @@ class AssetAnalytic(AnalyticWrapper):
 
             if strategy_allocation > 0:
                 weighted_quality_sum += strategy_quality * strategy_allocation
+                total_allocation += strategy_allocation
+
+        if total_allocation > 0:
+            return round(weighted_quality_sum / total_allocation, 4)
+        return 0.0
+
+    def _calculate_weighted_quality_vs_benchmark(self, strategies_reports: Dict[str, Any]) -> float:
+        """Calculate weighted average quality_vs_benchmark from strategy reports.
+
+        Args:
+            strategies_reports: Dictionary of strategy reports with quality_vs_benchmark scores.
+
+        Returns:
+            Weighted average quality_vs_benchmark score based on allocation.
+        """
+        total_allocation = 0.0
+        weighted_quality_sum = 0.0
+
+        for strategy in self._strategies:
+            strategy_allocation = strategy.allocation
+            strategy_report = strategies_reports.get(strategy.id, {})
+            strategy_quality_vs_benchmark = strategy_report.get("quality_vs_benchmark", 0.0)
+
+            if strategy_allocation > 0:
+                weighted_quality_sum += strategy_quality_vs_benchmark * strategy_allocation
                 total_allocation += strategy_allocation
 
         if total_allocation > 0:
