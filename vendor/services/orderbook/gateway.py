@@ -107,12 +107,19 @@ class GatewayHandlerService(GatewayHandlerInterface):
             return False
 
         if not order.gateway_order_id:
-            self._log.error(f"Order {order.id} has no gateway_order_id to cancel")
+            self._log.error(
+                "Order has no gateway_order_id to cancel",
+                order_id=order.id,
+            )
             return False
 
         if not (order.status.is_opening() or order.status.is_open()):
-            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
-            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
+            self._log.error(
+                "Order cannot be cancelled",
+                order_id=order.id,
+                status=order.status.value,
+                reason="Only OPENING or OPEN orders can be cancelled",
+            )
             return False
 
         try:
@@ -121,17 +128,27 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 order_id=order.gateway_order_id,
             )
         except Exception as e:
-            self._log.error(f"Exception cancelling order {order.id}: {e}")
+            self._log.error(
+                "Exception cancelling order",
+                order_id=order.id,
+                error=str(e),
+            )
             return False
 
         if gateway_order is None:
-            self._log.error(f"Failed to cancel order {order.id} on gateway")
+            self._log.error(
+                "Failed to cancel order on gateway",
+                order_id=order.id,
+            )
             return False
 
         if gateway_order.executed_volume > 0 and gateway_order.executed_volume != order.executed_volume:
             order.executed_volume = gateway_order.executed_volume
-            filled = f"{gateway_order.executed_volume}/{order.volume}"
-            self._log.warning(f"Order {order.id} had partial fills before cancellation: {filled}")
+            self._log.warning(
+                "Order had partial fills before cancellation",
+                order_id=order.id,
+                filled=f"{gateway_order.executed_volume}/{order.volume}",
+            )
 
         with self._polling_lock:
             if order.id in self._polling_tasks:
@@ -140,12 +157,18 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 if not task.done():
                     task.cancel()
 
-                self._log.info(f"Stopped polling task for cancelled order {order.id}")
+                self._log.info(
+                    "Stopped polling task for cancelled order",
+                    order_id=order.id,
+                )
 
         order.status = OrderStatus.CANCELLED
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
-        self._log.info(f"Order {order.id} cancelled successfully")
+        self._log.info(
+            "Order cancelled successfully",
+            order_id=order.id,
+        )
 
         return True
 
@@ -167,15 +190,25 @@ class GatewayHandlerService(GatewayHandlerInterface):
             return False
 
         if not order.symbol or order.symbol.strip() == "":
-            self._log.error(f"Order {order.id} has invalid symbol for close operation")
+            self._log.error(
+                "Order has invalid symbol for close operation",
+                order_id=order.id,
+            )
             return False
 
         if order.side is None:
-            self._log.error(f"Order {order.id} has no side defined")
+            self._log.error(
+                "Order has no side defined",
+                order_id=order.id,
+            )
             return False
 
         if order.executed_volume <= 0:
-            self._log.error(f"Order {order.id} has no executed volume to close: {order.executed_volume}")
+            self._log.error(
+                "Order has no executed volume to close",
+                order_id=order.id,
+                executed_volume=order.executed_volume,
+            )
             return False
 
         close_side = OrderSide.SELL if order.side.is_buy() else OrderSide.BUY
@@ -188,11 +221,18 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 volume=order.executed_volume,
             )
         except Exception as e:
-            self._log.error(f"Exception closing order {order.id}: {e}")
+            self._log.error(
+                "Exception closing order",
+                order_id=order.id,
+                error=str(e),
+            )
             return False
 
         if gateway_order is None:
-            self._log.error(f"Failed to close order {order.id} on gateway")
+            self._log.error(
+                "Failed to close order on gateway",
+                order_id=order.id,
+            )
             return False
 
         order.gateway_order_id = gateway_order.id
@@ -236,11 +276,18 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 client_order_id=order.client_order_id,
             )
         except Exception as e:
-            self._log.error(f"Exception placing order {order.id}: {e}")
+            self._log.error(
+                "Exception placing order",
+                order_id=order.id,
+                error=str(e),
+            )
             return False
 
         if gateway_order is None:
-            self._log.error(f"Failed to place order {order.id} on gateway")
+            self._log.error(
+                "Failed to place order on gateway",
+                order_id=order.id,
+            )
             return False
 
         order.gateway_order_id = gateway_order.id
@@ -316,9 +363,16 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 del self._polling_tasks[order_id]
 
         if task.cancelled():
-            self._log.warning(f"Polling task for order {order_id} was cancelled")
+            self._log.warning(
+                "Polling task was cancelled",
+                order_id=order_id,
+            )
         elif task.exception() is not None:
-            self._log.error(f"Polling task for order {order_id} raised exception: {task.exception()}")
+            self._log.error(
+                "Polling task raised exception",
+                order_id=order_id,
+                error=str(task.exception()),
+            )
 
     def _create_polling_task(self, order: OrderModel) -> None:
         """
@@ -388,12 +442,18 @@ class GatewayHandlerService(GatewayHandlerInterface):
                     order_id=order.gateway_order_id,
                 )
             except Exception as e:
-                self._log.error(f"Exception polling order {order.id}: {e}")
+                self._log.error(
+                    "Exception polling order",
+                    order_id=order.id,
+                    error=str(e),
+                )
                 retry_count += 1
 
                 if retry_count >= self.MAX_POLLING_RETRIES:
                     self._log.error(
-                        f"Order {order.id} polling failed after {self.MAX_POLLING_RETRIES} exceptions",
+                        "Order polling failed after max retries",
+                        order_id=order.id,
+                        max_retries=self.MAX_POLLING_RETRIES,
                     )
                     order.status = OrderStatus.CANCELLED
                     order.updated_at = datetime.datetime.now(tz=TIMEZONE)
@@ -406,7 +466,9 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
                 if retry_count >= self.MAX_POLLING_RETRIES:
                     self._log.warning(
-                        f"Order {order.id} not found after {self.MAX_POLLING_RETRIES} attempts, stopping polling",
+                        "Order not found after max attempts, stopping polling",
+                        order_id=order.id,
+                        max_attempts=self.MAX_POLLING_RETRIES,
                     )
                     order.status = OrderStatus.CANCELLED
                     order.updated_at = datetime.datetime.now(tz=TIMEZONE)
@@ -423,14 +485,21 @@ class GatewayHandlerService(GatewayHandlerInterface):
                     elif gateway_order.status == GatewayOrderStatus.CANCELLED:
                         self._handle_cancelled_order(order)
                 except Exception as e:
-                    self._log.error(f"Failed to finalize order {order.id} with status {gateway_order.status}: {e}")
+                    self._log.error(
+                        "Failed to finalize order",
+                        order_id=order.id,
+                        status=str(gateway_order.status),
+                        error=str(e),
+                    )
                     order.status = OrderStatus.CANCELLED
                     order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
                 return
 
         self._log.warning(
-            f"Order {order.id} polling stopped after {self.MAX_POLLING_ITERATIONS} iterations without final status",
+            "Order polling stopped without final status",
+            order_id=order.id,
+            max_iterations=self.MAX_POLLING_ITERATIONS,
         )
         order.status = OrderStatus.CANCELLED
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
@@ -456,7 +525,11 @@ class GatewayHandlerService(GatewayHandlerInterface):
                     self._symbol_info_cache[symbol] = symbol_info
             return symbol_info
         except Exception as e:
-            self._log.warning(f"Failed to get symbol info for {symbol}: {e}")
+            self._log.warning(
+                "Failed to get symbol info",
+                symbol=symbol,
+                error=str(e),
+            )
             return None
 
     def _handle_cancelled_order(self, order: OrderModel) -> None:
@@ -471,7 +544,10 @@ class GatewayHandlerService(GatewayHandlerInterface):
         order.status = OrderStatus.CANCELLED
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
-        self._log.error(f"Order {order.id} was cancelled")
+        self._log.error(
+            "Order was cancelled",
+            order_id=order.id,
+        )
 
     def _handle_executed_order(
         self,
@@ -497,18 +573,28 @@ class GatewayHandlerService(GatewayHandlerInterface):
             if gateway_trades:
                 order.trades = gateway_trades
         except Exception as e:
-            self._log.error(f"Exception retrieving trades for order {order.id}: {e}")
+            self._log.error(
+                "Exception retrieving trades for order",
+                order_id=order.id,
+                error=str(e),
+            )
 
         order.executed_volume = gateway_order.executed_volume
 
         if order.status == OrderStatus.CLOSING:
             order.close_price = gateway_order.price
             order.status = OrderStatus.CLOSED
-            self._log.success(f"Order {order.id} closed successfully")
+            self._log.success(
+                "Order closed successfully",
+                order_id=order.id,
+            )
         else:
             order.price = gateway_order.price
             order.status = OrderStatus.OPEN
-            self._log.success(f"Order {order.id} executed successfully")
+            self._log.success(
+                "Order executed successfully",
+                order_id=order.id,
+            )
 
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
 
@@ -574,32 +660,55 @@ class GatewayHandlerService(GatewayHandlerInterface):
             True if basic parameters are valid, False otherwise.
         """
         if not order.symbol or order.symbol.strip() == "":
-            self._log.error(f"Order {order.id} has invalid symbol")
+            self._log.error(
+                "Order has invalid symbol",
+                order_id=order.id,
+            )
             return False
 
         symbol = order.symbol.strip().upper()
         if symbol != order.symbol:
-            self._log.error(f"Order {order.id} symbol must be uppercase without whitespace")
+            self._log.error(
+                "Order symbol must be uppercase without whitespace",
+                order_id=order.id,
+            )
             return False
 
         if len(order.symbol) > self.MAX_SYMBOL_LENGTH:
-            self._log.error(f"Order {order.id} symbol too long: {len(order.symbol)} chars")
+            self._log.error(
+                "Order symbol too long",
+                order_id=order.id,
+                length=len(order.symbol),
+            )
             return False
 
         if not re.match(self.SYMBOL_PATTERN, order.symbol):
-            self._log.error(f"Order {order.id} symbol contains invalid characters")
+            self._log.error(
+                "Order symbol contains invalid characters",
+                order_id=order.id,
+            )
             return False
 
         if order.side is None:
-            self._log.error(f"Order {order.id} has invalid or missing side")
+            self._log.error(
+                "Order has invalid or missing side",
+                order_id=order.id,
+            )
             return False
 
         if order.order_type is None:
-            self._log.error(f"Order {order.id} has invalid or missing order type")
+            self._log.error(
+                "Order has invalid or missing order type",
+                order_id=order.id,
+            )
             return False
 
         if order.volume <= 0:
-            self._log.error(f"Order {order.id} has invalid volume: {order.volume}")
+            self._log.error(
+                "Order has invalid volume",
+                order_id=order.id,
+                volume=order.volume,
+            )
             return False
 
         return True
@@ -650,7 +759,10 @@ class GatewayHandlerService(GatewayHandlerInterface):
         symbol_info = self._get_symbol_info(order.symbol)
 
         if symbol_info is None:
-            self._log.warning(f"Could not retrieve symbol info for {order.symbol}, skipping range validation")
+            self._log.warning(
+                "Could not retrieve symbol info, skipping range validation",
+                symbol=order.symbol,
+            )
             return True
 
         return self._validate_symbol_info_constraints(order, symbol_info)
@@ -671,18 +783,31 @@ class GatewayHandlerService(GatewayHandlerInterface):
             True if price meets constraints, False otherwise.
         """
         if symbol_info.min_price is not None and order.price < symbol_info.min_price:
-            self._log.error(f"Order {order.id} price {order.price} below minimum {symbol_info.min_price}")
+            self._log.error(
+                "Order price below minimum",
+                order_id=order.id,
+                price=order.price,
+                min_price=symbol_info.min_price,
+            )
             return False
 
         if symbol_info.max_price is not None and order.price > symbol_info.max_price:
-            self._log.error(f"Order {order.id} price {order.price} exceeds maximum {symbol_info.max_price}")
+            self._log.error(
+                "Order price exceeds maximum",
+                order_id=order.id,
+                price=order.price,
+                max_price=symbol_info.max_price,
+            )
             return False
 
         notional_value = order.volume * order.price
 
         if symbol_info.min_notional is not None and notional_value < symbol_info.min_notional:
             self._log.error(
-                f"Order {order.id} notional value {notional_value} below minimum {symbol_info.min_notional}"
+                "Order notional value below minimum",
+                order_id=order.id,
+                notional_value=notional_value,
+                min_notional=symbol_info.min_notional,
             )
             return False
 
@@ -704,11 +829,21 @@ class GatewayHandlerService(GatewayHandlerInterface):
             True if order meets symbol constraints, False otherwise.
         """
         if symbol_info.min_quantity is not None and order.volume < symbol_info.min_quantity:
-            self._log.error(f"Order {order.id} volume {order.volume} below minimum {symbol_info.min_quantity}")
+            self._log.error(
+                "Order volume below minimum",
+                order_id=order.id,
+                volume=order.volume,
+                min_quantity=symbol_info.min_quantity,
+            )
             return False
 
         if symbol_info.max_quantity is not None and order.volume > symbol_info.max_quantity:
-            self._log.error(f"Order {order.id} volume {order.volume} exceeds maximum {symbol_info.max_quantity}")
+            self._log.error(
+                "Order volume exceeds maximum",
+                order_id=order.id,
+                volume=order.volume,
+                max_quantity=symbol_info.max_quantity,
+            )
             return False
 
         return not (order.price > 0 and not self._validate_price_constraints(order, symbol_info))

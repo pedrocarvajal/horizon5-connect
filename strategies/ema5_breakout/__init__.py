@@ -8,12 +8,14 @@ from vendor.enums.order_status import OrderStatus
 from vendor.enums.quality_method import QualityMethod
 from vendor.enums.timeframe import Timeframe
 from vendor.enums.tp_sl_method import TpSlMethod
+from vendor.helpers.calculate_stop_loss import calculate_stop_loss
+from vendor.helpers.calculate_take_profit import calculate_take_profit
 from vendor.indicators.ma import MAIndicator
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
 from vendor.services.candle import CandleService
-from vendor.services.strategy import StrategyService, calculate_stop_loss, calculate_take_profit
+from vendor.services.strategy import StrategyService
 
 
 class EMA5BreakoutStrategy(StrategyService):
@@ -146,14 +148,22 @@ class EMA5BreakoutStrategy(StrategyService):
         super().on_transaction(order)
 
         if order.status.is_open():
-            self._log.info(f"Order: {order.id}, was opened.")
+            self._log.info(
+                "Order opened",
+                order_id=order.id,
+            )
 
         if order.status.is_closed():
             recovery_enabled = self._settings.get("recovery_enabled", False)
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
-            self._log.info(f"Order: {order.id}, was closed, with profit: {profit:.2f} ({profit_percentage:.2f}%).")
+            self._log.info(
+                "Order closed",
+                order_id=order.id,
+                profit=f"{profit:.2f}",
+                profit_percentage=f"{profit_percentage:.2f}%",
+            )
 
             if recovery_enabled and profit < 0:
                 previous_accumulated = order.variables.get("accumulated_losses", 0.0)
@@ -225,13 +235,14 @@ class EMA5BreakoutStrategy(StrategyService):
             volume = entry_volume * 100
 
             self._log.info(
-                f"Opening main order: price={current_price:.5f}, "
-                + f"date={self._tick.date}, "
-                + f"current_ema={current_ema}, "
-                + f"previous_day_ema5_max={self._previous_day_ema5_max}, "
-                + f"tp={take_profit_price:.5f} ({take_profit_method.name}:{take_profit_value}), "
-                + f"sl={stop_loss_price:.5f} ({stop_loss_method.name}:{stop_loss_value}), "
-                + f"volume={volume:.2f}"
+                "Opening main order",
+                price=f"{current_price:.5f}",
+                date=str(self._tick.date),
+                current_ema=current_ema,
+                previous_day_ema5_max=self._previous_day_ema5_max,
+                take_profit=f"{take_profit_price:.5f} ({take_profit_method.name}:{take_profit_value})",
+                stop_loss=f"{stop_loss_price:.5f} ({stop_loss_method.name}:{stop_loss_value})",
+                volume=f"{volume:.2f}",
             )
 
             self.open_order(
@@ -253,7 +264,9 @@ class EMA5BreakoutStrategy(StrategyService):
 
         if next_layer > maximum_layers:
             self._log.warning(
-                f"Maximum recovery layers reached: {maximum_layers}, accumulated losses: {accumulated_losses:.2f}"
+                "Maximum recovery layers reached",
+                maximum_layers=maximum_layers,
+                accumulated_losses=f"{accumulated_losses:.2f}",
             )
             return
 
@@ -285,7 +298,12 @@ class EMA5BreakoutStrategy(StrategyService):
             take_profit_price=take_profit_price,
         )
 
-        self._log.info(f"Opening recovery layer {next_layer}: losses={losses:.2f}, volume={volume:.6f}")
+        self._log.info(
+            "Opening recovery layer",
+            layer=next_layer,
+            losses=f"{losses:.2f}",
+            volume=f"{volume:.6f}",
+        )
 
         self.open_order(
             OrderSide.BUY,
@@ -316,10 +334,13 @@ class EMA5BreakoutStrategy(StrategyService):
 
         if weekday == self._WEEKDAY_MONDAY:
             days_back = 3
+
         elif weekday == self._WEEKDAY_SUNDAY:
             days_back = 2
+
         elif weekday == self._WEEKDAY_SATURDAY:
             days_back = 1
+
         else:
             days_back = 1
 

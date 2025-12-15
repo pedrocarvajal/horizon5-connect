@@ -52,13 +52,13 @@ class LoggingService(LoggingInterface):
         """Initialize the logging service."""
         self._prefix: str = ""
 
-    def critical(self, message: str) -> None:
-        """Log a critical message."""
-        formatted_message = self._format_message(message)
+    def critical(self, message: str, **context: Any) -> None:
+        """Log a critical message with optional context."""
+        formatted_message = self._format_message(message, context)
         self._get_logger().critical(formatted_message)
 
-    def debug(self, message: Any) -> None:
-        """Log a debug message, formatting dicts/lists as JSON."""
+    def debug(self, message: Any, **context: Any) -> None:
+        """Log a debug message with optional context, formatting dicts/lists as JSON."""
         if isinstance(message, (dict, list)):
             string_io = StringIO()
             console = Console(file=string_io, force_terminal=True, width=120)
@@ -67,17 +67,17 @@ class LoggingService(LoggingInterface):
         else:
             output = str(message)
 
-        formatted_message = self._format_message(output)
+        formatted_message = self._format_message(output, context)
         self._get_logger().debug(formatted_message)
 
-    def error(self, message: str) -> None:
-        """Log an error message."""
-        formatted_message = self._format_message(message)
+    def error(self, message: str, **context: Any) -> None:
+        """Log an error message with optional context."""
+        formatted_message = self._format_message(message, context)
         self._get_logger().error(formatted_message)
 
-    def info(self, message: str) -> None:
-        """Log an info message."""
-        formatted_message = self._format_message(message)
+    def info(self, message: str, **context: Any) -> None:
+        """Log an info message with optional context."""
+        formatted_message = self._format_message(message, context)
         self._get_logger().info(formatted_message)
 
     def prompt(self, label: str) -> str:
@@ -94,9 +94,9 @@ class LoggingService(LoggingInterface):
         """Set a prefix to prepend to all log messages."""
         self._prefix = prefix
 
-    def success(self, message: str) -> None:
-        """Log a success message."""
-        formatted_message = self._format_message(message)
+    def success(self, message: str, **context: Any) -> None:
+        """Log a success message with optional context."""
+        formatted_message = self._format_message(message, context)
         self._get_logger().log(SUCCESS_LEVEL, formatted_message)
 
     def title(self, message: str) -> None:
@@ -108,9 +108,9 @@ class LoggingService(LoggingInterface):
         logger.info(formatted_message)
         logger.info(separator_line)
 
-    def warning(self, message: str) -> None:
-        """Log a warning message."""
-        formatted_message = self._format_message(message)
+    def warning(self, message: str, **context: Any) -> None:
+        """Log a warning message with optional context."""
+        formatted_message = self._format_message(message, context)
         self._get_logger().warning(formatted_message)
 
     def _ensure_initialized(self) -> None:
@@ -120,11 +120,22 @@ class LoggingService(LoggingInterface):
         if not LoggingService._initialized or LoggingService._current_date != today:
             self._initialize_logger(today)
 
-    def _format_message(self, message: str) -> str:
-        """Format message with prefix if set."""
+    def _format_context(self, context: Dict[str, Any]) -> str:
+        """Format context dict as key=value pairs."""
+        if not context:
+            return ""
+
+        pairs = [f"{key}= {value}" for key, value in context.items()]
+        return " | " + ", ".join(pairs)
+
+    def _format_message(self, message: str, context: Dict[str, Any] | None = None) -> str:
+        """Format message with prefix and context if set."""
+        context_string = self._format_context(context) if context else ""
+
         if self._prefix:
-            return f"{self._prefix} {message}"
-        return message
+            return f"{self._prefix} {message}{context_string}"
+
+        return f"{message}{context_string}"
 
     def _get_logger(self) -> logging.Logger:
         """Get the shared logger, initializing if needed."""

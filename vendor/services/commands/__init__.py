@@ -46,7 +46,11 @@ class CommandService(CommandInterface):
         command_type = command.command
 
         if command_type not in self._commands:
-            self._log.error(f"Command {command_type} not found")
+            self._log.error(
+                "Command not found",
+                command=str(command_type),
+            )
+
             return False
 
         if command_type.is_execute():
@@ -64,14 +68,21 @@ class CommandService(CommandInterface):
                 response = function(**args)
 
                 if response.get("success") is False:
-                    self._log.error(f"Failed to execute command {function}: {response}")
-                    self._log.error(str(args))
+                    self._log.error(
+                        "Failed to execute command",
+                        function=str(function),
+                        response=str(response),
+                        args=str(args),
+                    )
 
                 return True
 
             except Exception as exception:
-                self._log.error("Failed to execute command")
-                self._log.error(str(exception))
+                self._log.error(
+                    "Failed to execute command",
+                    error=str(exception),
+                )
+
                 return False
 
         return True
@@ -100,7 +111,11 @@ class CommandService(CommandInterface):
                 self._log_progress()
 
             if not success:
-                self._log.error(f"Failed to process command {command}")
+                self._log.error(
+                    "Failed to process command",
+                    command=str(command),
+                )
+
                 continue
 
     def _get_next_command(self) -> Optional[Dict[str, Any]]:
@@ -122,4 +137,7 @@ class CommandService(CommandInterface):
             return
 
         self._last_log_time = current_time
-        self._log.info(f"[COMMANDS] Processed: {self._processed_count}")
+        self._log.info(
+            "Commands processed",
+            count=self._processed_count,
+        )

@@ -8,23 +8,23 @@ class LoggingInterface(ABC):
     """Interface for logging services."""
 
     @abstractmethod
-    def critical(self, message: str) -> None:
-        """Log a critical message."""
+    def critical(self, message: str, **context: Any) -> None:
+        """Log a critical message with optional context."""
         pass
 
     @abstractmethod
-    def debug(self, message: Any) -> None:
-        """Log a debug message, formatting dicts/lists as JSON."""
+    def debug(self, message: Any, **context: Any) -> None:
+        """Log a debug message with optional context, formatting dicts/lists as JSON."""
         pass
 
     @abstractmethod
-    def error(self, message: str) -> None:
-        """Log an error message."""
+    def error(self, message: str, **context: Any) -> None:
+        """Log an error message with optional context."""
         pass
 
     @abstractmethod
-    def info(self, message: str) -> None:
-        """Log an info message."""
+    def info(self, message: str, **context: Any) -> None:
+        """Log an info message with optional context."""
         pass
 
     @abstractmethod
@@ -43,8 +43,8 @@ class LoggingInterface(ABC):
         pass
 
     @abstractmethod
-    def success(self, message: str) -> None:
-        """Log a success message."""
+    def success(self, message: str, **context: Any) -> None:
+        """Log a success message with optional context."""
         pass
 
     @abstractmethod
@@ -53,6 +53,6 @@ class LoggingInterface(ABC):
         pass
 
     @abstractmethod
-    def warning(self, message: str) -> None:
-        """Log a warning message."""
+    def warning(self, message: str, **context: Any) -> None:
+        """Log a warning message with optional context."""
         pass

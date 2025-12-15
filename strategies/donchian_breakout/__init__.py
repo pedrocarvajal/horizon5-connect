@@ -173,13 +173,22 @@ class DonchianBreakoutStrategy(StrategyService):
         super().on_transaction(order)
 
         if order.status.is_open():
-            self._log.info(f"Order: {order.id}, was opened at price {order.price:.2f}")
+            self._log.info(
+                "Order opened",
+                order_id=order.id,
+                price=f"{order.price:.2f}",
+            )
 
         if order.status.is_closed():
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
-            self._log.info(f"Order: {order.id}, was closed, profit: {profit:.2f} ({profit_percentage:.2f}%)")
+            self._log.info(
+                "Order closed",
+                order_id=order.id,
+                profit=f"{profit:.2f}",
+                profit_percentage=f"{profit_percentage:.2f}%",
+            )
 
             self._trailing_active = False
             self._trailing_exit_level = 0.0
@@ -259,7 +268,11 @@ class DonchianBreakoutStrategy(StrategyService):
 
         if not self._trailing_active and current_bid >= take_profit_activation:
             self._trailing_active = True
-            self._log.info(f"Trailing activated: bid={current_bid:.2f} >= activation={take_profit_activation:.2f}")
+            self._log.info(
+                "Trailing activated",
+                bid=f"{current_bid:.2f}",
+                activation=f"{take_profit_activation:.2f}",
+            )
 
         if self._trailing_active:
             candle_service = self._candles.get(Timeframe.FOUR_HOURS)
@@ -278,13 +291,20 @@ class DonchianBreakoutStrategy(StrategyService):
             last_low_closed_candle = previous_candle.low_price
 
             if donchian_lower > self._trailing_exit_level:
-                self._log.info(f"Trailing updated: {self._trailing_exit_level:.2f} -> {donchian_lower:.2f}")
-                self._trailing_exit_level = donchian_lower
-            elif last_low_closed_candle <= self._trailing_exit_level:
-                message = (
-                    f"Trailing exit triggered: low={last_low_closed_candle:.2f} <= exit={self._trailing_exit_level:.2f}"
+                self._log.info(
+                    "Trailing updated",
+                    previous=f"{self._trailing_exit_level:.2f}",
+                    new=f"{donchian_lower:.2f}",
                 )
-                self._log.info(message)
+
+                self._trailing_exit_level = donchian_lower
+
+            elif last_low_closed_candle <= self._trailing_exit_level:
+                self._log.info(
+                    "Trailing exit triggered",
+                    low=f"{last_low_closed_candle:.2f}",
+                    exit_level=f"{self._trailing_exit_level:.2f}",
+                )
                 self.orderbook.close(order)
 
     def _get_current_atr(self) -> float:

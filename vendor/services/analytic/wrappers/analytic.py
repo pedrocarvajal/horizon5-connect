@@ -69,30 +69,18 @@ class AnalyticWrapper(AnalyticInterface):
         self._refresh()
         self._snapshot.performance_history.append(self._snapshot.performance)
         self._snapshot.nav_history.append(self._snapshot.nav)
-
-        if self._tick is not None:
-            self._snapshot.benchmark_price_history.append(self._tick.close_price)
-
         self._perform_calculations()
         self._calculate_daily_performance()
 
-        if self._tick is None:
+        if not self._tick:
             return
 
+        self._snapshot.benchmark_price_history.append(self._tick.close_price)
         self._snapshot.event = SnapshotEvent.ON_NEW_DAY
         snapshot_data = self._snapshot.to_dict()
         snapshot_data["created_at"] = int(self._tick.date.timestamp())
 
-        provider = HorizonRouterProvider()
-        assert self._commands_queue is not None
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": provider.snapshot_create,
-                "args": {"data": snapshot_data},
-            }
-        )
-
+        self._send_snapshot_to_queue(snapshot_data)
         self._previous_day_nav = self._snapshot.nav
 
     def on_new_hour(self) -> None:
@@ -128,13 +116,26 @@ class AnalyticWrapper(AnalyticInterface):
             self._snapshot.daily_performance = 0.0
             self._snapshot.daily_performance_percentage = 0.0
 
+    def _send_snapshot_to_queue(self, snapshot_data: dict[str, Any]) -> None:
+        if not self._commands_queue:
+            return
+
+        provider = HorizonRouterProvider()
+        self._commands_queue.put(
+            {
+                "command": Command.EXECUTE,
+                "function": provider.snapshot_create,
+                "args": {"data": snapshot_data},
+            }
+        )
+
     def _get_elapsed_days(self) -> int:
         """Calculate number of days elapsed since tracking started.
 
         Returns:
             Number of days elapsed, or 0 if tracking hasn't started.
         """
-        if self._tick is None or self._started_at is None:
+        if not self._tick or not self._started_at:
             return 0
 
         return (self._tick.date - self._started_at).days

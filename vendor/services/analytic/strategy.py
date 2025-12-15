@@ -75,14 +75,14 @@ class StrategyAnalytic(AnalyticWrapper):
 
         Raises:
             ValueError: If strategy_id is empty.
-            ValueError: If backtest is True but backtest_id is None.
+            ValueError: If backtest is True but backtest_id is not provided.
         """
         self._log = LoggingService()
 
         if not strategy_id:
             raise ValueError("Strategy ID is required")
 
-        if backtest and backtest_id is None:
+        if backtest and not backtest_id:
             raise ValueError("Backtest ID is required when backtest is True")
 
         self._strategy_id = strategy_id
@@ -134,14 +134,15 @@ class StrategyAnalytic(AnalyticWrapper):
         Returns:
             Dictionary containing complete analytics report with all metrics.
         """
-        if self._tick is None:
-            self._log.error("Tick must be set before ending analytics.")
+        if not self._tick:
+            return None
+
+        if not self._started_at:
             return None
 
         self._ended_at = self._tick.date
         self._perform_calculations()
 
-        assert self._started_at is not None
         days_elapsed = (self._ended_at - self._started_at).days
         quality_score, quality_method_name = self._calculate_quality()
         self._snapshot.quality = quality_score
@@ -252,7 +253,7 @@ class StrategyAnalytic(AnalyticWrapper):
         Args:
             order: The order model to send.
         """
-        if not self._backtest or self._commands_queue is None:
+        if not self._backtest or not self._commands_queue:
             return
 
         order_data = order.to_api_dict()

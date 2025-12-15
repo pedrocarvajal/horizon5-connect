@@ -53,7 +53,10 @@ class BacktestService(BacktestInterface):
 
         self._log = LoggingService()
         self._ticks_service = TicksService()
-        self._log.info(f"Backtesting service started for backtest: {self._id}")
+        self._log.info(
+            "Backtesting service started",
+            backtest_id=self._id,
+        )
 
         self._setup_portfolio()
 
@@ -75,7 +78,11 @@ class BacktestService(BacktestInterface):
             self._send_failed("No timeline generated")
             return
 
-        self._log.info(f"Processing {total_ticks:,} ticks for {len(assets)} assets")
+        self._log.info(
+            "Processing ticks",
+            total_ticks=f"{total_ticks:,}",
+            assets_count=len(assets),
+        )
 
         ticks_iterator = self._ticks_service.iterate_ticks(
             symbols=symbols,
@@ -89,7 +96,12 @@ class BacktestService(BacktestInterface):
 
             if (index + 1) % 100000 == 0:
                 progress = ((index + 1) / total_ticks) * 100
-                self._log.info(f"Progress: {progress:.1f}% ({index + 1:,}/{total_ticks:,})")
+                self._log.info(
+                    "Backtest progress",
+                    progress=f"{progress:.1f}%",
+                    current=f"{index + 1:,}",
+                    total=f"{total_ticks:,}",
+                )
 
         self._on_end()
 
@@ -106,7 +118,10 @@ class BacktestService(BacktestInterface):
             }
         )
 
-        self._log.info(f"Backtest completed in: {duration}")
+        self._log.info(
+            "Backtest completed",
+            duration=duration,
+        )
 
     def _send_failed(self, error: str) -> None:
         self._events_queue.put(
@@ -136,7 +151,11 @@ class BacktestService(BacktestInterface):
             enabled = asset_config.get("enabled", True)
 
             if not enabled:
-                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
+                self._log.warning(
+                    "Asset is disabled in portfolio config",
+                    asset=asset_class.__name__,
+                )
+
                 continue
 
             asset_instance = asset_class(allocation=allocation, enabled=enabled)

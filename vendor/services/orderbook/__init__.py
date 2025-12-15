@@ -119,15 +119,22 @@ class OrderbookService(OrderbookInterface):
             return
 
         if not (order.status.is_opening() or order.status.is_open()):
-            msg = f"Order {order.id} cannot be cancelled in status {order.status.value}."
-            self._log.error(f"{msg} Only OPENING or OPEN orders can be cancelled.")
+            self._log.error(
+                "Order cannot be cancelled",
+                order_id=order.id,
+                status=order.status.value,
+                reason="Only OPENING or OPEN orders can be cancelled",
+            )
             return
 
         margin_to_release = (order.volume * order.price) / self._leverage
 
         with self._balance_lock, self._orders_lock:
             if order.id not in self._orders:
-                self._log.error(f"Order {order.id} not found in orderbook")
+                self._log.error(
+                    "Order not found in orderbook",
+                    order_id=order.id,
+                )
                 return
 
             if not self._backtest:
@@ -189,7 +196,10 @@ class OrderbookService(OrderbookInterface):
             return
 
         if order.executed_volume == 0:
-            self._log.info(f"Order {order.id} not executed, cancelling instead of closing")
+            self._log.info(
+                "Order not executed, cancelling instead of closing",
+                order_id=order.id,
+            )
             self.cancel(order)
             return
 
@@ -197,15 +207,21 @@ class OrderbookService(OrderbookInterface):
             unexecuted_volume = order.volume - order.executed_volume
             margin_to_free = (unexecuted_volume * order.price) / self._leverage
 
-            msg = f"Order {order.id} partially filled: {order.executed_volume}/{order.volume}."
-            self._log.info(f"{msg} Cancelling unfilled portion and closing executed portion.")
+            self._log.info(
+                "Order partially filled, cancelling unfilled portion",
+                order_id=order.id,
+                executed=order.executed_volume,
+                total=order.volume,
+            )
 
             if not self._backtest:
                 cancel_success = self._gateway_handler.cancel_order(order)
 
                 if not cancel_success:
-                    msg = f"Failed to cancel unfilled portion of order {order.id}."
-                    self._log.warning(f"{msg} Proceeding to close executed portion anyway.")
+                    self._log.warning(
+                        "Failed to cancel unfilled portion, proceeding to close anyway",
+                        order_id=order.id,
+                    )
 
             with self._balance_lock:
                 self._balance += margin_to_free
@@ -359,13 +375,17 @@ class OrderbookService(OrderbookInterface):
 
             for order_id in open_order_ids:
                 order = self._orders[order_id]
-                self._log.warning(f"Closing order {order.id}.")
+                self._log.warning(
+                    "Closing order due to margin call",
+                    order_id=order.id,
+                )
                 self.close(order)
 
         if self._margin_call_active and self.margin_level > MARGIN_RECOVERY_RATIO:
             self._margin_call_active = False
             self._log.info(
-                f"Margin call resolved: margin level recovered to {self.margin_level:.2f}. New operations allowed."
+                "Margin call resolved, new operations allowed",
+                margin_level=f"{self.margin_level:.2f}",
             )
 
         with self._orders_lock:

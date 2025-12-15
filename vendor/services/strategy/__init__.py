@@ -7,7 +7,6 @@ from vendor.enums.command import Command
 from vendor.enums.order_side import OrderSide
 from vendor.enums.quality_method import QualityMethod
 from vendor.enums.timeframe import Timeframe
-from vendor.enums.tp_sl_method import TpSlMethod
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.candle import CandleInterface
@@ -115,8 +114,11 @@ class StrategyService(StrategyInterface):
         Returns:
             Dictionary containing the analytics report, or None.
         """
-        assert self._orderbook is not None
-        assert self._analytic is not None
+        if self._orderbook is None:
+            return None
+
+        if self._analytic is None:
+            return None
 
         if self._backtest:
             self._log.info("Backtest mode detected, closing all orders.")
@@ -133,10 +135,17 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new day timeframe.
         Cleans up closed orders from the orderbook and updates analytics.
         """
-        assert self._orderbook is not None
-        assert self._analytic is not None
-        assert self._tick is not None
-        assert self._asset is not None
+        if self._orderbook is None:
+            return
+
+        if self._analytic is None:
+            return
+
+        if self._tick is None:
+            return
+
+        if self._asset is None:
+            return
 
         date_str = self._tick.date.strftime("%Y-%m-%d")
         self._log.setup_prefix(f"({date_str})[{self._asset.symbol}|{self._name}]")
@@ -151,7 +160,9 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new hour timeframe.
         Updates analytics for the new hour period.
         """
-        assert self._analytic is not None
+        if self._analytic is None:
+            return
+
         self._analytic.on_new_hour()
 
     def on_new_month(self) -> None:
@@ -161,7 +172,9 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new month timeframe.
         Updates analytics for the new month period.
         """
-        assert self._analytic is not None
+        if self._analytic is None:
+            return
+
         self._analytic.on_new_month()
 
     def on_new_week(self) -> None:
@@ -171,7 +184,9 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new week timeframe.
         Updates analytics for the new week period.
         """
-        assert self._analytic is not None
+        if self._analytic is None:
+            return
+
         self._analytic.on_new_week()
 
     def on_tick(self, tick: TickModel) -> None:
@@ -184,8 +199,11 @@ class StrategyService(StrategyInterface):
         Args:
             tick: The current market tick data.
         """
-        assert self._orderbook is not None
-        assert self._analytic is not None
+        if self._orderbook is None:
+            return
+
+        if self._analytic is None:
+            return
 
         self._tick = tick
         self._orderbook.refresh(tick)
@@ -204,7 +222,9 @@ class StrategyService(StrategyInterface):
         Args:
             order: The order model representing the transaction.
         """
-        assert self._analytic is not None
+        if self._analytic is None:
+            return
+
         self._analytic.on_transaction(order)
 
     def open_order(
@@ -246,14 +266,22 @@ class StrategyService(StrategyInterface):
             self._log.error("Tick must be set before opening orders.")
             return
 
+        if self._asset is None:
+            self._log.error("Asset must be set before opening orders.")
+            return
+
+        if self._orderbook is None:
+            self._log.error("Orderbook must be set before opening orders.")
+            return
+
         order = OrderModel()
         order.strategy_id = self._id
         order.portfolio = self._portfolio
-        order.asset = self.asset
-        order.gateway = self.asset.gateway
+        order.asset = self._asset
+        order.gateway = self._asset.gateway
         order.backtest = self._backtest
         order.backtest_id = self._backtest_id
-        order.symbol = self.asset.symbol
+        order.symbol = self._asset.symbol
         order.side = side
         order.price = price
         order.take_profit_price = take_profit_price
@@ -263,7 +291,7 @@ class StrategyService(StrategyInterface):
         order.updated_at = self._tick.date
         order.variables = variables
 
-        self.orderbook.open(order)
+        self._orderbook.open(order)
 
     def setup(self, **kwargs: Any) -> None:
         """
@@ -293,10 +321,17 @@ class StrategyService(StrategyInterface):
 
         self._validate_setup_parameters()
 
-        assert self._asset is not None
-        assert self._commands_queue is not None
-        assert self._events_queue is not None
-        assert not self._backtest or self._backtest_id is not None
+        if self._asset is None:
+            return
+
+        if self._commands_queue is None:
+            return
+
+        if self._events_queue is None:
+            return
+
+        if self._backtest and self._backtest_id is None:
+            return
 
         if hasattr(self._asset, "leverage"):
             self._leverage = self._asset.leverage
@@ -358,31 +393,42 @@ class StrategyService(StrategyInterface):
     @property
     def analytic(self) -> AnalyticInterface:
         """Return the analytic service for this strategy."""
-        assert self._analytic is not None
+        if self._analytic is None:
+            raise RuntimeError("Analytic service not initialized. Call setup() first.")
+
         return self._analytic
 
     @property
     def asset(self) -> AssetInterface:
         """Return the asset this strategy trades."""
-        assert self._asset is not None
+        if self._asset is None:
+            raise RuntimeError("Asset not initialized. Call setup() first.")
+
         return self._asset
 
     @property
     def balance(self) -> float:
         """Return current cash balance."""
-        assert self._orderbook is not None
+        if self._orderbook is None:
+            return 0.0
+
         return self._orderbook.balance
 
     @property
     def exposure(self) -> float:
         """Return total market exposure."""
-        assert self._orderbook is not None
+        if self._orderbook is None:
+            return 0.0
+
         return self._orderbook.exposure
 
     @property
     def is_available_to_open_orders(self) -> bool:
         """Return whether strategy can open new orders."""
-        return self.backtest or (self.is_live and not self.asset.is_historical_filling)
+        if self._asset is None:
+            return False
+
+        return self.backtest or (self.is_live and not self._asset.is_historical_filling)
 
     @property
     def is_live(self) -> bool:
@@ -392,114 +438,28 @@ class StrategyService(StrategyInterface):
     @property
     def nav(self) -> float:
         """Return net asset value."""
-        assert self._orderbook is not None
+        if self._orderbook is None:
+            return 0.0
+
         return self._orderbook.nav
 
     @property
     def orderbook(self) -> OrderbookInterface:
         """Return the orderbook managing this strategy's orders."""
-        assert self._orderbook is not None
+        if self._orderbook is None:
+            raise RuntimeError("Orderbook not initialized. Call setup() first.")
+
         return self._orderbook
 
     @property
     def orders(self) -> List[OrderModel]:
         """Return all orders for this strategy."""
-        assert self._orderbook is not None
+        if self._orderbook is None:
+            return []
+
         return self._orderbook.orders
 
     @property
     def leverage(self) -> int:
         """Return the leverage multiplier for this strategy."""
         return self._leverage
-
-
-def calculate_take_profit(
-    entry_price: float,
-    value: float,
-    method: TpSlMethod,
-    side: OrderSide,
-    atr_value: Optional[float] = None,
-) -> float:
-    """Calculate take profit price based on the specified method.
-
-    Args:
-        entry_price: The entry price of the order.
-        value: The take profit value (interpretation depends on method).
-        method: The calculation method (PERCENTAGE, ATR, or FIXED).
-        side: Order side (BUY or SELL) to determine direction.
-        atr_value: Current ATR value (required when method is ATR).
-
-    Returns:
-        The calculated take profit price.
-
-    Raises:
-        ValueError: If ATR method is used but atr_value is not provided.
-
-    Examples:
-        >>> calculate_take_profit(100.0, 0.05, TpSlMethod.PERCENTAGE, OrderSide.BUY)
-        105.0
-        >>> calculate_take_profit(100.0, 10.0, TpSlMethod.FIXED, OrderSide.BUY)
-        110.0
-        >>> calculate_take_profit(100.0, 2.0, TpSlMethod.ATR, OrderSide.BUY, atr_value=5.0)
-        110.0
-    """
-    direction = 1 if side == OrderSide.BUY else -1
-
-    if method == TpSlMethod.PERCENTAGE:
-        return entry_price * (1 + direction * value)
-
-    if method == TpSlMethod.ATR:
-        if atr_value is None:
-            raise ValueError("atr_value is required when using ATR method")
-        return entry_price + (direction * value * atr_value)
-
-    if method == TpSlMethod.FIXED:
-        return entry_price + (direction * value)
-
-    return entry_price
-
-
-def calculate_stop_loss(
-    entry_price: float,
-    value: float,
-    method: TpSlMethod,
-    side: OrderSide,
-    atr_value: Optional[float] = None,
-) -> float:
-    """Calculate stop loss price based on the specified method.
-
-    Args:
-        entry_price: The entry price of the order.
-        value: The stop loss value (interpretation depends on method).
-        method: The calculation method (PERCENTAGE, ATR, or FIXED).
-        side: Order side (BUY or SELL) to determine direction.
-        atr_value: Current ATR value (required when method is ATR).
-
-    Returns:
-        The calculated stop loss price.
-
-    Raises:
-        ValueError: If ATR method is used but atr_value is not provided.
-
-    Examples:
-        >>> calculate_stop_loss(100.0, 0.05, TpSlMethod.PERCENTAGE, OrderSide.BUY)
-        95.0
-        >>> calculate_stop_loss(100.0, 10.0, TpSlMethod.FIXED, OrderSide.BUY)
-        90.0
-        >>> calculate_stop_loss(100.0, 1.5, TpSlMethod.ATR, OrderSide.BUY, atr_value=5.0)
-        92.5
-    """
-    direction = -1 if side == OrderSide.BUY else 1
-
-    if method == TpSlMethod.PERCENTAGE:
-        return entry_price * (1 + direction * value)
-
-    if method == TpSlMethod.ATR:
-        if atr_value is None:
-            raise ValueError("atr_value is required when using ATR method")
-        return entry_price + (direction * value * atr_value)
-
-    if method == TpSlMethod.FIXED:
-        return entry_price + (direction * value)
-
-    return entry_price

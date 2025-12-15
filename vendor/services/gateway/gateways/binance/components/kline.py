@@ -155,8 +155,11 @@ class KlineComponent(BaseComponent):
         Returns:
             tuple[int, int]: Tuple containing (from_date_ms, to_date_ms) in milliseconds.
         """
-        assert from_date is not None, "from_date must not be None"
-        assert to_date is not None, "to_date must not be None"
+        if from_date is None:
+            raise ValueError("from_date must not be None")
+
+        if to_date is None:
+            raise ValueError("to_date must not be None")
 
         from_date_dt = datetime.fromtimestamp(from_date, tz=TIMEZONE)
         to_date_dt = datetime.fromtimestamp(to_date, tz=TIMEZONE)

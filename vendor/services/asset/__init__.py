@@ -50,8 +50,11 @@ class AssetService(AssetInterface):
         """
         self._log = LoggingService()
 
-        assert allocation >= 0, "Allocation must be >= 0"
-        assert 1 <= leverage < MAX_LEVERAGE, f"Leverage must be >= 1 and < {MAX_LEVERAGE}"
+        if allocation < 0:
+            raise ValueError("Allocation must be >= 0")
+
+        if not (1 <= leverage < MAX_LEVERAGE):
+            raise ValueError(f"Leverage must be >= 1 and < {MAX_LEVERAGE}")
 
         self._allocation = allocation
         self._enabled = enabled
@@ -77,7 +80,7 @@ class AssetService(AssetInterface):
             Asset report with aggregated performance and strategy reports.
         """
         report = self._analytic.on_end()
-        return report if report is not None else {}
+        return report if report else {}
 
     def on_new_day(self) -> None:
         """Handle a new day event. Cascades to all strategies."""
@@ -129,13 +132,13 @@ class AssetService(AssetInterface):
         self._commands_queue = kwargs.get("commands_queue")
         self._events_queue = kwargs.get("events_queue")
 
-        if self._commands_queue is None:
+        if not self._commands_queue:
             raise ValueError("Commands queue is required")
 
-        if self._events_queue is None:
+        if not self._events_queue:
             raise ValueError("Events queue is required")
 
-        if self._backtest and self._backtest_id is None:
+        if self._backtest and not self._backtest_id:
             raise ValueError("Backtest ID is required")
 
         if not self._backtest:

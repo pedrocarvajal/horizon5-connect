@@ -73,7 +73,10 @@ class EventHandler:
         report = event_data.get("report", {})
         report["portfolio_id"] = self._portfolio_id
 
-        self._log.info(f"Portfolio ID: {self._portfolio_id}")
+        self._log.info(
+            "Backtest completed",
+            portfolio_id=self._portfolio_id,
+        )
         self._log.debug(report)
 
         self._horizon_router.backtest_update(
@@ -84,7 +87,10 @@ class EventHandler:
 
     def _handle_failed(self, event_data: Dict[str, Any]) -> None:
         error = event_data.get("error", "Unknown error")
-        self._log.error(f"Backtest failed: {error}")
+        self._log.error(
+            "Backtest failed",
+            error=error,
+        )
 
         self._horizon_router.backtest_update(
             backtest_id=self._backtest_id,
@@ -151,7 +157,10 @@ def create_backtest(
     backtest_id: Optional[str] = response.get("data", {}).get("id")
 
     if backtest_id:
-        log.info(f"Backtest created: {backtest_id}")
+        log.info(
+            "Backtest created",
+            backtest_id=backtest_id,
+        )
 
     return backtest_id
 
@@ -227,7 +236,10 @@ if __name__ == "__main__":
         if enabled:
             has_enabled_assets = True
         else:
-            log.warning(f"Asset {asset_class.__name__} is not enabled")
+            log.warning(
+                "Asset is not enabled",
+                asset=asset_class.__name__,
+            )
 
     if not has_enabled_assets:
         parser.error("No enabled assets found in portfolio.")

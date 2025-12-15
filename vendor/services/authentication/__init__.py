@@ -71,12 +71,18 @@ class AuthenticationService(AuthenticationInterface):
             return True
 
         except ProviderHTTPError as exception:
-            self._log.error(f"Authentication failed: {exception}")
+            self._log.error(
+                "Authentication failed",
+                error=str(exception),
+            )
             self._handle_auth_error(exception)
             return False
 
         except Exception as exception:
-            self._log.error(f"Authentication failed: {exception}")
+            self._log.error(
+                "Authentication failed",
+                error=str(exception),
+            )
             return False
 
     def _handle_auth_error(self, exception: ProviderHTTPError) -> None:
@@ -89,12 +95,13 @@ class AuthenticationService(AuthenticationInterface):
             request_ip = response_data.get("request_ip")
 
             if request_ip:
-                self._log.warning("")
-                self._log.warning("Your request was rejected due to IP restrictions.")
-                self._log.warning(f"Your current IP: {request_ip}")
-                self._log.warning("")
-                self._log.info("Add this IP to your token whitelist in the dashboard.")
-                self._log.info("If using VPN or tunnel, consider disabling it for a stable IP.")
+                self._log.warning(
+                    "Request rejected due to IP restrictions",
+                    current_ip=request_ip,
+                )
+
+                self._log.info("Add this IP to your token whitelist in the dashboard")
+                self._log.info("If using VPN or tunnel, consider disabling it for a stable IP")
 
         except (json.JSONDecodeError, KeyError):
             pass
@@ -138,7 +145,10 @@ class AuthenticationService(AuthenticationInterface):
             self._token = data.get("token")
             self._user = data.get("user")
         except (json.JSONDecodeError, OSError) as exception:
-            self._log.warning(f"Failed to load session: {exception}")
+            self._log.warning(
+                "Failed to load session",
+                error=str(exception),
+            )
             self._token = None
             self._user = None
 
@@ -166,9 +176,16 @@ class AuthenticationService(AuthenticationInterface):
         try:
             data = {"token": self._token, "user": self._user}
             SESSION_FILE_PATH.write_text(json.dumps(data))
-            self._log.info(f"Session saved to {SESSION_FILE_PATH}")
+            self._log.info(
+                "Session saved",
+                file=str(SESSION_FILE_PATH),
+            )
+
         except OSError as exception:
-            self._log.error(f"Failed to save session: {exception}")
+            self._log.error(
+                "Failed to save session",
+                error=str(exception),
+            )
 
     def _validate_token(self) -> bool:
         try:

@@ -104,7 +104,10 @@ class TicksService(TicksInterface):
             parquet_path = self._get_parquet_path(symbol)
 
             if not parquet_path.exists():
-                self._log.warning(f"No parquet file for {symbol}")
+                self._log.warning(
+                    "No parquet file found",
+                    symbol=symbol,
+                )
                 continue
 
             dataframe = (
@@ -114,7 +117,11 @@ class TicksService(TicksInterface):
             )
 
             assets_data[symbol] = dataframe.set_sorted("timestamp")
-            self._log.info(f"Loaded {dataframe.height:,} rows for {symbol}")
+            self._log.info(
+                "Data loaded",
+                symbol=symbol,
+                rows=f"{dataframe.height:,}",
+            )
 
         return assets_data
 
@@ -124,10 +131,9 @@ class TicksService(TicksInterface):
         self._should_restore_ticks = kwargs.get("restore_ticks", False)
         self._is_download_disabled = kwargs.get("disable_download", False)
 
-        if self._asset is None:
+        if not self._asset:
             raise ValueError("Asset is required")
 
-        assert self._asset is not None
         self._download()
 
     def ticks(
@@ -136,8 +142,10 @@ class TicksService(TicksInterface):
         to_date: datetime.datetime,
     ) -> List[TickModel]:
         """Retrieve tick data for the specified date range."""
-        assert self._asset is not None
-        response: List[TickModel] = []
+        if not self._asset:
+            raise ValueError("Asset is required")
+
+        tick_models: List[TickModel] = []
         parquet_file = self._get_parquet_path(self._asset.symbol)
         ticks = polars.scan_parquet(parquet_file)  # pyright: ignore[reportUnknownMemberType]
         from_timestamp = int(from_date.timestamp())
@@ -164,9 +172,9 @@ class TicksService(TicksInterface):
                 is_simulated=True,
             )
 
-            response.append(tick)
+            tick_models.append(tick)
 
-        return response
+        return tick_models
 
     def _atomic_write_parquet(self, dataframe: polars.DataFrame, target_path: Path) -> None:
         """Write parquet file atomically to prevent corruption on interruption."""
@@ -188,7 +196,9 @@ class TicksService(TicksInterface):
             raise
 
     def _download(self) -> None:
-        assert self._asset is not None
+        if not self._asset:
+            raise ValueError("Asset is required")
+
         if self._is_download_disabled:
             return
 
@@ -196,9 +206,12 @@ class TicksService(TicksInterface):
         download_from_date = self._get_download_start_date(parquet_file)
         download_to_date = datetime.datetime.now(tz=TIMEZONE)
 
-        self._log.info(f"Downloading data for {self._asset.symbol}")
-        self._log.info(f"From date: {download_from_date}")
-        self._log.info(f"To date: {download_to_date}")
+        self._log.info(
+            "Downloading data",
+            symbol=self._asset.symbol,
+            from_date=str(download_from_date),
+            to_date=str(download_to_date),
+        )
 
         oldest_timestamp: Optional[int] = None
         newest_timestamp: Optional[int] = None
@@ -206,7 +219,6 @@ class TicksService(TicksInterface):
         end_timestamp = int(download_to_date.timestamp())
         klines: List[GatewayKlineModel] = []
         asset = self._asset
-        assert asset is not None
 
         def _process_klines(new_klines: List[GatewayKlineModel]) -> None:
             nonlocal oldest_timestamp
@@ -234,9 +246,14 @@ class TicksService(TicksInterface):
 
             oldest_formatted = self._get_formatted_timestamp(oldest_timestamp)
             newest_formatted = self._get_formatted_timestamp(newest_timestamp)
-            times = f"Oldest: {oldest_formatted} | Newest: {newest_formatted}"
 
-            self._log.info(f"Downloading {asset.symbol} | {times} | Progress: {progress:.2f}%")
+            self._log.info(
+                "Downloading",
+                symbol=asset.symbol,
+                oldest=oldest_formatted,
+                newest=newest_formatted,
+                progress=f"{progress:.2f}%",
+            )
 
         try:
             gateway = asset.gateway
@@ -249,7 +266,11 @@ class TicksService(TicksInterface):
             )
 
         except Exception as e:
-            self._log.error(f"Error downloading data for {self._asset.symbol}: {e}")
+            self._log.error(
+                "Error downloading data",
+                symbol=self._asset.symbol,
+                error=str(e),
+            )
             if not klines:
                 raise
 
@@ -280,7 +301,9 @@ class TicksService(TicksInterface):
         return datetime.datetime.fromtimestamp(timestamp, tz=TIMEZONE)
 
     def _get_download_start_date(self, parquet_file: Path) -> datetime.datetime:
-        assert self._asset is not None
+        if not self._asset:
+            raise ValueError("Asset is required")
+
         date = self._TIMELINE_START_DATE
 
         if self._should_restore_ticks:
@@ -295,7 +318,10 @@ class TicksService(TicksInterface):
             last_timestamp = last_tick[0, "timestamp"]
             date = self._get_datetime_from_timestamp(last_timestamp)
 
-            self._log.info(f"Resuming download from {date}")
+            self._log.info(
+                "Resuming download",
+                from_date=str(date),
+            )
             return date
 
         self._log.info("No existing data found, starting fresh download")
@@ -334,7 +360,10 @@ class TicksService(TicksInterface):
             parquet_path = self._get_parquet_path(symbol)
 
             if not parquet_path.exists():
-                self._log.warning(f"No parquet file for {symbol}")
+                self._log.warning(
+                    "No parquet file found",
+                    symbol=symbol,
+                )
                 continue
 
             dataframe = (
@@ -345,7 +374,11 @@ class TicksService(TicksInterface):
             )
 
             assets_arrays[symbol] = dataframe["close"].to_list()
-            self._log.info(f"Loaded {len(assets_arrays[symbol]):,} rows for {symbol}")
+            self._log.info(
+                "Data loaded",
+                symbol=symbol,
+                rows=f"{len(assets_arrays[symbol]):,}",
+            )
 
         return assets_arrays
 
@@ -370,10 +403,13 @@ class TicksService(TicksInterface):
 
         non_null_count = final_ticks.filter(polars.col("close").is_not_null()).height
 
-        self._log.info(f"Data saved to {parquet_file}")
-        self._log.info(f"Total rows: {final_ticks.height}")
-        self._log.info(f"Rows with data: {non_null_count}")
-        self._log.info(f"Actual date range: {actual_start_date} to {actual_end_date}")
+        self._log.info(
+            "Data saved",
+            file=str(parquet_file),
+            total_rows=final_ticks.height,
+            rows_with_data=non_null_count,
+            date_range=f"{actual_start_date} to {actual_end_date}",
+        )
 
     def _save_ticks_ohlcv(
         self,
@@ -441,14 +477,21 @@ class TicksService(TicksInterface):
 
             with completed_lock:
                 completed_count += 1
-                logger.info(f"Download complete for {symbol} ({completed_count}/{total_tasks_count})")
+                logger.info(
+                    "Download complete",
+                    symbol=symbol,
+                    progress=f"{completed_count}/{total_tasks_count}",
+                )
 
                 if completed_count == total_tasks_count and on_all_complete:
                     on_all_complete()
 
             return symbol, tick_service
 
-        logger.info(f"Starting parallel download for {total_tasks_count} assets")
+        logger.info(
+            "Starting parallel download",
+            assets_count=total_tasks_count,
+        )
 
         with ThreadPoolExecutor(max_workers=total_tasks_count) as executor:
             download_futures = [executor.submit(_download_asset, task) for task in tasks]
@@ -457,7 +500,10 @@ class TicksService(TicksInterface):
                 try:
                     future.result()
                 except Exception as download_error:
-                    logger.error(f"Download failed: {download_error}")
+                    logger.error(
+                        "Download failed",
+                        error=str(download_error),
+                    )
 
         return tick_services_by_symbol
 

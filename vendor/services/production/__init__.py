@@ -75,7 +75,10 @@ class ProductionService(ProductionInterface):
             enabled = asset_config.get("enabled", True)
 
             if not enabled:
-                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
+                self._log.warning(
+                    "Asset is disabled in portfolio config",
+                    asset=asset_class.__name__,
+                )
                 continue
 
             asset_instance = asset_class(allocation=allocation, enabled=enabled)
@@ -112,14 +115,23 @@ class ProductionService(ProductionInterface):
             to_date = datetime.datetime.now(tz=TIMEZONE)
             from_date = to_date - datetime.timedelta(days=self.HISTORICAL_DATA_DAYS)
 
-            self._log.info(f"Collecting historical data for {asset.symbol} from {from_date} to {to_date}")
+            self._log.info(
+                "Collecting historical data",
+                symbol=asset.symbol,
+                from_date=str(from_date),
+                to_date=str(to_date),
+            )
 
             ticks = tick_service.ticks(
                 from_date=from_date,
                 to_date=to_date,
             )
 
-            self._log.info(f"Injecting {len(ticks)} ticks for {asset.symbol}")
+            self._log.info(
+                "Injecting ticks",
+                symbol=asset.symbol,
+                count=len(ticks),
+            )
 
             asset.start_historical_filling()
 
@@ -164,7 +176,11 @@ class ProductionService(ProductionInterface):
                 callback=callback,
             )
         except Exception as e:
-            self._log.error(f"Error connecting to gateway stream: {e} | Asset: {asset.symbol}")
+            self._log.error(
+                "Error connecting to gateway stream",
+                asset=asset.symbol,
+                error=str(e),
+            )
 
     async def _run_tasks(self) -> None:
         await asyncio.gather(
@@ -180,8 +196,11 @@ class ProductionService(ProductionInterface):
             stream_time_diff = datetime.datetime.now(tz=TIMEZONE) - stream_last_updated_at
 
             if stream_time_diff > datetime.timedelta(seconds=self.STREAM_TIMEOUT_SECONDS):
-                timeout = self.STREAM_TIMEOUT_SECONDS
-                self._log.error(f"Stream not updated in {timeout}s: {stream_time_diff}. Restarting...")
+                self._log.error(
+                    "Stream not updated, restarting",
+                    timeout_seconds=self.STREAM_TIMEOUT_SECONDS,
+                    time_diff=str(stream_time_diff),
+                )
 
                 for task in self._stream_tasks:
                     if not task.done():

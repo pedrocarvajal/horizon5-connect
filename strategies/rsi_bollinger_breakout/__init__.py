@@ -160,13 +160,22 @@ class RSIBollingerBreakoutStrategy(StrategyService):
         super().on_transaction(order)
 
         if order.status.is_open():
-            self._log.info(f"Order: {order.id}, was opened at price {order.price:.2f}")
+            self._log.info(
+                "Order opened",
+                order_id=order.id,
+                price=f"{order.price:.2f}",
+            )
 
         if order.status.is_closed():
             profit_percentage = order.profit_percentage * 100
             profit = order.profit
 
-            self._log.info(f"Order: {order.id}, was closed, profit: {profit:.2f} ({profit_percentage:.2f}%)")
+            self._log.info(
+                "Order closed",
+                order_id=order.id,
+                profit=f"{profit:.2f}",
+                profit_percentage=f"{profit_percentage:.2f}%",
+            )
 
     def _check_entry_conditions(self) -> None:
         if self._tick is None:
