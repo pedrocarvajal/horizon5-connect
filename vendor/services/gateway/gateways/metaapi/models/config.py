@@ -32,8 +32,12 @@ class MetaApiConfigModel(BaseModel):
         description="MetaTrader account ID",
     )
     base_url: str = Field(
-        default="https://mt-market-data-client-api-v1.new-york.agiliumtrade.ai",
+        default="https://mt-market-data-client-api-v1.london.agiliumtrade.ai",
         description="MetaAPI market data base URL",
+    )
+    client_api_url: str = Field(
+        default="https://mt-client-api-v1.london.agiliumtrade.ai",
+        description="MetaAPI client/trading base URL",
     )
 
     @field_validator("auth_token", "account_id")
@@ -59,7 +63,7 @@ class MetaApiConfigModel(BaseModel):
 
         return value.strip()
 
-    @field_validator("base_url")
+    @field_validator("base_url", "client_api_url")
     @classmethod
     def validate_base_url(cls, value: str) -> str:
         """

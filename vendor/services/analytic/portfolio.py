@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
 from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.models.snapshot import SnapshotModel
+from vendor.services.analytic.helpers.get_assets_correlation import get_assets_correlation
 from vendor.services.analytic.helpers.get_quality_vs_benchmark import get_quality_vs_benchmark
 from vendor.services.analytic.wrappers.analytic import AnalyticWrapper
 from vendor.services.logging import LoggingService
 
 if TYPE_CHECKING:
     from vendor.interfaces.asset import AssetInterface
+
+MIN_DATA_POINTS_FOR_CORRELATION: int = 2
 
 
 class PortfolioAnalytic(AnalyticWrapper):
@@ -60,7 +63,7 @@ class PortfolioAnalytic(AnalyticWrapper):
         if not portfolio_id:
             raise ValueError("Portfolio ID is required")
 
-        if backtest and backtest_id is None:
+        if backtest and not backtest_id:
             raise ValueError("Backtest ID is required when backtest is True")
 
         self._portfolio_id = portfolio_id
@@ -108,9 +111,11 @@ class PortfolioAnalytic(AnalyticWrapper):
 
         quality_score = self._calculate_weighted_quality(assets_reports)
         quality_vs_benchmark_score = self._calculate_quality_vs_benchmark()
+        assets_correlation = self._calculate_assets_correlation()
         days_elapsed = self._get_elapsed_days()
         self._snapshot.score_quality = quality_score
         self._snapshot.score_quality_vs_benchmark = quality_vs_benchmark_score
+        self._snapshot.portfolio_assets_correlation = assets_correlation
         self._snapshot.time_days_elapsed = days_elapsed
         self._snapshot.event = SnapshotEvent.BACKTEST_END
 
@@ -137,6 +142,44 @@ class PortfolioAnalytic(AnalyticWrapper):
 
         return report
 
+    def _calculate_assets_correlation(self) -> float:
+        """Calculate average pairwise correlation between portfolio assets.
+
+        Extracts daily returns from each asset's NAV history and calculates
+        the average correlation between all asset pairs. This metric indicates
+        portfolio diversification level.
+
+        Returns:
+            Average pairwise correlation between -1 and 1. Returns 0.0 if
+            less than 2 assets or insufficient data.
+        """
+        if len(self._assets) < MIN_DATA_POINTS_FOR_CORRELATION:
+            return 0.0
+
+        assets_returns: Dict[str, List[float]] = {}
+
+        for asset in self._assets:
+            asset_snapshot = asset.analytic.snapshot
+            nav_history = asset_snapshot.history_nav
+            allocation = asset_snapshot.capital_allocation
+
+            if len(nav_history) < MIN_DATA_POINTS_FOR_CORRELATION or allocation == 0:
+                continue
+
+            returns: List[float] = []
+            previous_nav = allocation
+
+            for current_nav in nav_history:
+                if previous_nav > 0:
+                    daily_return = (current_nav - previous_nav) / previous_nav
+                    returns.append(daily_return)
+                previous_nav = current_nav
+
+            if returns:
+                assets_returns[asset.symbol] = returns
+
+        return get_assets_correlation(assets_returns)
+
     def _calculate_initial_allocation(self) -> float:
         """Calculate initial allocation from all assets.
 
@@ -144,9 +187,29 @@ class PortfolioAnalytic(AnalyticWrapper):
             Total allocation summed from all assets.
         """
         total_allocation = 0.0
+
         for asset in self._assets:
             total_allocation += asset.allocation
+
         return total_allocation
+
+    def _calculate_quality_vs_benchmark(self) -> float:
+        """Calculate quality score comparing portfolio performance against benchmark.
+
+        Uses aggregated NAV history from all assets/strategies in this portfolio
+        to compare against the benchmark.
+
+        Returns:
+            Quality score between 0 and 1.
+        """
+        return get_quality_vs_benchmark(
+            method=self._quality_vs_benchmark_method,
+            alpha=self._snapshot.benchmark_alpha,
+            information_ratio=self._snapshot.benchmark_information_ratio,
+            strategy_nav_history=self._snapshot.history_nav,
+            benchmark_price_history=self._snapshot.history_benchmark_price,
+            benchmark_initial_price=self._snapshot.benchmark_initial_price,
+        )
 
     def _calculate_weighted_quality(self, assets_reports: Dict[str, Any]) -> float:
         """Calculate weighted average quality from asset reports.
@@ -173,24 +236,6 @@ class PortfolioAnalytic(AnalyticWrapper):
             return round(weighted_quality_sum / total_allocation, 4)
 
         return 0.0
-
-    def _calculate_quality_vs_benchmark(self) -> float:
-        """Calculate quality score comparing portfolio performance against benchmark.
-
-        Uses aggregated NAV history from all assets/strategies in this portfolio
-        to compare against the benchmark.
-
-        Returns:
-            Quality score between 0 and 1.
-        """
-        return get_quality_vs_benchmark(
-            method=self._quality_vs_benchmark_method,
-            alpha=self._snapshot.benchmark_alpha,
-            information_ratio=self._snapshot.benchmark_information_ratio,
-            strategy_nav_history=self._snapshot.history_nav,
-            benchmark_price_history=self._snapshot.history_benchmark_price,
-            benchmark_initial_price=self._snapshot.benchmark_initial_price,
-        )
 
     def _perform_calculations(self) -> None:
         """Calculate all financial metrics from aggregated history."""

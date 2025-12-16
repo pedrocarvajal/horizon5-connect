@@ -121,6 +121,16 @@ class SnapshotModel(BaseModel):
     )
 
     # =========================================================================
+    # PORTFOLIO - Portfolio-level metrics (only populated at portfolio level)
+    # =========================================================================
+    portfolio_assets_correlation: float = Field(
+        default=0,
+        ge=-1,
+        le=1,
+        description="Average pairwise correlation between portfolio assets.",
+    )
+
+    # =========================================================================
     # HISTORY - Historical data arrays
     # =========================================================================
     history_performance: List[float] = Field(default_factory=lambda: [])
@@ -192,6 +202,7 @@ class SnapshotModel(BaseModel):
             "benchmark_information_ratio": self.benchmark_information_ratio,
             "score_quality": self.score_quality,
             "score_quality_vs_benchmark": self.score_quality_vs_benchmark,
+            "portfolio_assets_correlation": self.portfolio_assets_correlation,
             "time_days_elapsed": self.time_days_elapsed,
         }
 

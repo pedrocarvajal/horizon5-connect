@@ -12,6 +12,7 @@ def execute_request(
     url: str,
     auth_token: str,
     params: Optional[Dict[str, Any]] = None,
+    json_body: Optional[Dict[str, Any]] = None,
     log_error: Optional[Callable[[str], None]] = None,
     timeout: int = 120,
 ) -> Optional[Union[Dict[str, Any], List[Any]]]:
@@ -23,6 +24,7 @@ def execute_request(
         url: Full request URL.
         auth_token: MetaAPI JWT authentication token.
         params: Optional query parameters.
+        json_body: Optional JSON body for POST/PUT requests.
         log_error: Optional callback function for error logging.
         timeout: Request timeout in seconds.
 
@@ -43,6 +45,7 @@ def execute_request(
 
     headers = {
         "Accept": "application/json",
+        "Content-Type": "application/json",
         "auth-token": auth_token,
     }
 
@@ -59,6 +62,7 @@ def execute_request(
         response = handler(
             url,
             params=params,
+            json=json_body,
             headers=headers,
             timeout=timeout,
         )

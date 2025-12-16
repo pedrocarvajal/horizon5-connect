@@ -26,6 +26,8 @@ class BaseComponent:
         method: str,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
+        json_body: Optional[Dict[str, Any]] = None,
+        use_client_api: bool = False,
     ) -> Optional[Union[Dict[str, Any], List[Any]]]:
         """
         Execute authenticated request to MetaAPI.
@@ -34,6 +36,8 @@ class BaseComponent:
             method: HTTP method.
             endpoint: API endpoint path (without base URL).
             params: Optional query parameters.
+            json_body: Optional JSON body for POST/PUT requests.
+            use_client_api: If True, use client API URL instead of market data URL.
 
         Returns:
             JSON response or None if request fails.
@@ -42,12 +46,14 @@ class BaseComponent:
             self._log.error("auth_token required for authenticated request")
             return None
 
-        url = f"{self._config.base_url}{endpoint}"
+        base_url = self._config.client_api_url if use_client_api else self._config.base_url
+        url = f"{base_url}{endpoint}"
 
         return execute_request(
             method=method,
             url=url,
             auth_token=self._config.auth_token,
             params=params,
+            json_body=json_body,
             log_error=self._log.error,
         )

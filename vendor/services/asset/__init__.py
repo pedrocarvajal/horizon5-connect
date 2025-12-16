@@ -192,6 +192,11 @@ class AssetService(AssetInterface):
         return self._allocation
 
     @property
+    def analytic(self) -> AnalyticInterface:
+        """Return the analytics service for this asset."""
+        return self._analytic
+
+    @property
     def enabled(self) -> bool:
         """Return whether asset is enabled."""
         return self._enabled

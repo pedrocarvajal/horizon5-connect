@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, List
 
 if TYPE_CHECKING:
+    from vendor.interfaces.analytic import AnalyticInterface
     from vendor.interfaces.gateway import GatewayInterface
     from vendor.interfaces.strategy import StrategyInterface
 
@@ -73,6 +74,12 @@ class AssetInterface(ABC):
     @abstractmethod
     def allocation(self) -> float:
         """Return the asset allocation."""
+        pass
+
+    @property
+    @abstractmethod
+    def analytic(self) -> "AnalyticInterface":
+        """Return the analytics service for this asset."""
         pass
 
     @property
