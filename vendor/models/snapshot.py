@@ -129,6 +129,12 @@ class SnapshotModel(BaseModel):
         le=1,
         description="Average pairwise correlation between portfolio assets.",
     )
+    portfolio_assets_performance_correlation: float = Field(
+        default=0,
+        ge=-1,
+        le=1,
+        description="Average pairwise correlation between strategy performances.",
+    )
 
     # =========================================================================
     # HISTORY - Historical data arrays
@@ -203,6 +209,7 @@ class SnapshotModel(BaseModel):
             "score_quality": self.score_quality,
             "score_quality_vs_benchmark": self.score_quality_vs_benchmark,
             "portfolio_assets_correlation": self.portfolio_assets_correlation,
+            "portfolio_assets_performance_correlation": self.portfolio_assets_performance_correlation,
             "time_days_elapsed": self.time_days_elapsed,
         }
 

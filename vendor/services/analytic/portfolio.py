@@ -112,10 +112,12 @@ class PortfolioAnalytic(AnalyticWrapper):
         quality_score = self._calculate_weighted_quality(assets_reports)
         quality_vs_benchmark_score = self._calculate_quality_vs_benchmark()
         assets_correlation = self._calculate_assets_correlation()
+        assets_performance_correlation = self._calculate_assets_performance_correlation()
         days_elapsed = self._get_elapsed_days()
         self._snapshot.score_quality = quality_score
         self._snapshot.score_quality_vs_benchmark = quality_vs_benchmark_score
         self._snapshot.portfolio_assets_correlation = assets_correlation
+        self._snapshot.portfolio_assets_performance_correlation = assets_performance_correlation
         self._snapshot.time_days_elapsed = days_elapsed
         self._snapshot.event = SnapshotEvent.BACKTEST_END
 
@@ -174,6 +176,43 @@ class PortfolioAnalytic(AnalyticWrapper):
                     daily_return = (current_nav - previous_nav) / previous_nav
                     returns.append(daily_return)
                 previous_nav = current_nav
+
+            if returns:
+                assets_returns[asset.symbol] = returns
+
+        return get_assets_correlation(assets_returns)
+
+    def _calculate_assets_performance_correlation(self) -> float:
+        """Calculate average pairwise correlation between strategy performances.
+
+        Extracts performance changes from each asset's performance history and
+        calculates the average correlation between all asset pairs. This metric
+        indicates how correlated the strategy returns are.
+
+        Returns:
+            Average pairwise correlation between -1 and 1. Returns 0.0 if
+            less than 2 assets or insufficient data.
+        """
+        if len(self._assets) < MIN_DATA_POINTS_FOR_CORRELATION:
+            return 0.0
+
+        assets_returns: Dict[str, List[float]] = {}
+
+        for asset in self._assets:
+            asset_snapshot = asset.analytic.snapshot
+            performance_history = asset_snapshot.history_performance
+            allocation = asset_snapshot.capital_allocation
+
+            if len(performance_history) < MIN_DATA_POINTS_FOR_CORRELATION or allocation == 0:
+                continue
+
+            returns: List[float] = []
+            previous_performance = 0.0
+
+            for current_performance in performance_history:
+                daily_return = current_performance - previous_performance
+                returns.append(daily_return)
+                previous_performance = current_performance
 
             if returns:
                 assets_returns[asset.symbol] = returns
