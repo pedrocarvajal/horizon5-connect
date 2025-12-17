@@ -104,6 +104,11 @@ class CommandService(CommandInterface):
                 continue
 
             command = CommandModel(**command_data)
+
+            if command.command.is_shutdown():
+                self._log.info("Shutdown received, stopping commands service")
+                break
+
             success = self.process_command(command)
 
             if command.command.is_execute():

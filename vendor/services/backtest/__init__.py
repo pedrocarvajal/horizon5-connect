@@ -8,6 +8,7 @@ from typing import Any, List, Optional
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.enums.backtest_event import BacktestEvent
+from vendor.enums.command import Command
 from vendor.helpers.get_duration import get_duration
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.backtest import BacktestInterface
@@ -118,6 +119,8 @@ class BacktestService(BacktestInterface):
             }
         )
 
+        self._send_shutdown()
+
         self._log.info(
             "Backtest completed",
             duration=duration,
@@ -131,6 +134,14 @@ class BacktestService(BacktestInterface):
                 "error": error,
             }
         )
+
+        self._send_shutdown()
+
+    def _send_shutdown(self) -> None:
+        if self._commands_queue is None:
+            return
+
+        self._commands_queue.put({"command": Command.SHUTDOWN})
 
     def _setup_portfolio(self) -> None:
         """Configure portfolio and download tick data for all assets in parallel."""

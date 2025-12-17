@@ -23,12 +23,12 @@ class Portfolio(PortfolioService):
         self._assets = [
             {
                 "asset": BTCUSDTAsset,
-                "allocation": 500_000,
+                "allocation": 300_000,
                 "enabled": True,
             },
             {
                 "asset": XAUUSDAsset,
-                "allocation": 500_000,
+                "allocation": 600_000,
                 "enabled": True,
             },
         ]

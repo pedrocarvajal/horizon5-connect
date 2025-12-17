@@ -16,9 +16,11 @@ class Command(str, Enum):
 
     Members:
         EXECUTE: Command to execute a function with provided arguments.
+        SHUTDOWN: Command to stop the command service gracefully.
     """
 
     EXECUTE = "execute"
+    SHUTDOWN = "shutdown"
 
     def is_execute(self) -> bool:
         """
@@ -28,3 +30,12 @@ class Command(str, Enum):
             bool: True if command is EXECUTE, False otherwise.
         """
         return self == Command.EXECUTE
+
+    def is_shutdown(self) -> bool:
+        """
+        Check if the command is shutdown.
+
+        Returns:
+            bool: True if command is SHUTDOWN, False otherwise.
+        """
+        return self == Command.SHUTDOWN
