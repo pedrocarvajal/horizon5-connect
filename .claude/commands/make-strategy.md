@@ -47,9 +47,25 @@ Before writing any code, you must understand how the framework works:
 
 ## PHASE 2: Infrastructure preparation
 
-1. **Verify or create the asset**: If the asset for your strategy doesn't exist in `assets/`, create it following the structure of `assets/xauusd/__init__.py`. If it already exists, verify it's correctly configured.
+1. **Check if the asset exists**: Look in `assets/` directory for the target asset.
 
-2. **Link to portfolio**: Ensure the asset is linked in `portfolios/low-risk.py`.
+   **If the asset already exists:**
+   - Verify the asset configuration is correct for your strategy
+   - Add your new strategy to the existing asset's strategies list
+   - Proceed to step 3
+
+   **If the asset does NOT exist:**
+   - Create the new asset folder `assets/<asset_name>/__init__.py` following the structure of `assets/xauusd/__init__.py`
+   - Link the asset in `portfolios/low-risk.py`
+   - **STOP HERE**: Historical data must be downloaded before continuing. Inform the user:
+     ```
+     The asset <asset_name> has been created but requires historical data download.
+     Please run the data download process for this asset and let me know when it's complete.
+     The download may take considerable time depending on the data range needed.
+     ```
+   - **Wait for user confirmation** that data download is complete before proceeding
+
+2. **Link to portfolio**: If not already linked, ensure the asset is linked in `portfolios/low-risk.py`.
 
 3. **Create the strategy folder**: Create `strategies/<strategy_name>/__init__.py` with the minimal structure (just the empty class inheriting from `StrategyService`).
 
@@ -57,6 +73,8 @@ Before writing any code, you must understand how the framework works:
    ```bash
    uv run python backtest.py --portfolio-path portfolios/low-risk.py --from-date 2024-01-01
    ```
+
+   **Note**: If this is a new asset and the backtest fails due to missing data, remind the user that historical data must be downloaded first.
 
 ## PHASE 3: Incremental development with validation
 

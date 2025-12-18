@@ -22,7 +22,7 @@ Optimize strategy configuration settings through systematic backtesting iteratio
 - **Maximum Drawdown**: 30%
 - **In-Sample Period**: 3 years minimum
 - **Out-of-Sample**: Remaining data for robustness validation
-- **Backtest Command**: `uv run python backtest.py --portfolio-path portfolios/<asset>-test.py --from-date YYYY-MM-DD`
+- **Backtest Reference**: See `.claude/docs/how-to-run-backtest.md` for command usage and analysis
 
 ## Workflow
 
@@ -111,9 +111,9 @@ class Portfolio(PortfolioService):
 
 ### Step 5: Establish Baseline
 
-Run initial backtest with current settings:
+Run initial backtest with current settings (see `.claude/docs/how-to-run-backtest.md`):
 
-1. Execute: `uv run python backtest.py --portfolio-path portfolios/<asset>-test.py --from-date <3-years-ago>`
+1. Execute backtest with 3-year in-sample period
 2. Record baseline metrics in TRACKING file:
    - Return %
    - Max Drawdown %
