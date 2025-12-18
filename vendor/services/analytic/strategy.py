@@ -16,8 +16,12 @@ from vendor.models.order import OrderModel
 from vendor.models.snapshot import SnapshotModel
 from vendor.providers.horizon_router import HorizonRouterProvider
 from vendor.services.analytic.helpers.get_average_trade_duration import get_average_trade_duration
+from vendor.services.analytic.helpers.get_max_trade_duration import get_max_trade_duration
+from vendor.services.analytic.helpers.get_overnight_metrics import get_overnight_metrics
 from vendor.services.analytic.helpers.get_profit_factor import get_profit_factor
+from vendor.services.analytic.helpers.get_propfirm_metrics import get_propfirm_metrics
 from vendor.services.analytic.helpers.get_quality import get_quality
+from vendor.services.analytic.helpers.get_quality_propfirm import get_quality_propfirm
 from vendor.services.analytic.helpers.get_quality_vs_benchmark import get_quality_vs_benchmark
 from vendor.services.analytic.helpers.get_win_ratio import get_win_ratio
 from vendor.services.analytic.wrappers.analytic import AnalyticWrapper
@@ -50,6 +54,8 @@ class StrategyAnalytic(AnalyticWrapper):
     _quality_method: QualityMethod
     _strategy_id: str
     _trade_durations: List[float]
+    _trade_timestamps: List[Tuple[datetime.datetime, datetime.datetime]]
+    _current_day_profit: float
 
     def __init__(
         self,
@@ -108,6 +114,8 @@ class StrategyAnalytic(AnalyticWrapper):
         self._buy_orders = 0
         self._sell_orders = 0
         self._trade_durations = []
+        self._trade_timestamps = []
+        self._current_day_profit = 0.0
         self._previous_day_nav = self._orderbook.nav
 
         self._snapshot = SnapshotModel(
@@ -146,6 +154,8 @@ class StrategyAnalytic(AnalyticWrapper):
         self._snapshot.time_days_elapsed = days_elapsed
         self._snapshot.event = SnapshotEvent.BACKTEST_END
 
+        self._calculate_propfirm_metrics()
+
         snapshot_data = {
             "strategy_id": self._snapshot.strategy_id,
             "portfolio_id": self._snapshot.portfolio_id,
@@ -179,6 +189,14 @@ class StrategyAnalytic(AnalyticWrapper):
             )
             self._log.info(message)
 
+    def on_new_day(self) -> None:
+        """Handle a new day event. Extends base to track daily profits for prop firm metrics."""
+        daily_profit = self._current_day_profit
+        self._snapshot.history_daily_profit.append(daily_profit)
+        self._current_day_profit = 0.0
+
+        super().on_new_day()
+
     def on_transaction(self, order: OrderModel) -> None:
         """Handle a transaction event. Tracks closed orders and profits.
 
@@ -195,6 +213,7 @@ class StrategyAnalytic(AnalyticWrapper):
             )
 
             self._snapshot.history_balance.append(self._snapshot.capital_balance)
+            self._current_day_profit += order.profit
 
             if order.side is not None:
                 if order.side.is_buy():
@@ -207,6 +226,7 @@ class StrategyAnalytic(AnalyticWrapper):
                 duration_seconds = (order.updated_at - order.created_at).total_seconds()
                 duration_minutes = duration_seconds / 60
                 self._trade_durations.append(duration_minutes)
+                self._trade_timestamps.append((order.created_at, order.updated_at))
 
         if order.status.is_closed() or order.status.is_cancelled():
             self._send_order_to_backend(order)
@@ -265,6 +285,11 @@ class StrategyAnalytic(AnalyticWrapper):
         snapshot.trade_buy_orders = self._buy_orders
         snapshot.trade_sell_orders = self._sell_orders
         snapshot.trade_average_duration = get_average_trade_duration(self._trade_durations)
+        snapshot.trade_max_duration = get_max_trade_duration(self._trade_durations)
+
+        overnight_count, overnight_ratio = get_overnight_metrics(self._trade_timestamps)
+        snapshot.trade_overnight_count = overnight_count
+        snapshot.trade_overnight_ratio = overnight_ratio
 
     def _refresh(self) -> None:
         """Refresh snapshot data from orderbook."""
@@ -291,4 +316,33 @@ class StrategyAnalytic(AnalyticWrapper):
                 "function": provider.order_create,
                 "args": {"data": order_data},
             }
+        )
+
+    def _calculate_propfirm_metrics(self) -> None:
+        """Calculate prop firm compliance metrics and quality score."""
+        snapshot = self._snapshot
+        daily_profits = snapshot.history_daily_profit
+        initial_balance = snapshot.capital_allocation
+        max_drawdown = snapshot.performance_max_drawdown
+
+        propfirm = get_propfirm_metrics(daily_profits, initial_balance, max_drawdown)
+
+        snapshot.propfirm_best_day_profit = propfirm.best_day_profit
+        snapshot.propfirm_best_day_profit_ratio = propfirm.best_day_profit_ratio
+        snapshot.propfirm_trading_days = propfirm.trading_days
+        snapshot.propfirm_daily_loss_compliant = propfirm.daily_loss_compliant
+        snapshot.propfirm_overall_loss_compliant = propfirm.overall_loss_compliant
+        snapshot.propfirm_consistency_compliant = propfirm.consistency_compliant
+        snapshot.propfirm_trading_days_compliant = propfirm.trading_days_compliant
+
+        snapshot.risk_max_daily_loss = propfirm.max_daily_loss
+        snapshot.risk_max_daily_profit = propfirm.max_daily_profit
+        snapshot.risk_daily_loss_breach_count = propfirm.daily_loss_breach_count
+
+        snapshot.score_quality_propfirm = get_quality_propfirm(
+            consistency_ratio=propfirm.best_day_profit_ratio,
+            max_daily_loss=propfirm.max_daily_loss,
+            max_drawdown=max_drawdown,
+            profit_factor=snapshot.trade_profit_factor,
+            trading_days=propfirm.trading_days,
         )

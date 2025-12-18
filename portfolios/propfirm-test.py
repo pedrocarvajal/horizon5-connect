@@ -1,18 +1,17 @@
-"""XAUUSD asset configuration for MetaAPI/MetaTrader exchange trading."""
+"""Propfirm test portfolio - isolated EMA5 Breakout strategy for optimization."""
 
 from typing import List
 
 from strategies.ema5_breakout import EMA5BreakoutStrategy
-from strategies.meb_faber_timing import MebFaberTimingStrategy
-from strategies.turtle_trading import TurtleTradingStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.enums.tp_sl_method import TpSlMethod
 from vendor.interfaces.strategy import StrategyInterface
 from vendor.services.asset import AssetService
+from vendor.services.portfolio import PortfolioService
 
 
 class Asset(AssetService):
-    """XAUUSD (Gold) trading asset with EMA5 breakout strategy for MetaTrader."""
+    """XAUUSD asset with only EMA5 Breakout for propfirm testing."""
 
     _symbol = "XAUUSD"
     _gateway_name = "metaapi"
@@ -20,15 +19,8 @@ class Asset(AssetService):
     _strategies: List[StrategyInterface]
 
     def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 100) -> None:
-        """Initialize XAUUSD asset with EMA5 breakout strategy.
-
-        Args:
-            allocation: Total allocation for this asset to distribute among strategies.
-            enabled: Whether this asset is enabled for execution.
-            leverage: Leverage multiplier for trading (default: 100 for forex/commodities).
-        """
+        """Initialize asset with allocation and leverage settings."""
         super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
-
         self._setup_strategies()
         self._setup_allocation()
 
@@ -55,31 +47,32 @@ class Asset(AssetService):
                     "recovery_take_profit_method": TpSlMethod.FIXED,
                 },
             ),
-            TurtleTradingStrategy(
-                id="turtle_trading",
-                allocation=0.0,
-                enabled=True,
-                settings={
-                    "volume_percentage": 0.25,
-                    "donchian_entry_period": 100,
-                    "donchian_exit_period": 35,
-                    "allow_short": False,
-                },
-            ),
-            MebFaberTimingStrategy(
-                id="meb_faber_timing",
-                allocation=0.0,
-                enabled=True,
-                settings={
-                    "volume_percentage": 1.0,
-                    "sma_period": 10,
-                },
-            ),
         ]
 
     def _setup_allocation(self) -> None:
         enabled_strategies = [s for s in self._strategies if s.enabled]
         allocation_per_strategy = self.allocation / max(len(enabled_strategies), 1)
-
         for strategy in enabled_strategies:
             strategy.allocation = allocation_per_strategy
+
+
+class Portfolio(PortfolioService):
+    """Propfirm test portfolio for EMA5 Breakout optimization."""
+
+    _id = "propfirm-test"
+    _portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
+
+    def __init__(self) -> None:
+        """Initialize portfolio with asset configuration."""
+        super().__init__()
+        self.setup_assets()
+
+    def setup_assets(self) -> None:
+        """Configure portfolio assets with allocations."""
+        self._assets = [
+            {
+                "asset": Asset,
+                "allocation": 100_000,
+                "enabled": True,
+            },
+        ]

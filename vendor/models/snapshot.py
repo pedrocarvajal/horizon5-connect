@@ -69,6 +69,21 @@ class SnapshotModel(BaseModel):
     risk_calmar_ratio: float = Field(default=0)
     risk_expected_shortfall: float = Field(default=0, le=0)
     risk_ulcer_index: float = Field(default=0, ge=0)
+    risk_max_daily_loss: float = Field(
+        default=0,
+        le=0,
+        description="Worst single-day loss as ratio of initial balance. Prop firm limit typically -0.05.",
+    )
+    risk_max_daily_profit: float = Field(
+        default=0,
+        ge=0,
+        description="Best single-day profit as ratio of initial balance.",
+    )
+    risk_daily_loss_breach_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of days that exceeded 5% daily loss limit.",
+    )
 
     # =========================================================================
     # TRADE - Orders, win ratio, profit factor, duration
@@ -79,6 +94,22 @@ class SnapshotModel(BaseModel):
     trade_buy_orders: int = Field(default=0, ge=0)
     trade_sell_orders: int = Field(default=0, ge=0)
     trade_average_duration: float = Field(default=0, ge=0)
+    trade_max_duration: float = Field(
+        default=0,
+        ge=0,
+        description="Maximum trade duration in minutes. Identifies longest-held position.",
+    )
+    trade_overnight_count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of trades held overnight (crossed midnight).",
+    )
+    trade_overnight_ratio: float = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Ratio of trades held overnight vs total trades.",
+    )
 
     # =========================================================================
     # BENCHMARK - Comparisons vs benchmark
@@ -119,6 +150,12 @@ class SnapshotModel(BaseModel):
         le=1,
         description="Quality score comparing strategy vs benchmark.",
     )
+    score_quality_propfirm: float = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Quality score evaluating prop firm readiness (consistency, daily limits, drawdown).",
+    )
 
     # =========================================================================
     # PORTFOLIO - Portfolio-level metrics (only populated at portfolio level)
@@ -137,6 +174,40 @@ class SnapshotModel(BaseModel):
     )
 
     # =========================================================================
+    # PROPFIRM - Prop trading firm compliance metrics
+    # =========================================================================
+    propfirm_best_day_profit: float = Field(
+        default=0,
+        description="Highest single-day profit in currency units.",
+    )
+    propfirm_best_day_profit_ratio: float = Field(
+        default=0,
+        ge=0,
+        description="Best day profit as ratio of total profit. Lower is more consistent (prop firm rule).",
+    )
+    propfirm_trading_days: int = Field(
+        default=0,
+        ge=0,
+        description="Number of active trading days (at least 1 trade executed).",
+    )
+    propfirm_daily_loss_compliant: bool = Field(
+        default=True,
+        description="True if never exceeded 5% daily loss limit.",
+    )
+    propfirm_overall_loss_compliant: bool = Field(
+        default=True,
+        description="True if never exceeded 10% overall loss limit.",
+    )
+    propfirm_consistency_compliant: bool = Field(
+        default=True,
+        description="True if best day profit <= 30% of total profit.",
+    )
+    propfirm_trading_days_compliant: bool = Field(
+        default=False,
+        description="True if minimum 4 trading days with activity.",
+    )
+
+    # =========================================================================
     # HISTORY - Historical data arrays
     # =========================================================================
     history_performance: List[float] = Field(default_factory=lambda: [])
@@ -146,6 +217,10 @@ class SnapshotModel(BaseModel):
     history_balance: List[float] = Field(
         default_factory=lambda: [],
         description="Historical closed balance values for balance curve.",
+    )
+    history_daily_profit: List[float] = Field(
+        default_factory=lambda: [],
+        description="Daily profit values for consistency analysis.",
     )
 
     # =========================================================================
@@ -191,12 +266,18 @@ class SnapshotModel(BaseModel):
             "risk_calmar_ratio": self.risk_calmar_ratio,
             "risk_expected_shortfall": self.risk_expected_shortfall,
             "risk_ulcer_index": self.risk_ulcer_index,
+            "risk_max_daily_loss": self.risk_max_daily_loss,
+            "risk_max_daily_profit": self.risk_max_daily_profit,
+            "risk_daily_loss_breach_count": self.risk_daily_loss_breach_count,
             "trade_profit_factor": self.trade_profit_factor,
             "trade_win_ratio": self.trade_win_ratio,
             "trade_total_orders": self.trade_total_orders,
             "trade_buy_orders": self.trade_buy_orders,
             "trade_sell_orders": self.trade_sell_orders,
             "trade_average_duration": self.trade_average_duration,
+            "trade_max_duration": self.trade_max_duration,
+            "trade_overnight_count": self.trade_overnight_count,
+            "trade_overnight_ratio": self.trade_overnight_ratio,
             "benchmark_initial_price": self.benchmark_initial_price,
             "benchmark_current_price": self.benchmark_current_price,
             "benchmark_performance": self.benchmark_performance,
@@ -208,8 +289,16 @@ class SnapshotModel(BaseModel):
             "benchmark_information_ratio": self.benchmark_information_ratio,
             "score_quality": self.score_quality,
             "score_quality_vs_benchmark": self.score_quality_vs_benchmark,
+            "score_quality_propfirm": self.score_quality_propfirm,
             "portfolio_assets_correlation": self.portfolio_assets_correlation,
             "portfolio_assets_performance_correlation": self.portfolio_assets_performance_correlation,
+            "propfirm_best_day_profit": self.propfirm_best_day_profit,
+            "propfirm_best_day_profit_ratio": self.propfirm_best_day_profit_ratio,
+            "propfirm_trading_days": self.propfirm_trading_days,
+            "propfirm_daily_loss_compliant": self.propfirm_daily_loss_compliant,
+            "propfirm_overall_loss_compliant": self.propfirm_overall_loss_compliant,
+            "propfirm_consistency_compliant": self.propfirm_consistency_compliant,
+            "propfirm_trading_days_compliant": self.propfirm_trading_days_compliant,
             "time_days_elapsed": self.time_days_elapsed,
         }
 
