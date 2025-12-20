@@ -465,3 +465,31 @@ class MetaApi(GatewayInterface):
             position_id=str(position_id),
             volume=kwargs.get("volume"),
         )
+
+    def modify_position(
+        self,
+        **kwargs: Any,
+    ) -> bool:
+        """
+        Modify stop loss and/or take profit of an existing position.
+
+        Args:
+            **kwargs: Keyword arguments:
+                - position_id: Position ID to modify.
+                - stop_loss: New stop loss price (None to keep current).
+                - take_profit: New take profit price (None to keep current).
+
+        Returns:
+            True if modification was successful, False otherwise.
+        """
+        position_id = kwargs.get("position_id")
+
+        if not position_id:
+            self._log.error("position_id is required for modify_position")
+            return False
+
+        return self._order_component.modify_position(
+            position_id=str(position_id),
+            stop_loss=kwargs.get("stop_loss"),
+            take_profit=kwargs.get("take_profit"),
+        )

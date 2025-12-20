@@ -272,6 +272,83 @@ class OrderComponent(BaseComponent):
 
         return orders
 
+    def modify_position(
+        self,
+        position_id: str,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> bool:
+        """
+        Modify stop loss and/or take profit of an existing position.
+
+        Args:
+            position_id: Position ID to modify.
+            stop_loss: New stop loss price (None to keep current).
+            take_profit: New take profit price (None to keep current).
+
+        Returns:
+            True if modification was successful, False otherwise.
+        """
+        if not self._config.account_id:
+            self._log.error(
+                "account_id required for modify_position",
+            )
+            return False
+
+        if not position_id:
+            self._log.error(
+                "position_id is required",
+            )
+            return False
+
+        if stop_loss is None and take_profit is None:
+            self._log.error(
+                "At least one of stop_loss or take_profit is required",
+            )
+            return False
+
+        trade_body: Dict[str, Any] = {
+            "actionType": "POSITION_MODIFY",
+            "positionId": position_id,
+        }
+
+        if stop_loss is not None:
+            trade_body["stopLoss"] = stop_loss
+
+        if take_profit is not None:
+            trade_body["takeProfit"] = take_profit
+
+        endpoint = f"/users/current/accounts/{self._config.account_id}/trade"
+
+        response = self._execute(
+            method="POST",
+            endpoint=endpoint,
+            json_body=trade_body,
+            use_client_api=True,
+        )
+
+        if not response:
+            return False
+
+        if not isinstance(response, dict):
+            self._log.error(
+                "Unexpected response type for modify",
+                response_type=type(response).__name__,
+            )
+            return False
+
+        string_code = response.get("stringCode", "")
+
+        if string_code in ["TRADE_RETCODE_DONE", "ERR_NO_ERROR"]:
+            return True
+
+        self._log.error(
+            "Failed to modify position",
+            error_message=response.get("message", "Unknown error"),
+            code=string_code,
+        )
+        return False
+
     def close_position(
         self,
         position_id: str,

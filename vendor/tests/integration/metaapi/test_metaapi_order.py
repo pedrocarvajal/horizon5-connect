@@ -85,6 +85,131 @@ class TestMetaApiOrder(MetaApiWrapper):
             ], "Status should be PENDING or EXECUTED"
         assert order.response is not None, "Response should not be None"
 
+    def test_modify_position_stop_loss(self) -> None:
+        """Test modifying stop loss of an existing position."""
+        order = self._place_test_order(
+            symbol=self._SYMBOL,
+            side=OrderSide.BUY,
+            volume=self._DEFAULT_VOLUME,
+        )
+        self._assert_order_is_valid(order=order, expected_type=OrderType.MARKET)
+        assert order is not None
+
+        position_id = self._get_position_id_for_order(order=order)
+        if position_id is None:
+            self._log.warning("No position found, skipping modify test")
+            return
+
+        current_price = self._get_current_price()
+        if current_price is None:
+            self._close_position_for_order(order=order)
+            self.fail("Could not get current price for SL calculation")
+
+        stop_loss_price = current_price * 0.99
+
+        result = self._gateway.modify_position(
+            position_id=position_id,
+            stop_loss=stop_loss_price,
+        )
+
+        assert result is True, "Modify position should return True on success"
+        self._log.info(f"Position {position_id} SL modified to {stop_loss_price}")
+        self._close_position_for_order(order=order)
+
+    def test_modify_position_take_profit(self) -> None:
+        """Test modifying take profit of an existing position."""
+        order = self._place_test_order(
+            symbol=self._SYMBOL,
+            side=OrderSide.BUY,
+            volume=self._DEFAULT_VOLUME,
+        )
+        self._assert_order_is_valid(order=order, expected_type=OrderType.MARKET)
+        assert order is not None
+
+        position_id = self._get_position_id_for_order(order=order)
+        if position_id is None:
+            self._log.warning("No position found, skipping modify test")
+            return
+
+        current_price = self._get_current_price()
+        if current_price is None:
+            self._close_position_for_order(order=order)
+            self.fail("Could not get current price for TP calculation")
+
+        take_profit_price = current_price * 1.01
+
+        result = self._gateway.modify_position(
+            position_id=position_id,
+            take_profit=take_profit_price,
+        )
+
+        assert result is True, "Modify position should return True on success"
+        self._log.info(f"Position {position_id} TP modified to {take_profit_price}")
+        self._close_position_for_order(order=order)
+
+    def test_modify_position_both_sl_tp(self) -> None:
+        """Test modifying both stop loss and take profit of an existing position."""
+        order = self._place_test_order(
+            symbol=self._SYMBOL,
+            side=OrderSide.BUY,
+            volume=self._DEFAULT_VOLUME,
+        )
+        self._assert_order_is_valid(order=order, expected_type=OrderType.MARKET)
+        assert order is not None
+
+        position_id = self._get_position_id_for_order(order=order)
+        if position_id is None:
+            self._log.warning("No position found, skipping modify test")
+            return
+
+        current_price = self._get_current_price()
+        if current_price is None:
+            self._close_position_for_order(order=order)
+            self.fail("Could not get current price for SL/TP calculation")
+
+        stop_loss_price = current_price * 0.99
+        take_profit_price = current_price * 1.01
+
+        result = self._gateway.modify_position(
+            position_id=position_id,
+            stop_loss=stop_loss_price,
+            take_profit=take_profit_price,
+        )
+
+        assert result is True, "Modify position should return True on success"
+        self._log.info(f"Position {position_id} modified: SL={stop_loss_price}, TP={take_profit_price}")
+        self._close_position_for_order(order=order)
+
+    def _get_position_id_for_order(
+        self,
+        order: GatewayOrderModel,
+    ) -> Optional[str]:
+        """Get position ID for an executed order."""
+        if order.status != GatewayOrderStatus.EXECUTED:
+            return None
+
+        positions = self._gateway.get_positions(symbol=order.symbol)
+        if len(positions) == 0:
+            return None
+
+        position = positions[0]
+        if position.response:
+            return str(position.response.get("id", ""))
+
+        return None
+
+    def _get_current_price(self) -> Optional[float]:
+        """Get current price for the test symbol."""
+        positions = self._gateway.get_positions(symbol=self._SYMBOL)
+        if positions and positions[0].response:
+            return positions[0].response.get("currentPrice")
+
+        symbol_info = self._gateway.get_symbol_info(symbol=self._SYMBOL)
+        if symbol_info and symbol_info.response:
+            return symbol_info.response.get("bid")
+
+        return None
+
     def _close_position_for_order(
         self,
         order: GatewayOrderModel,
