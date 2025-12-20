@@ -154,6 +154,13 @@ class StrategyAnalytic(AnalyticWrapper):
         self._snapshot.time_days_elapsed = days_elapsed
         self._snapshot.event = SnapshotEvent.BACKTEST_END
 
+        nav_change = self._snapshot.capital_nav - self._previous_day_nav
+        realized_profit = self._current_day_profit
+        last_day_profit = nav_change if abs(nav_change) >= abs(realized_profit) else realized_profit
+
+        if last_day_profit != 0.0:
+            self._snapshot.history_daily_profit.append(last_day_profit)
+
         self._calculate_propfirm_metrics()
 
         snapshot_data = {
@@ -191,7 +198,12 @@ class StrategyAnalytic(AnalyticWrapper):
 
     def on_new_day(self) -> None:
         """Handle a new day event. Extends base to track daily profits for prop firm metrics."""
-        daily_profit = self._current_day_profit
+        self._refresh()
+
+        nav_change = self._snapshot.capital_nav - self._previous_day_nav
+        realized_profit = self._current_day_profit
+        daily_profit = nav_change if abs(nav_change) >= abs(realized_profit) else realized_profit
+
         self._snapshot.history_daily_profit.append(daily_profit)
         self._current_day_profit = 0.0
 

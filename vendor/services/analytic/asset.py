@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
 from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.models.snapshot import SnapshotModel
-from vendor.services.analytic.helpers.get_propfirm_metrics import MIN_TRADING_DAYS
+from vendor.services.analytic.helpers.get_propfirm_metrics import get_propfirm_metrics
+from vendor.services.analytic.helpers.get_quality_propfirm import get_quality_propfirm
 from vendor.services.analytic.helpers.get_quality_vs_benchmark import get_quality_vs_benchmark
 from vendor.services.analytic.wrappers.analytic import AnalyticWrapper
 from vendor.services.logging import LoggingService
@@ -95,6 +96,15 @@ class AssetAnalytic(AnalyticWrapper):
             capital_nav_peak=self._allocation,
         )
 
+    def on_new_day(self) -> None:
+        """Handle a new day event. Track daily profit based on NAV change."""
+        self._refresh()
+
+        nav_change = self._snapshot.capital_nav - self._previous_day_nav
+        self._snapshot.history_daily_profit.append(nav_change)
+
+        super().on_new_day()
+
     def on_end(self) -> Optional[Dict[str, Any]]:
         """Finalize analytics and generate the asset report.
 
@@ -116,15 +126,17 @@ class AssetAnalytic(AnalyticWrapper):
 
         quality_score = self._calculate_weighted_quality(strategies_reports)
         quality_vs_benchmark_score = self._calculate_quality_vs_benchmark()
-        quality_propfirm_score = self._calculate_weighted_quality_propfirm(strategies_reports)
         days_elapsed = self._get_elapsed_days()
         self._snapshot.score_quality = quality_score
         self._snapshot.score_quality_vs_benchmark = quality_vs_benchmark_score
-        self._snapshot.score_quality_propfirm = quality_propfirm_score
         self._snapshot.time_days_elapsed = days_elapsed
         self._snapshot.event = SnapshotEvent.BACKTEST_END
 
-        self._aggregate_propfirm_metrics(strategies_reports)
+        nav_change = self._snapshot.capital_nav - self._previous_day_nav
+        if nav_change != 0.0:
+            self._snapshot.history_daily_profit.append(nav_change)
+
+        self._calculate_propfirm_metrics()
 
         snapshot_data = {
             "strategy_id": self._snapshot.strategy_id,
@@ -250,87 +262,31 @@ class AssetAnalytic(AnalyticWrapper):
         self._snapshot.capital_balance_peak = max(self._snapshot.capital_balance_peak, self._snapshot.capital_balance)
         self._update_max_drawdown()
 
-    def _calculate_weighted_quality_propfirm(self, strategies_reports: Dict[str, Any]) -> float:
-        """Calculate weighted average prop firm quality from strategy reports.
-
-        Args:
-            strategies_reports: Dictionary of strategy reports with quality scores.
-
-        Returns:
-            Weighted average prop firm quality score based on allocation.
-        """
-        total_allocation = 0.0
-        weighted_quality_sum = 0.0
-
-        for strategy in self._strategies:
-            strategy_allocation = strategy.allocation
-            strategy_report = strategies_reports.get(strategy.id, {})
-            strategy_quality = strategy_report.get("score_quality_propfirm", 0.0)
-
-            if strategy_allocation > 0:
-                weighted_quality_sum += strategy_quality * strategy_allocation
-                total_allocation += strategy_allocation
-
-        if total_allocation > 0:
-            return round(weighted_quality_sum / total_allocation, 4)
-        return 0.0
-
-    def _aggregate_propfirm_metrics(self, strategies_reports: Dict[str, Any]) -> None:
-        """Aggregate prop firm metrics from child strategies.
-
-        Args:
-            strategies_reports: Dictionary of strategy reports with propfirm metrics.
-        """
-        total_allocation = 0.0
-        weighted_best_day_ratio = 0.0
-        total_best_day_profit = 0.0
-        total_trading_days = 0
-        total_daily_loss_breaches = 0
-        max_daily_loss = 0.0
-        max_daily_profit = 0.0
-
-        all_daily_loss_compliant = True
-        all_overall_loss_compliant = True
-        all_consistency_compliant = True
-
-        for strategy in self._strategies:
-            strategy_allocation = strategy.allocation
-            strategy_report = strategies_reports.get(strategy.id, {})
-
-            if strategy_allocation > 0:
-                weighted_best_day_ratio += (
-                    strategy_report.get("propfirm_best_day_profit_ratio", 0.0) * strategy_allocation
-                )
-                total_allocation += strategy_allocation
-
-            total_best_day_profit = max(total_best_day_profit, strategy_report.get("propfirm_best_day_profit", 0.0))
-            total_trading_days = max(total_trading_days, strategy_report.get("propfirm_trading_days", 0))
-            total_daily_loss_breaches += strategy_report.get("risk_daily_loss_breach_count", 0)
-
-            strategy_max_daily_loss = strategy_report.get("risk_max_daily_loss", 0.0)
-            strategy_max_daily_profit = strategy_report.get("risk_max_daily_profit", 0.0)
-            max_daily_loss = min(max_daily_loss, strategy_max_daily_loss)
-            max_daily_profit = max(max_daily_profit, strategy_max_daily_profit)
-
-            if not strategy_report.get("propfirm_daily_loss_compliant", True):
-                all_daily_loss_compliant = False
-            if not strategy_report.get("propfirm_overall_loss_compliant", True):
-                all_overall_loss_compliant = False
-            if not strategy_report.get("propfirm_consistency_compliant", True):
-                all_consistency_compliant = False
-
+    def _calculate_propfirm_metrics(self) -> None:
+        """Calculate prop firm compliance metrics based on asset's own daily profit history."""
         snapshot = self._snapshot
+        daily_profits = snapshot.history_daily_profit
+        initial_balance = snapshot.capital_allocation
+        max_drawdown = snapshot.performance_max_drawdown
 
-        if total_allocation > 0:
-            snapshot.propfirm_best_day_profit_ratio = weighted_best_day_ratio / total_allocation
+        propfirm = get_propfirm_metrics(daily_profits, initial_balance, max_drawdown)
 
-        snapshot.propfirm_best_day_profit = total_best_day_profit
-        snapshot.propfirm_trading_days = total_trading_days
-        snapshot.propfirm_daily_loss_compliant = all_daily_loss_compliant
-        snapshot.propfirm_overall_loss_compliant = all_overall_loss_compliant
-        snapshot.propfirm_consistency_compliant = all_consistency_compliant
-        snapshot.propfirm_trading_days_compliant = total_trading_days >= MIN_TRADING_DAYS
+        snapshot.propfirm_best_day_profit = propfirm.best_day_profit
+        snapshot.propfirm_best_day_profit_ratio = propfirm.best_day_profit_ratio
+        snapshot.propfirm_trading_days = propfirm.trading_days
+        snapshot.propfirm_daily_loss_compliant = propfirm.daily_loss_compliant
+        snapshot.propfirm_overall_loss_compliant = propfirm.overall_loss_compliant
+        snapshot.propfirm_consistency_compliant = propfirm.consistency_compliant
+        snapshot.propfirm_trading_days_compliant = propfirm.trading_days_compliant
 
-        snapshot.risk_max_daily_loss = max_daily_loss
-        snapshot.risk_max_daily_profit = max_daily_profit
-        snapshot.risk_daily_loss_breach_count = total_daily_loss_breaches
+        snapshot.risk_max_daily_loss = propfirm.max_daily_loss
+        snapshot.risk_max_daily_profit = propfirm.max_daily_profit
+        snapshot.risk_daily_loss_breach_count = propfirm.daily_loss_breach_count
+
+        snapshot.score_quality_propfirm = get_quality_propfirm(
+            consistency_ratio=propfirm.best_day_profit_ratio,
+            max_daily_loss=propfirm.max_daily_loss,
+            max_drawdown=max_drawdown,
+            profit_factor=snapshot.trade_profit_factor,
+            trading_days=propfirm.trading_days,
+        )

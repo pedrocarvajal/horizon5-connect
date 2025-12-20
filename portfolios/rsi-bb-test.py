@@ -1,8 +1,8 @@
-"""Turtle Trading isolated test portfolio for prop firm optimization."""
+"""RSI Bollinger Breakout isolated test portfolio for prop firm evaluation."""
 
 from typing import List
 
-from strategies.turtle_trading import TurtleTradingStrategy
+from strategies.rsi_bollinger_breakout import RSIBollingerBreakoutStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.interfaces.strategy import StrategyInterface
 from vendor.services.asset import AssetService
@@ -10,7 +10,7 @@ from vendor.services.portfolio import PortfolioService
 
 
 class Asset(AssetService):
-    """XAUUSD asset with only Turtle Trading for testing."""
+    """XAUUSD asset with only RSI Bollinger Breakout for testing."""
 
     _symbol = "XAUUSD"
     _gateway_name = "metaapi"
@@ -18,26 +18,28 @@ class Asset(AssetService):
     _strategies: List[StrategyInterface]
 
     def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 100) -> None:
-        """Initialize asset with allocation and leverage settings."""
+        """Initialize asset with allocation, enabled status, and leverage."""
         super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
         self._setup_strategies()
         self._setup_allocation()
 
     def _setup_strategies(self) -> None:
         self._strategies = [
-            TurtleTradingStrategy(
-                id="turtle_trading",
+            RSIBollingerBreakoutStrategy(
+                id="rsi_bollinger_breakout",
                 allocation=0.0,
                 enabled=True,
                 settings={
-                    "volume_percentage": 0.09,
-                    "donchian_entry_period": 55,
-                    "donchian_exit_period": 20,
+                    "volume_percentage": 1.5,
+                    "rsi_period": 10,
+                    "adx_period": 14,
+                    "ema_period": 150,
                     "atr_period": 20,
-                    "stop_loss_atr_multiplier": 2.0,
-                    "pyramid_atr_multiplier": 0.5,
-                    "max_pyramid_units": 3,
-                    "allow_short": False,
+                    "bollinger_period": 5,
+                    "bollinger_deviation": 1.7,
+                    "adx_threshold": 20.0,
+                    "take_profit_atr_multiplier": 3.5,
+                    "stop_loss_atr_multiplier": 2.5,
                 },
             ),
         ]
@@ -50,18 +52,18 @@ class Asset(AssetService):
 
 
 class Portfolio(PortfolioService):
-    """Turtle Trading test portfolio."""
+    """RSI Bollinger Breakout test portfolio."""
 
-    _id = "turtle-test"
+    _id = "rsi-bb-test"
     _portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
 
     def __init__(self) -> None:
-        """Initialize portfolio with asset configuration."""
+        """Initialize portfolio and configure assets."""
         super().__init__()
         self.setup_assets()
 
     def setup_assets(self) -> None:
-        """Configure portfolio assets with allocations."""
+        """Configure portfolio assets with their allocations."""
         self._assets = [
             {
                 "asset": Asset,

@@ -1,8 +1,8 @@
-"""Turtle Trading isolated test portfolio for prop firm optimization."""
+"""IBS isolated test portfolio for prop firm optimization."""
 
 from typing import List
 
-from strategies.turtle_trading import TurtleTradingStrategy
+from strategies.ibs import IBSStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.interfaces.strategy import StrategyInterface
 from vendor.services.asset import AssetService
@@ -10,34 +10,33 @@ from vendor.services.portfolio import PortfolioService
 
 
 class Asset(AssetService):
-    """XAUUSD asset with only Turtle Trading for testing."""
+    """NDX asset with only IBS strategy for testing."""
 
-    _symbol = "XAUUSD"
+    _symbol = "NDX"
     _gateway_name = "metaapi"
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
     def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 100) -> None:
-        """Initialize asset with allocation and leverage settings."""
+        """Initialize asset with allocation, enabled status, and leverage."""
         super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
         self._setup_strategies()
         self._setup_allocation()
 
     def _setup_strategies(self) -> None:
         self._strategies = [
-            TurtleTradingStrategy(
-                id="turtle_trading",
+            IBSStrategy(
+                id="ibs",
                 allocation=0.0,
                 enabled=True,
                 settings={
-                    "volume_percentage": 0.09,
-                    "donchian_entry_period": 55,
-                    "donchian_exit_period": 20,
-                    "atr_period": 20,
-                    "stop_loss_atr_multiplier": 2.0,
-                    "pyramid_atr_multiplier": 0.5,
-                    "max_pyramid_units": 3,
-                    "allow_short": False,
+                    "volume_percentage": 0.60,
+                    "ibs_threshold": 0.20,
+                    "max_holding_bars": 5,
+                    "adx_period": 14,
+                    "adx_threshold": 20.0,
+                    "use_adx_filter": True,
+                    "stop_loss_percentage": 0.02,
                 },
             ),
         ]
@@ -50,18 +49,18 @@ class Asset(AssetService):
 
 
 class Portfolio(PortfolioService):
-    """Turtle Trading test portfolio."""
+    """IBS test portfolio."""
 
-    _id = "turtle-test"
+    _id = "ibs-test"
     _portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
 
     def __init__(self) -> None:
-        """Initialize portfolio with asset configuration."""
+        """Initialize portfolio and configure assets."""
         super().__init__()
         self.setup_assets()
 
     def setup_assets(self) -> None:
-        """Configure portfolio assets with allocations."""
+        """Configure portfolio assets with their allocations."""
         self._assets = [
             {
                 "asset": Asset,

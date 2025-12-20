@@ -36,13 +36,13 @@ class Asset(AssetService):
                 allocation=0.0,
                 enabled=True,
                 settings={
-                    "volume_percentage": 2.0,
-                    "ibs_threshold": 0.25,
-                    "max_holding_bars": 3,
+                    "volume_percentage": 0.60,
+                    "ibs_threshold": 0.20,
+                    "max_holding_bars": 5,
                     "adx_period": 14,
                     "adx_threshold": 20.0,
                     "use_adx_filter": True,
-                    "stop_loss_percentage": 0.015,
+                    "stop_loss_percentage": 0.02,
                 },
             ),
         ]
