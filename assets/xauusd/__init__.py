@@ -73,7 +73,7 @@ class Asset(AssetService):
             MebFaberTimingStrategy(
                 id="meb_faber_timing",
                 allocation=0.0,
-                enabled=False,
+                enabled=True,
                 settings={
                     "volume_percentage": 1.0,
                     "sma_period": 10,

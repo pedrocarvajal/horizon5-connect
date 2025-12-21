@@ -1,6 +1,6 @@
 """Low-risk portfolio configuration with conservative asset allocation."""
 
-from assets.btcusdt import Asset as BTCUSDTAsset
+# from assets.btcusdt import Asset as BTCUSDTAsset
 from assets.ndx import Asset as NDXAsset
 from assets.xauusd import Asset as XAUUSDAsset
 from vendor.enums.asset_quality_method import AssetQualityMethod
@@ -23,18 +23,13 @@ class Portfolio(PortfolioService):
         """Configure the portfolio assets for low-risk trading."""
         self._assets = [
             {
-                "asset": BTCUSDTAsset,
-                "allocation": 375_000,
-                "enabled": True,
-            },
-            {
                 "asset": XAUUSDAsset,
-                "allocation": 375_000,
+                "allocation": 50_000,
                 "enabled": True,
             },
             {
                 "asset": NDXAsset,
-                "allocation": 250_000,
+                "allocation": 50_000,
                 "enabled": True,
             },
         ]

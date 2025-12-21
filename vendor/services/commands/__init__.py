@@ -10,7 +10,7 @@ from vendor.interfaces.commands import CommandInterface
 from vendor.models.command import CommandModel
 from vendor.services.logging import LoggingService
 
-LOG_INTERVAL_SECONDS = 60
+LOG_INTERVAL_SECONDS = 15
 
 
 class CommandService(CommandInterface):
