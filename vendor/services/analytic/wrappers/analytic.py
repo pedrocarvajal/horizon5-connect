@@ -52,6 +52,7 @@ class AnalyticWrapper(AnalyticInterface):
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
+    _month_start_nav: float
     _previous_day_nav: float
     _snapshot: SnapshotModel
     _started: bool
@@ -95,6 +96,46 @@ class AnalyticWrapper(AnalyticInterface):
     def on_new_hour(self) -> None:
         """Handle a new hour event."""
         pass
+
+    def on_new_month(self) -> None:
+        """Handle a new month event. Calculate monthly performance and send snapshot.
+
+        Calculates the monthly performance by comparing current NAV with the NAV
+        at the start of the month, sends a snapshot with the ON_NEW_MONTH event,
+        and resets the month start NAV for the next period.
+        """
+        self._refresh()
+
+        if self._month_start_nav > 0:
+            monthly_performance = self._snapshot.capital_nav - self._month_start_nav
+            monthly_performance_percentage = monthly_performance / self._month_start_nav
+        else:
+            monthly_performance = 0.0
+            monthly_performance_percentage = 0.0
+
+        self._snapshot.performance_monthly = monthly_performance
+        self._snapshot.performance_monthly_percentage = monthly_performance_percentage
+
+        if not self._tick:
+            self._month_start_nav = self._snapshot.capital_nav
+            return
+
+        self._snapshot.event = SnapshotEvent.ON_NEW_MONTH
+
+        snapshot_data = {
+            "strategy_id": self._snapshot.strategy_id,
+            "portfolio_id": self._snapshot.portfolio_id,
+            "asset_id": self._snapshot.asset_id,
+            "backtest_id": self._snapshot.backtest_id,
+            "backtest": self._snapshot.is_backtest,
+            "event": self._snapshot.event.value,
+            "data": self._snapshot.to_dict(),
+            "created_at": int(self._tick.date.timestamp()),
+        }
+
+        self._send_snapshot_to_queue(snapshot_data)
+
+        self._month_start_nav = self._snapshot.capital_nav
 
     def on_tick(self, tick: TickModel) -> None:
         """Handle a new market tick. Refreshes snapshot data.

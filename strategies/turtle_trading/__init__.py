@@ -55,7 +55,7 @@ class TurtleTradingStrategy(StrategyService):
         "allow_short": False,
     }
 
-    _enabled = False
+    _enabled = True
     _name = "TurtleTrading"
     _settings: Dict[str, Any]
 

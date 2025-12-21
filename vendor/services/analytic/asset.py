@@ -84,6 +84,7 @@ class AssetAnalytic(AnalyticWrapper):
         self._started_at = None
         self._tick = None
         self._previous_day_nav = self._allocation
+        self._month_start_nav = self._allocation
 
         self._snapshot = SnapshotModel(
             strategy_id=self._asset_id,

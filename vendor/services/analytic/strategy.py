@@ -117,6 +117,7 @@ class StrategyAnalytic(AnalyticWrapper):
         self._trade_timestamps = []
         self._current_day_profit = 0.0
         self._previous_day_nav = self._orderbook.nav
+        self._month_start_nav = self._orderbook.nav
 
         self._snapshot = SnapshotModel(
             strategy_id=self._strategy_id,
@@ -185,13 +186,15 @@ class StrategyAnalytic(AnalyticWrapper):
 
     def on_new_month(self) -> None:
         """Handle a new month event. Logs monthly performance in live mode."""
-        performance = self._snapshot.performance
-        performance_percentage = self._snapshot.performance_percentage * 100
-        max_drawdown_percentage = self._snapshot.performance_max_drawdown * 100
+        super().on_new_month()
 
         if self._is_running_in_live_mode():
+            monthly_performance = self._snapshot.performance_monthly
+            monthly_percentage = self._snapshot.performance_monthly_percentage * 100
+            max_drawdown_percentage = self._snapshot.performance_max_drawdown * 100
+
             message = (
-                f"Closing month, with: {performance:.2f} ({performance_percentage:.2f}%), "
+                f"Closing month, with: {monthly_performance:.2f} ({monthly_percentage:.2f}%), "
                 f"max drawdown: {max_drawdown_percentage:.2f}%."
             )
             self._log.info(message)

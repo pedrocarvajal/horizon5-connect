@@ -48,7 +48,7 @@ class IBSStrategy(StrategyService):
         "stop_loss_percentage": 0.03,
     }
 
-    _enabled = False
+    _enabled = True
     _name = "IBS"
     _settings: Dict[str, Any]
 

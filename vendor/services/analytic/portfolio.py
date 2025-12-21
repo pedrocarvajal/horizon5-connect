@@ -81,6 +81,7 @@ class PortfolioAnalytic(AnalyticWrapper):
 
         initial_allocation = self._calculate_initial_allocation()
         self._previous_day_nav = initial_allocation
+        self._month_start_nav = initial_allocation
 
         self._snapshot = SnapshotModel(
             strategy_id=self._portfolio_id,

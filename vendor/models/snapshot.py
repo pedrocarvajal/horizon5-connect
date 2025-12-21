@@ -60,6 +60,14 @@ class SnapshotModel(BaseModel):
     performance_recovery_factor: float = Field(default=0, ge=0)
     performance_daily: float = Field(default=0)
     performance_daily_percentage: float = Field(default=0)
+    performance_monthly: float = Field(
+        default=0,
+        description="Monthly performance in currency units. Calculated at month end as NAV - month_start_NAV.",
+    )
+    performance_monthly_percentage: float = Field(
+        default=0,
+        description="Monthly performance as percentage. Calculated at month end.",
+    )
 
     # =========================================================================
     # RISK - Sharpe, Sortino, Expected Shortfall, Ulcer
@@ -261,6 +269,8 @@ class SnapshotModel(BaseModel):
             "performance_recovery_factor": self.performance_recovery_factor,
             "performance_daily": self.performance_daily,
             "performance_daily_percentage": self.performance_daily_percentage,
+            "performance_monthly": self.performance_monthly,
+            "performance_monthly_percentage": self.performance_monthly_percentage,
             "risk_sharpe_ratio": self.risk_sharpe_ratio,
             "risk_sortino_ratio": self.risk_sortino_ratio,
             "risk_calmar_ratio": self.risk_calmar_ratio,

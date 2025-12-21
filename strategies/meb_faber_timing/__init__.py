@@ -50,7 +50,7 @@ class MebFaberTimingStrategy(StrategyService):
         "sma_period": 10,
     }
 
-    _enabled = False
+    _enabled = True
     _name = "MebFaberTiming"
     _settings: Dict[str, Any]
 
