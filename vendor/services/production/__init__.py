@@ -33,33 +33,52 @@ class ProductionService(ProductionInterface):
 
     _log: LoggingService
 
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize production service with queues and portfolio path."""
+    def __init__(self) -> None:
+        """Initialize production service."""
         self._log = LoggingService()
 
         self._assets = []
+        self._commands_queue = None
+        self._events_queue = None
+        self._portfolio = None
+        self._portfolio_path = None
         self._stream_started_at = datetime.datetime.now(tz=TIMEZONE)
         self._stream_last_updated_at = datetime.datetime.now(tz=TIMEZONE)
         self._stream_tasks = []
 
-        self._commands_queue = kwargs.get("commands_queue")
-        self._events_queue = kwargs.get("events_queue")
-        self._portfolio_path = kwargs.get("portfolio_path")
+    def setup(self, **kwargs: Any) -> None:
+        """Configure production service and load portfolio.
 
-    def setup(self) -> None:
-        """Configure production service and load portfolio."""
-        if not self._commands_queue:
+        Args:
+            **kwargs: Configuration parameters including:
+                commands_queue: Queue for commands (required).
+                events_queue: Queue for events (required).
+                portfolio_path: Path to portfolio module (required).
+        """
+        commands_queue = kwargs.get("commands_queue")
+        events_queue = kwargs.get("events_queue")
+        portfolio_path = kwargs.get("portfolio_path")
+
+        if commands_queue is None:
             raise ValueError("Commands queue is required")
 
-        if not self._events_queue:
+        if events_queue is None:
             raise ValueError("Events queue is required")
 
-        if not self._portfolio_path:
-            raise ValueError("Portfolio is required")
+        if not portfolio_path:
+            raise ValueError("Portfolio path is required")
 
-        self._portfolio = get_portfolio_by_path(
-            self._portfolio_path,
-        )
+        self._commands_queue = commands_queue
+        self._events_queue = events_queue
+        self._portfolio_path = portfolio_path
+        self._load_portfolio()
+
+    def _load_portfolio(self) -> None:
+        """Load and validate the portfolio from path."""
+        if not self._portfolio_path:
+            raise ValueError("Portfolio path is required")
+
+        self._portfolio = get_portfolio_by_path(self._portfolio_path)
 
         if not self._portfolio:
             raise ValueError("Portfolio not found")

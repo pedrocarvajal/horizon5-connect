@@ -13,17 +13,14 @@ from vendor.services.production import ProductionService
 class Production(ProductionService):
     """Production process wrapper that runs live trading."""
 
-    def __init__(
-        self,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize and start production trading execution.
 
         Args:
-            **kwargs: Arguments passed to ProductionService.
+            **kwargs: Arguments passed to ProductionService.setup().
         """
-        super().__init__(**kwargs)
-        self.setup()
+        super().__init__()
+        self.setup(**kwargs)
         self.run()
 
 

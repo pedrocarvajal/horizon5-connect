@@ -295,57 +295,78 @@ class StrategyService(StrategyInterface):
         self._orderbook.open(order)
 
     def setup(self, **kwargs: Any) -> None:
-        """
-        Set up the strategy with required dependencies and configuration.
-
-        Initializes the orderbook handler and analytics service, and validates
-        all required parameters. This method must be called before the strategy
-        can be used.
+        """Set up the strategy with required dependencies and configuration.
 
         Args:
-            **kwargs: Configuration parameters:
+            **kwargs: Configuration parameters including:
                 asset: AssetService instance managing this strategy (required).
                 backtest: Whether running in backtest mode (default: False).
                 backtest_id: Backtest identifier (required if backtest is True).
+                portfolio: Portfolio instance (required).
                 commands_queue: Queue for sending commands (required).
                 events_queue: Queue for receiving events (required).
-
-        Raises:
-            ValueError: If any required parameter is missing or invalid.
         """
-        self._asset = kwargs.get("asset")
-        self._backtest = kwargs.get("backtest", False)
-        self._backtest_id = kwargs.get("backtest_id")
-        self._portfolio = kwargs.get("portfolio")
-        self._commands_queue = kwargs.get("commands_queue")
-        self._events_queue = kwargs.get("events_queue")
+        asset = kwargs.get("asset")
+        backtest = kwargs.get("backtest", False)
+        backtest_id = kwargs.get("backtest_id")
+        portfolio = kwargs.get("portfolio")
+        commands_queue = kwargs.get("commands_queue")
+        events_queue = kwargs.get("events_queue")
 
-        self._validate_setup_parameters()
+        if asset is None:
+            raise ValueError("Asset is required")
 
-        if self._asset is None:
+        if commands_queue is None:
+            raise ValueError("Commands queue is required")
+
+        if events_queue is None:
+            raise ValueError("Events queue is required")
+
+        if backtest and not backtest_id:
+            raise ValueError("Backtest ID is required")
+
+        if not self._id:
+            raise ValueError("Strategy ID is required")
+
+        if self._allocation <= 0:
+            self._enabled = False
             return
 
-        if self._commands_queue is None:
-            return
+        if self._leverage <= 0:
+            raise ValueError("Leverage must be greater than 0")
 
-        if self._events_queue is None:
-            return
+        self._asset = asset
+        self._backtest = backtest
+        self._backtest_id = backtest_id
+        self._commands_queue = commands_queue
+        self._events_queue = events_queue
+        self._portfolio = portfolio
 
-        if self._backtest and self._backtest_id is None:
-            return
+        if hasattr(asset, "leverage"):
+            self._leverage = asset.leverage
 
-        if hasattr(self._asset, "leverage"):
-            self._leverage = self._asset.leverage
+        self._setup_orderbook(asset)
+        self._setup_analytic(asset)
 
+        self._log.setup_prefix(f"[{asset.symbol}|{self._name}]")
+        self._log.info(f"Setting up {self.name}")
+
+    def _setup_orderbook(self, asset: AssetInterface) -> None:
+        """Initialize the orderbook service."""
         self._orderbook = OrderbookService(
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             balance=self._allocation,
             allocation=self._allocation,
             leverage=self._leverage,
-            gateway=self._asset.gateway,
+            gateway=asset.gateway,
             on_transaction=self.on_transaction,
         )
+
+    def _setup_analytic(self, asset: AssetInterface) -> None:
+        """Initialize the strategy analytics service."""
+        if not self._orderbook:
+            raise ValueError("Orderbook is required")
 
         self._analytic = StrategyAnalytic(
             strategy_id=self._id,
@@ -355,41 +376,9 @@ class StrategyService(StrategyInterface):
             quality_method=self._backtest_quality_method,
             backtest_expectation=self._backtest_expectation,
             commands_queue=self._commands_queue,
-            asset_id=self._asset.symbol,
+            asset_id=asset.symbol,
             portfolio_id=self._portfolio.id if self._portfolio else None,
         )
-
-        self._log.setup_prefix(f"[{self._asset.symbol}|{self._name}]")
-        self._log.info(f"Setting up {self.name}")
-
-    def _validate_setup_parameters(self) -> None:
-        """
-        Validate all required setup parameters.
-
-        Raises:
-            ValueError: If any required parameter is missing or invalid.
-        """
-        if self._asset is None:
-            raise ValueError("Asset is required")
-
-        if self._allocation <= 0:
-            self._enabled = False
-            return
-
-        if self._backtest and self._backtest_id is None:
-            raise ValueError("Backtest ID is required")
-
-        if self._commands_queue is None:
-            raise ValueError("Commands queue is required")
-
-        if self._events_queue is None:
-            raise ValueError("Events queue is required")
-
-        if not self._id:
-            raise ValueError("Strategy ID is required")
-
-        if self._leverage <= 0:
-            raise ValueError("Leverage must be greater than 0")
 
     @property
     def analytic(self) -> AnalyticInterface:
@@ -434,7 +423,13 @@ class StrategyService(StrategyInterface):
     @property
     def is_live(self) -> bool:
         """Return whether strategy is in live trading mode."""
-        return not self.backtest and self._tick is not None and not self._tick.is_simulated
+        if self._tick is None:
+            return False
+
+        if not self._tick.is_simulated:
+            return False
+
+        return not self.backtest and not self._tick.is_simulated
 
     @property
     def nav(self) -> float:

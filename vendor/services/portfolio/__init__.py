@@ -7,6 +7,7 @@ from multiprocessing import Queue
 from typing import Any, Dict, List, Optional
 
 from vendor.enums.timeframe import Timeframe
+from vendor.helpers.get_slug import get_slug
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.portfolio import AssetConfig, PortfolioInterface
@@ -19,6 +20,8 @@ from vendor.services.strategy.helpers.get_truncated_timeframe import get_truncat
 class PortfolioService(PortfolioInterface):
     """Service for managing a portfolio of trading assets."""
 
+    _name: str
+    _ready: bool
     _analytic: Optional[AnalyticInterface]
     _assets: List[AssetConfig]
     _asset_instances: List[AssetInterface]
@@ -32,6 +35,10 @@ class PortfolioService(PortfolioInterface):
 
     def __init__(self) -> None:
         """Initialize the portfolio with an empty asset list."""
+        self._id = ""
+        self._name = ""
+        self._ready = False
+
         self._analytic = None
         self._assets = []
         self._asset_instances = []
@@ -39,25 +46,24 @@ class PortfolioService(PortfolioInterface):
         self._backtest_id = None
         self._commands_queue = None
         self._events_queue = None
-        if not hasattr(self, "_id") or not self._id:
-            self._id = ""
+
         self._last_timestamps = {}
         self._log = LoggingService()
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
-        if self._analytic is None:
+        if not self._analytic:
             return {}
 
         report = self._analytic.on_end()
-        return report if report is not None else {}
+        return report if report else {}
 
     def on_new_day(self) -> None:
         """Handle a new day event. Cascades to all assets."""
         for asset in self._asset_instances:
             asset.on_new_day()
 
-        if self._analytic is not None:
+        if self._analytic:
             self._analytic.on_new_day()
 
     def on_new_hour(self) -> None:
@@ -65,7 +71,7 @@ class PortfolioService(PortfolioInterface):
         for asset in self._asset_instances:
             asset.on_new_hour()
 
-        if self._analytic is not None:
+        if self._analytic:
             self._analytic.on_new_hour()
 
     def on_new_minute(self) -> None:
@@ -78,7 +84,7 @@ class PortfolioService(PortfolioInterface):
         for asset in self._asset_instances:
             asset.on_new_month()
 
-        if self._analytic is not None:
+        if self._analytic:
             self._analytic.on_new_month()
 
     def on_new_week(self) -> None:
@@ -86,7 +92,7 @@ class PortfolioService(PortfolioInterface):
         for asset in self._asset_instances:
             asset.on_new_week()
 
-        if self._analytic is not None:
+        if self._analytic:
             self._analytic.on_new_week()
 
     def on_tick(self, ticks: Dict[str, TickModel]) -> None:
@@ -100,29 +106,50 @@ class PortfolioService(PortfolioInterface):
         for asset in self._asset_instances:
             tick = ticks.get(asset.symbol)
 
-            if tick is not None:
+            if tick:
                 asset.on_tick(tick)
 
-                if self._analytic is not None:
+                if self._analytic:
                     self._analytic.on_tick(tick)
 
                 last_tick = tick
 
-        if last_tick is not None:
+        if last_tick:
             self._check_timeframe_transitions(last_tick)
 
     def setup(self, **kwargs: Any) -> None:
-        """Configure the portfolio and instantiate all assets."""
-        self._backtest = kwargs.get("backtest", False)
-        self._backtest_id = kwargs.get("backtest_id")
-        self._commands_queue = kwargs.get("commands_queue")
-        self._events_queue = kwargs.get("events_queue")
+        """Configure the portfolio name and/or runtime parameters.
 
-        if self._commands_queue is None:
+        Args:
+            **kwargs: Configuration parameters including:
+                name: Display name for the portfolio (generates ID via slug).
+                backtest: Whether running in backtest mode.
+                backtest_id: Backtest identifier.
+                commands_queue: Queue for commands.
+                events_queue: Queue for events.
+        """
+        name = kwargs.get("name")
+        commands_queue = kwargs.get("commands_queue")
+        events_queue = kwargs.get("events_queue")
+
+        if name:
+            self._name = name
+            self._id = get_slug(name)
+            self._ready = True
+
+        if commands_queue is None and events_queue is None:
+            return
+
+        if commands_queue is None:
             raise ValueError("Commands queue is required")
 
-        if self._events_queue is None:
+        if events_queue is None:
             raise ValueError("Events queue is required")
+
+        self._backtest = kwargs.get("backtest", False)
+        self._backtest_id = kwargs.get("backtest_id")
+        self._commands_queue = commands_queue
+        self._events_queue = events_queue
 
         for asset_config in self._assets:
             asset_class = asset_config["asset"]
@@ -134,8 +161,8 @@ class PortfolioService(PortfolioInterface):
                 continue
 
             asset_instance = asset_class(allocation=allocation, enabled=enabled)
-
             asset_instance.setup(**kwargs)
+
             self._asset_instances.append(asset_instance)
 
         self.setup_analytic()
@@ -159,7 +186,7 @@ class PortfolioService(PortfolioInterface):
             self._commands_queue = kwargs.get("commands_queue", self._commands_queue)
             self._events_queue = kwargs.get("events_queue", self._events_queue)
 
-        if self._commands_queue is None or self._events_queue is None:
+        if not self._commands_queue or not self._events_queue:
             return
 
         self._analytic = PortfolioAnalytic(
@@ -177,7 +204,7 @@ class PortfolioService(PortfolioInterface):
         for timeframe in Timeframe:
             last_timestamp = self._last_timestamps.get(timeframe)
 
-            if last_timestamp is None:
+            if not last_timestamp:
                 self._last_timestamps[timeframe] = get_truncated_timeframe(current_time, timeframe)
                 continue
 

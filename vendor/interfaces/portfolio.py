@@ -20,7 +20,9 @@ class AssetConfig(TypedDict):
 class PortfolioInterface(ABC):
     """Abstract interface for portfolio containing multiple trading assets."""
 
+    _name: str
     _id: str
+    _ready: bool
     _assets: List[AssetConfig]
     _asset_instances: List[AssetInterface]
 
@@ -33,6 +35,11 @@ class PortfolioInterface(ABC):
     def assets(self) -> List[AssetConfig]:
         """Return the list of asset configurations."""
         return self._assets
+
+    @property
+    def ready(self) -> bool:
+        """Return whether the portfolio is ready."""
+        return self._ready
 
     @property
     def asset_instances(self) -> List[AssetInterface]:

@@ -9,13 +9,13 @@ from vendor.services.portfolio import PortfolioService
 class Portfolio(PortfolioService):
     """Low-risk portfolio containing conservative trading strategies."""
 
-    _id = "low-risk"
     _portfolio_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
 
     def __init__(self) -> None:
         """Initialize the low-risk portfolio with configured assets."""
         super().__init__()
 
+        self.setup(name="Low Risk")
         self.setup_assets()
 
     def setup_assets(self) -> None:

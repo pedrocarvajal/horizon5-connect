@@ -124,40 +124,75 @@ class AssetService(AssetInterface):
         self._analytic.on_tick(tick)
 
     def setup(self, **kwargs: Any) -> None:
-        """Configure the asset with runtime parameters and initialize strategies."""
-        self._backtest = kwargs.get("backtest", False)
-        self._backtest_id = kwargs.get("backtest_id")
-        self._portfolio = kwargs.get("portfolio")
-        self._commands_queue = kwargs.get("commands_queue")
-        self._events_queue = kwargs.get("events_queue")
+        """Configure the asset with runtime parameters and initialize strategies.
 
-        if not self._commands_queue:
+        Args:
+            **kwargs: Configuration parameters including:
+                backtest: Whether running in backtest mode.
+                backtest_id: Backtest identifier (required if backtest is True).
+                portfolio: Portfolio instance (required).
+                commands_queue: Queue for commands (required).
+                events_queue: Queue for events (required).
+        """
+        backtest = kwargs.get("backtest", False)
+        backtest_id = kwargs.get("backtest_id")
+        portfolio = kwargs.get("portfolio")
+        commands_queue = kwargs.get("commands_queue")
+        events_queue = kwargs.get("events_queue")
+
+        if commands_queue is None:
             raise ValueError("Commands queue is required")
 
-        if not self._events_queue:
+        if events_queue is None:
             raise ValueError("Events queue is required")
 
-        if self._backtest and not self._backtest_id:
+        if backtest and not backtest_id:
             raise ValueError("Backtest ID is required")
+
+        if portfolio is None:
+            raise ValueError("Portfolio is required")
+
+        if not portfolio.ready:
+            raise ValueError("Portfolio is not ready")
+
+        self._backtest = backtest
+        self._backtest_id = backtest_id
+        self._commands_queue = commands_queue
+        self._events_queue = events_queue
+        self._portfolio = portfolio
 
         self._gateway = GatewayService(
             gateway=self._gateway_name,
             backtest=self._backtest,
         )
 
-        enabled_strategies = [s for s in self._strategies if s.enabled]
+        self._configure_strategies()
+        self._setup_analytic()
 
+    def _configure_strategies(self) -> None:
+        """Filter and configure enabled strategies."""
         for strategy in self._strategies:
             if not strategy.enabled:
                 self._log.warning(f"Strategy {strategy.name} is not enabled")
 
-        self._strategies = enabled_strategies
+        enabled_strategies = [s for s in self._strategies if s.enabled]
 
-        for strategy in self._strategies:
-            strategy.setup(
-                **kwargs,
-            )
+        strategy_kwargs = {
+            "asset": self,
+            "backtest": self._backtest,
+            "backtest_id": self._backtest_id,
+            "portfolio": self._portfolio,
+            "commands_queue": self._commands_queue,
+            "events_queue": self._events_queue,
+        }
 
+        for strategy in enabled_strategies:
+            strategy.setup(**strategy_kwargs)
+
+        self._strategies = [s for s in enabled_strategies if s.enabled]
+
+    def _setup_analytic(self) -> None:
+        """Initialize the asset analytics service."""
         self._analytic = AssetAnalytic(
             asset_id=self._symbol,
             allocation=self._allocation,
