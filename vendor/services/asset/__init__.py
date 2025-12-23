@@ -70,7 +70,6 @@ class AssetService(AssetInterface):
 
         self._gateway = GatewayService(
             gateway=self._gateway_name,
-            sandbox=False,
         )
 
     def on_end(self) -> Dict[str, Any]:
@@ -141,19 +140,10 @@ class AssetService(AssetInterface):
         if self._backtest and not self._backtest_id:
             raise ValueError("Backtest ID is required")
 
-        if not self._backtest:
-            sandbox = None
-
-            self._gateway = GatewayService(
-                gateway=self._gateway_name,
-                backtest=self._backtest,
-                sandbox=sandbox,
-            )
-        else:
-            self._gateway = GatewayService(
-                gateway=self._gateway_name,
-                sandbox=False,
-            )
+        self._gateway = GatewayService(
+            gateway=self._gateway_name,
+            backtest=self._backtest,
+        )
 
         enabled_strategies = [s for s in self._strategies if s.enabled]
 

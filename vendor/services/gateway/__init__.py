@@ -25,7 +25,6 @@ class GatewayService(GatewayInterface):
 
     Attributes:
         _name: Name of the gateway to use (e.g., "metaapi").
-        _sandbox: Whether to use sandbox/testnet mode.
         _gateways: Dictionary containing gateway configurations.
         _gateway: Instance of the underlying gateway implementation.
         _log: Logging service instance for logging operations.
@@ -33,7 +32,6 @@ class GatewayService(GatewayInterface):
 
     _name: str
     _backtest: bool
-    _sandbox: Optional[bool]
     _gateways: Dict[str, Any]
 
     _gateway: GatewayInterface
@@ -50,8 +48,7 @@ class GatewayService(GatewayInterface):
         Args:
             gateway: Name of the gateway to use (e.g., "metaapi").
                 Must be a key in the GATEWAYS configuration.
-            **kwargs: Additional keyword arguments. Supported keys:
-                - sandbox: Whether to use sandbox/testnet mode (default: False).
+            **kwargs: Additional keyword arguments.
 
         Raises:
             ValueError: If the specified gateway name is not found in
@@ -62,7 +59,6 @@ class GatewayService(GatewayInterface):
         self._gateways = GATEWAYS
         self._name = gateway
         self._backtest = kwargs.get("backtest", False)
-        self._sandbox = kwargs.get("sandbox")
 
         self._setup()
 
@@ -388,13 +384,3 @@ class GatewayService(GatewayInterface):
             Name of the gateway being used (e.g., "metaapi").
         """
         return self._name
-
-    @property
-    def sandbox(self) -> bool:
-        """
-        Get the sandbox mode.
-
-        Returns:
-            True if the gateway is in sandbox mode, False otherwise.
-        """
-        return self._sandbox or False
