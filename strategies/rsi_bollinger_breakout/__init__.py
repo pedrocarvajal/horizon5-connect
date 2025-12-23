@@ -6,10 +6,10 @@ from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.enums.quality_method import QualityMethod
 from vendor.enums.timeframe import Timeframe
-from vendor.indicators.adx import ADXIndicator
-from vendor.indicators.atr import ATRIndicator
-from vendor.indicators.ma import MAIndicator
-from vendor.indicators.rsi_bollinger_bands import RSIBollingerBandsIndicator
+from indicators.adx import ADXIndicator
+from indicators.atr import ATRIndicator
+from indicators.ma import MAIndicator
+from indicators.rsi_bollinger_bands import RSIBollingerBandsIndicator
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel

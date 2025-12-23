@@ -2,7 +2,7 @@ import datetime
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.enums.timeframe import Timeframe
-from vendor.indicators.donchian_channel import DonchianChannelIndicator
+from indicators.donchian_channel import DonchianChannelIndicator
 from vendor.services.logging import LoggingService
 from vendor.tests.e2e.wrappers.indicator import WrapperIndicator
 

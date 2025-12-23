@@ -10,7 +10,7 @@ from vendor.enums.timeframe import Timeframe
 from vendor.enums.tp_sl_method import TpSlMethod
 from vendor.helpers.calculate_stop_loss import calculate_stop_loss
 from vendor.helpers.calculate_take_profit import calculate_take_profit
-from vendor.indicators.ma import MAIndicator
+from indicators.ma import MAIndicator
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
