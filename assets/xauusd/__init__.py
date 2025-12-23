@@ -4,6 +4,7 @@ from typing import List
 
 from strategies.ema5_breakout import EMA5BreakoutStrategy
 from strategies.meb_faber_timing import MebFaberTimingStrategy
+from strategies.test import TestStrategy
 from strategies.turtle_trading import TurtleTradingStrategy
 from vendor.enums.asset_quality_method import AssetQualityMethod
 from vendor.enums.tp_sl_method import TpSlMethod
@@ -34,10 +35,21 @@ class Asset(AssetService):
 
     def _setup_strategies(self) -> None:
         self._strategies = [
+            TestStrategy(
+                id="test",
+                allocation=0.0,
+                enabled=True,
+                settings={
+                    "entry_waiting_time": 5,
+                    "entry_volume": 0.01,
+                    "take_profit": 0.1,
+                    "stop_loss": 0.1,
+                },
+            ),
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
                 allocation=0.0,
-                enabled=True,
+                enabled=False,
                 settings={
                     "entry_allow_multiple": False,
                     "entry_waiting_time": 0,
@@ -58,7 +70,7 @@ class Asset(AssetService):
             TurtleTradingStrategy(
                 id="turtle_trading",
                 allocation=0.0,
-                enabled=True,
+                enabled=False,
                 settings={
                     "volume_percentage": 0.09,
                     "donchian_entry_period": 55,
@@ -73,7 +85,7 @@ class Asset(AssetService):
             MebFaberTimingStrategy(
                 id="meb_faber_timing",
                 allocation=0.0,
-                enabled=True,
+                enabled=False,
                 settings={
                     "volume_percentage": 1.0,
                     "sma_period": 10,

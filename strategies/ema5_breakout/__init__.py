@@ -210,7 +210,7 @@ class EMA5BreakoutStrategy(StrategyService):
         current_ema = candles[-1].indicators["ema"]["value"]
         previous_ema = candles[-2].indicators["ema"]["value"]
 
-        if previous_ema < self._previous_day_ema5_max and current_ema > self._previous_day_ema5_max:
+        if previous_ema < self._previous_day_ema5_max < current_ema:
             stop_loss_value = self._settings.get("main_stop_loss", 0.15)
             stop_loss_method = self._settings.get("main_stop_loss_method", TpSlMethod.PERCENTAGE)
             take_profit_value = self._settings.get("main_take_profit", 0.30)

@@ -30,6 +30,6 @@ class Portfolio(PortfolioService):
             {
                 "asset": NDXAsset,
                 "allocation": 50_000,
-                "enabled": True,
+                "enabled": False,
             },
         ]
