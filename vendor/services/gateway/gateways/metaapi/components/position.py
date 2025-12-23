@@ -13,7 +13,7 @@ class PositionComponent(BaseComponent):
 
     Provides methods to retrieve position information from MetaAPI.
     Handles position data retrieval, validation, and adaptation to
-    internal position models matching the Binance gateway response format.
+    internal gateway position models.
     """
 
     def get_position(
@@ -105,8 +105,7 @@ class PositionComponent(BaseComponent):
         """
         Adapt a single position response from MetaAPI to GatewayPositionModel.
 
-        Transforms raw API response data into the internal position model format,
-        matching the Binance gateway response structure.
+        Transforms raw API response data into the internal position model format.
 
         Args:
             response: Raw API response dictionary containing position data.

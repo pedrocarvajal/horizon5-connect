@@ -16,7 +16,7 @@ class OrderComponent(BaseComponent):
 
     Provides methods to place, cancel, and retrieve orders on MetaTrader
     via MetaAPI. Handles order validation and adaptation of MetaAPI responses
-    to internal order models matching the Binance gateway response format.
+    to internal gateway order models.
     """
 
     def place_order(
@@ -25,7 +25,7 @@ class OrderComponent(BaseComponent):
         side: OrderSide,
         order_type: OrderType,
         volume: float,
-        price: Optional[float] = None,
+        price: Optional[float] = None,  # noqa: ARG002
         stop_loss: Optional[float] = None,
         take_profit: Optional[float] = None,
         client_order_id: Optional[str] = None,
@@ -68,9 +68,6 @@ class OrderComponent(BaseComponent):
                 order_type=order_type,
             )
             return None
-
-        if price and order_type == OrderType.MARKET:
-            self._log.warning("Price parameter is ignored for MARKET orders")
 
         trade_body: Dict[str, Any] = {
             "actionType": action_type,

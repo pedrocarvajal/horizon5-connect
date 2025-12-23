@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import re
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.enums.order_side import OrderSide
@@ -17,6 +17,7 @@ from vendor.services.gateway.models.enums.gateway_order_status import GatewayOrd
 from vendor.services.gateway.models.gateway_order import GatewayOrderModel
 from vendor.services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
 from vendor.services.logging import LoggingService
+from vendor.services.orderbook.models import OrderSyncResult
 
 
 class GatewayHandlerService(GatewayHandlerInterface):
@@ -172,7 +173,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
         return True
 
-    def close_order(self, order: OrderModel) -> bool:
+    def close_position(self, order: OrderModel) -> bool:
         """
         Close an open position by placing an opposite order on the exchange gateway.
 
@@ -246,9 +247,9 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
         return True
 
-    def open_order(self, order: OrderModel) -> bool:
+    def place_order(self, order: OrderModel) -> bool:
         """
-        Execute a real order on the exchange gateway.
+        Place an order on the exchange gateway.
 
         Places an order on the exchange when in production mode. In backtest mode,
         this method returns False without executing. Updates the OrderModel with
@@ -462,19 +463,36 @@ class GatewayHandlerService(GatewayHandlerInterface):
                 continue
 
             if gateway_order is None:
-                retry_count += 1
+                self._log.info(
+                    "Order not in pending orders, searching in positions",
+                    order_id=order.id,
+                    attempt=retry_count + 1,
+                )
 
-                if retry_count >= self.MAX_POLLING_RETRIES:
-                    self._log.warning(
-                        "Order not found after max attempts, stopping polling",
-                        order_id=order.id,
-                        max_attempts=self.MAX_POLLING_RETRIES,
-                    )
-                    order.status = OrderStatus.CANCELLED
-                    order.updated_at = datetime.datetime.now(tz=TIMEZONE)
-                    return
+                gateway_order = self._find_order_in_positions(order)
 
-                continue
+                if gateway_order is None:
+                    retry_count += 1
+
+                    if retry_count >= self.MAX_POLLING_RETRIES:
+                        self._log.error(
+                            "Order not found in orders or positions after max attempts",
+                            order_id=order.id,
+                            max_attempts=self.MAX_POLLING_RETRIES,
+                        )
+
+                        order.status = OrderStatus.CANCELLED
+                        order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+                        return
+
+                    continue
+
+                self._log.info(
+                    "Order found in positions",
+                    order_id=order.id,
+                    position_id=gateway_order.id,
+                )
 
             retry_count = 0
 
@@ -503,6 +521,61 @@ class GatewayHandlerService(GatewayHandlerInterface):
         )
         order.status = OrderStatus.CANCELLED
         order.updated_at = datetime.datetime.now(tz=TIMEZONE)
+
+    def _find_order_in_positions(
+        self,
+        order: OrderModel,
+    ) -> Optional[GatewayOrderModel]:
+        """
+        Search for an executed order in open positions.
+
+        When gateways execute MARKET orders immediately, the order may not
+        exist in pending orders but as an open position. This method searches
+        positions to find an order that was already executed.
+
+        Matching is done by:
+        - Position ID matching gateway_order_id
+        - Position clientId matching client_order_id
+
+        Args:
+            order: OrderModel to search for in positions.
+
+        Returns:
+            GatewayOrderModel with EXECUTED status if found, None otherwise.
+        """
+        try:
+            positions = self._gateway.get_positions(symbol=order.symbol)
+        except Exception as e:
+            self._log.warning(
+                "Failed to get positions for order lookup",
+                order_id=order.id,
+                error=str(e),
+            )
+            return None
+
+        for position in positions:
+            if not position.response:
+                continue
+
+            position_id = str(position.response.get("id", ""))
+            position_client_id = position.response.get("clientId", "")
+            id_match = position_id == order.gateway_order_id
+            client_id_match = position_client_id and position_client_id == order.client_order_id
+
+            if id_match or client_id_match:
+                return GatewayOrderModel(
+                    id=position_id,
+                    symbol=position.symbol,
+                    side=position.side,
+                    order_type=OrderType.MARKET,
+                    status=GatewayOrderStatus.EXECUTED,
+                    volume=abs(position.volume),
+                    executed_volume=abs(position.volume),
+                    price=position.open_price,
+                    response=position.response,
+                )
+
+        return None
 
     def _get_symbol_info(self, symbol: str) -> Optional[GatewaySymbolInfoModel]:
         """
@@ -847,3 +920,220 @@ class GatewayHandlerService(GatewayHandlerInterface):
             return False
 
         return not (order.price > 0 and not self._validate_price_constraints(order, symbol_info))
+
+    def sync_orders(
+        self,
+        open_orders: Dict[str, OrderModel],
+    ) -> Dict[str, OrderSyncResult]:
+        """
+        Sync multiple orders with gateway positions (batch operation).
+
+        Queries gateway for all positions and compares with local open orders.
+        Returns update results for orders that have changed state.
+
+        Args:
+            open_orders: Dictionary of order_id -> OrderModel for orders that
+                        should be open according to local state.
+
+        Returns:
+            Dictionary mapping order_id to OrderSyncResult for orders
+            that were closed externally. Empty dict if no changes or backtest.
+        """
+        if self._backtest or not open_orders:
+            return {}
+
+        gateway_positions = self._fetch_gateway_positions()
+
+        if gateway_positions is None:
+            return {}
+
+        gateway_position_map = self._build_position_map(gateway_positions)
+        results: Dict[str, OrderSyncResult] = {}
+
+        for order_id, order in open_orders.items():
+            if not order.gateway_order_id:
+                continue
+
+            position_exists = self._order_exists_in_gateway(order, gateway_position_map)
+
+            if not position_exists:
+                result = self._fetch_close_info(order)
+                results[order_id] = result
+
+                self._log.warning(
+                    "Order closed externally (manual intervention detected)",
+                    order_id=order.id,
+                    gateway_order_id=order.gateway_order_id,
+                    close_price=result.close_price,
+                    profit=result.profit,
+                )
+
+        return results
+
+    def update_order(self, order: OrderModel) -> OrderSyncResult:
+        """
+        Update a single order's state from gateway.
+
+        Checks if the order still exists in gateway positions. If not,
+        fetches close information from trade history.
+
+        Args:
+            order: OrderModel to update from gateway.
+
+        Returns:
+            OrderSyncResult with current state from gateway.
+        """
+        if self._backtest:
+            return OrderSyncResult(
+                exists=True,
+                status=order.status,
+                executed_volume=order.executed_volume,
+                current_price=order.close_price,
+            )
+
+        if not order.gateway_order_id:
+            return OrderSyncResult(
+                exists=False,
+                status=OrderStatus.CANCELLED,
+            )
+
+        gateway_positions = self._fetch_gateway_positions()
+
+        if gateway_positions is None:
+            return OrderSyncResult(
+                exists=True,
+                status=order.status,
+                executed_volume=order.executed_volume,
+                current_price=order.close_price,
+            )
+
+        gateway_position_map = self._build_position_map(gateway_positions)
+        position_exists = self._order_exists_in_gateway(order, gateway_position_map)
+
+        if position_exists:
+            position = gateway_position_map.get(order.gateway_order_id)
+            current_price = position.open_price if position else order.close_price
+
+            return OrderSyncResult(
+                exists=True,
+                status=OrderStatus.OPEN,
+                executed_volume=order.executed_volume,
+                current_price=current_price,
+            )
+
+        return self._fetch_close_info(order)
+
+    def _fetch_gateway_positions(self) -> Optional[List[Any]]:
+        """
+        Fetch all positions from gateway.
+
+        Returns:
+            List of gateway positions or None if fetch failed.
+        """
+        try:
+            return self._gateway.get_positions()
+        except Exception as e:
+            self._log.error(
+                "Failed to fetch gateway positions",
+                error=str(e),
+            )
+            return None
+
+    def _build_position_map(
+        self,
+        positions: List[Any],
+    ) -> Dict[str, Any]:
+        """
+        Build a map of position IDs to position objects.
+
+        Args:
+            positions: List of gateway position objects.
+
+        Returns:
+            Dictionary mapping position/client IDs to position objects.
+        """
+        position_map: Dict[str, Any] = {}
+
+        for position in positions:
+            if not position.response:
+                continue
+
+            position_id = str(position.response.get("id", ""))
+            client_id = str(position.response.get("clientId", ""))
+
+            if position_id:
+                position_map[position_id] = position
+
+            if client_id:
+                position_map[client_id] = position
+
+        return position_map
+
+    def _order_exists_in_gateway(
+        self,
+        order: OrderModel,
+        position_map: Dict[str, Any],
+    ) -> bool:
+        """
+        Check if an order exists in the gateway position map.
+
+        Args:
+            order: Order to check.
+            position_map: Map of position IDs to positions.
+
+        Returns:
+            True if order exists in gateway, False otherwise.
+        """
+        return order.gateway_order_id in position_map or bool(
+            order.client_order_id and order.client_order_id in position_map
+        )
+
+    def _fetch_close_info(self, order: OrderModel) -> OrderSyncResult:
+        """
+        Fetch close information for a closed order from trade history.
+
+        Args:
+            order: The order to get close info for.
+
+        Returns:
+            OrderSyncResult with close price and profit from exchange.
+        """
+        close_price = order.close_price if order.close_price > 0 else order.price
+        profit = 0.0
+
+        try:
+            trades = self._gateway.get_trades(
+                symbol=order.symbol,
+                position_id=order.gateway_order_id,
+            )
+
+            if trades:
+                close_trade = trades[-1]
+
+                if close_trade.price > 0:
+                    close_price = close_trade.price
+
+                if order.side and order.side.is_buy():
+                    profit = (close_price - order.price) * order.executed_volume
+                else:
+                    profit = (order.price - close_price) * order.executed_volume
+
+        except Exception as e:
+            self._log.warning(
+                "Failed to fetch trade history for closed order",
+                order_id=order.id,
+                error=str(e),
+            )
+
+            if order.side and order.side.is_buy():
+                profit = (close_price - order.price) * order.executed_volume
+            else:
+                profit = (order.price - close_price) * order.executed_volume
+
+        return OrderSyncResult(
+            exists=False,
+            status=OrderStatus.CLOSED,
+            close_price=close_price,
+            profit=profit,
+            executed_volume=order.executed_volume,
+        )

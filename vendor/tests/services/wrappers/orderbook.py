@@ -17,7 +17,7 @@ class OrderbookWrapper(unittest.TestCase):
     """Base test wrapper for OrderbookService tests."""
 
     _INITIAL_BALANCE: float = 10000.0
-    _DEFAULT_SYMBOL: str = "BTCUSDT"
+    _DEFAULT_SYMBOL: str = "XAUUSD"
     _DEFAULT_PRICE: float = 50000.0
     _EPSILON: float = 0.01
 

@@ -16,7 +16,7 @@ class GatewayTradingFeesModel(BaseModel):
     information.
 
     Attributes:
-        symbol: The trading symbol (e.g., "BTCUSDT").
+        symbol: The trading symbol (e.g., "XAUUSD").
         maker_commission: Maker commission rate as decimal (e.g., 0.001 for 0.1%).
         taker_commission: Taker commission rate as decimal (e.g., 0.001 for 0.1%).
         response: Raw broker-specific data for additional information.
@@ -29,7 +29,7 @@ class GatewayTradingFeesModel(BaseModel):
 
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     maker_commission: Optional[float] = Field(
         default=None,

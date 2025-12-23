@@ -11,7 +11,9 @@ class TestGetPortfolioByPath(unittest.TestCase):
     _PORTFOLIO_DIR: str = "portfolios"
 
     def test_get_portfolio_by_path_with_absolute_path_returns_portfolio(self) -> None:
-        portfolio_path = Path(__file__).parent.parent.parent.parent / self._PORTFOLIO_DIR / self._PORTFOLIO_FILENAME
+        portfolio_path = (
+            Path(__file__).parent.parent.parent.parent.parent / self._PORTFOLIO_DIR / self._PORTFOLIO_FILENAME
+        )
 
         portfolio = get_portfolio_by_path(str(portfolio_path))
 

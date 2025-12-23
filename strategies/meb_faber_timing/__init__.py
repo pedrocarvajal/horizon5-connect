@@ -2,11 +2,11 @@
 
 from typing import Any, ClassVar, Dict, List, Optional
 
+from indicators.ma import MAIndicator
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.enums.quality_method import QualityMethod
 from vendor.enums.timeframe import Timeframe
-from indicators.ma import MAIndicator
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel

@@ -1,6 +1,6 @@
 """HTTP request execution helper for MetaAPI calls."""
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
@@ -13,7 +13,6 @@ def execute_request(
     auth_token: str,
     params: Optional[Dict[str, Any]] = None,
     json_body: Optional[Dict[str, Any]] = None,
-    log_error: Optional[Callable[[str], None]] = None,
     timeout: int = 120,
 ) -> Optional[Union[Dict[str, Any], List[Any]]]:
     """
@@ -25,7 +24,6 @@ def execute_request(
         auth_token: MetaAPI JWT authentication token.
         params: Optional query parameters.
         json_body: Optional JSON body for POST/PUT requests.
-        log_error: Optional callback function for error logging.
         timeout: Request timeout in seconds.
 
     Returns:
@@ -68,19 +66,9 @@ def execute_request(
         )
 
         if not HttpStatus.is_success_code(response.status_code):
-            error_msg = f"HTTP Error {response.status_code}: {response.text}"
-
-            if log_error:
-                log_error(error_msg)
-
             return None
 
         return response.json()
 
-    except requests.exceptions.RequestException as request_error:
-        error_msg = f"Error making {method} request to MetaAPI: {request_error}"
-
-        if log_error:
-            log_error(error_msg)
-
+    except requests.exceptions.RequestException:
         return None

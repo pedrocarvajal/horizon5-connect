@@ -10,12 +10,12 @@ Optimize strategy configuration settings through systematic backtesting iteratio
 ## Arguments
 
 - `$ARGUMENTS` - Required. Format: `<asset> <strategy>`
-  - `<asset>`: Asset folder name (e.g., `bnbusdt`, `btcusdt`)
+  - `<asset>`: Asset folder name (e.g., `xauusd`, `gbpusd`)
   - `<strategy>`: Strategy class name (e.g., `DonchianBreakoutStrategy`, `EMA5BreakoutStrategy`)
 
 **Examples:**
-- `/do-optimization bnbusdt DonchianBreakoutStrategy`
-- `/do-optimization btcusdt RSIBollingerStrategy`
+- `/do-optimization xauusd DonchianBreakoutStrategy`
+- `/do-optimization gbpusd RSIBollingerStrategy`
 
 ## Constraints
 

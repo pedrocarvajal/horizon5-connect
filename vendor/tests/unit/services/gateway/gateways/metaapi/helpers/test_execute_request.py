@@ -139,58 +139,6 @@ class TestExecuteRequest(unittest.TestCase):
 
         assert result is None
 
-    @patch("vendor.services.gateway.gateways.metaapi.helpers.execute_request.requests.get")
-    def test_execute_request_calls_log_error_callback_on_failure(
-        self,
-        mock_get: MagicMock,
-    ) -> None:
-        mock_get.return_value = self._create_mock_response(
-            status_code=HttpStatus.BAD_REQUEST.value,
-            text="Bad Request",
-        )
-
-        log_was_called = False
-
-        def log_error(_msg: str) -> None:
-            nonlocal log_was_called
-            log_was_called = True
-
-        result = execute_request(
-            method="GET",
-            url=self._TEST_URL,
-            auth_token=self._TEST_AUTH_TOKEN,
-            log_error=log_error,
-        )
-
-        assert result is None
-        assert log_was_called is True
-
-    @patch("vendor.services.gateway.gateways.metaapi.helpers.execute_request.requests.get")
-    def test_execute_request_calls_log_error_on_network_exception(
-        self,
-        mock_get: MagicMock,
-    ) -> None:
-        mock_get.side_effect = requests.exceptions.RequestException("Connection timeout")
-
-        log_was_called = False
-        logged_message = ""
-
-        def log_error(msg: str) -> None:
-            nonlocal log_was_called, logged_message
-            log_was_called = True
-            logged_message = msg
-
-        result = execute_request(
-            method="GET",
-            url=self._TEST_URL,
-            auth_token=self._TEST_AUTH_TOKEN,
-            log_error=log_error,
-        )
-
-        assert result is None
-        assert log_was_called is True
-        assert "MetaAPI" in logged_message
-
     def test_execute_request_validates_required_parameters(self) -> None:
         test_cases = [
             ("empty_auth_token", "", self._TEST_URL, "GET"),

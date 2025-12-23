@@ -1,4 +1,4 @@
-"""Integration tests for TicksService with real Binance data."""
+"""Integration tests for TicksService with real MetaAPI data."""
 
 # pyright: reportPrivateUsage=false
 
@@ -18,10 +18,11 @@ from vendor.services.logging import LoggingService
 from vendor.services.ticks import TicksService
 
 
+@unittest.skip("Tests require MetaAPI credentials - run manually when testing gateway integration")
 class TestTicksServiceIntegration(unittest.TestCase):
-    """Integration tests for TicksService downloading real data from Binance."""
+    """Integration tests for TicksService downloading real data from MetaAPI."""
 
-    _SYMBOL: str = "BTCUSDT"
+    _SYMBOL: str = "XAUUSD"
     _temp_dir: str = ""
     _service: TicksService  # pyright: ignore[reportUninitializedInstanceVariable]
     _gateway: GatewayService  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -30,15 +31,15 @@ class TestTicksServiceIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self._temp_dir = tempfile.mkdtemp()
         self._log = LoggingService()
-        self._gateway = GatewayService(gateway="binance", backtest=True)
+        self._gateway = GatewayService(gateway="metaapi", backtest=True)
         self._service = TicksService()
         self._service._ticks_folder = Path(self._temp_dir)
 
     def tearDown(self) -> None:
         shutil.rmtree(self._temp_dir, ignore_errors=True)
 
-    def test_download_klines_from_binance(self) -> None:
-        """Test downloading klines directly from Binance gateway."""
+    def test_download_klines_from_metaapi(self) -> None:
+        """Test downloading klines directly from MetaAPI gateway."""
         all_klines: List[GatewayKlineModel] = []
         from_date = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=TIMEZONE)
         to_date = datetime.datetime(2024, 1, 1, 1, 0, 0, tzinfo=TIMEZONE)
@@ -55,7 +56,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
         )
 
         assert len(all_klines) > 0, "Should download at least 1 kline"
-        self._log.info(f"Downloaded {len(all_klines)} klines from Binance")
+        self._log.info(f"Downloaded {len(all_klines)} klines from MetaAPI")
 
         for kline in all_klines:
             assert kline.open_price > 0, f"Open price should be > 0, got {kline.open_price}"
@@ -382,7 +383,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
 
     def test_iterate_ticks_handles_multiple_symbols(self) -> None:
         """Test iterate_ticks handles multiple symbols correctly."""
-        symbols = ["BTCUSDT", "ETHUSDT"]
+        symbols = ["XAUUSD", "GBPUSD"]
         from_date = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=TIMEZONE)
         to_date = datetime.datetime(2024, 1, 1, 0, 5, 0, tzinfo=TIMEZONE)
 
@@ -410,7 +411,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
 
         ticks_with_both = 0
         for _tick_date, ticks_dict in self._service.iterate_ticks(symbols, from_date, to_date):
-            if "BTCUSDT" in ticks_dict and "ETHUSDT" in ticks_dict:
+            if "XAUUSD" in ticks_dict and "GBPUSD" in ticks_dict:
                 ticks_with_both += 1
 
         assert ticks_with_both > 0, "Should have at least one tick with both symbols"

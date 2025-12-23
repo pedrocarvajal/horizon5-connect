@@ -6,12 +6,12 @@ import unittest
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from assets.xauusd import Asset as XauusdAsset
 from vendor.enums.timeframe import Timeframe
 from vendor.interfaces.indicator import IndicatorInterface
 from vendor.models.candle import CandleModel
 from vendor.services.candle import CandleService
 from vendor.services.ticks import TicksService
-from vendor.tests.e2e.assets.btcusdt import BTCUSDT
 
 
 class WrapperIndicator(unittest.TestCase):
@@ -49,12 +49,12 @@ class WrapperIndicator(unittest.TestCase):
         """
         Set up the test environment with required dependencies.
 
-        Initializes the ticks service with the BTCUSDT asset for testing.
+        Initializes the ticks service with the XAUUSD asset for testing.
         """
         super().setUp()
 
         self._ticks_service = TicksService()
-        self._ticks_service.setup(asset=BTCUSDT(), restore_ticks=False, disable_download=True)
+        self._ticks_service.setup(asset=XauusdAsset(), restore_ticks=False, disable_download=True)
 
     def candles(
         self,

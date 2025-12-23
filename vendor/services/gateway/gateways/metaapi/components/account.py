@@ -16,7 +16,7 @@ class AccountComponent(BaseComponent):
 
     Provides methods to retrieve account information from MetaAPI.
     Handles account data retrieval, validation, and adaptation to internal
-    models matching the Binance gateway response format.
+    gateway models.
     """
 
     def get_account(self) -> Optional[GatewayAccountModel]:
@@ -63,14 +63,20 @@ class AccountComponent(BaseComponent):
         Returns:
             Dictionary containing verification results with keys:
                 - credentials_configured: Whether auth_token and account_id are set
-                - trading_allowed: Whether trading is enabled on the account
-                - has_balance: Whether account has positive balance
+                - required_leverage: Always True for MetaTrader (leverage is broker-managed)
+                - usdt_balance: Whether account has positive balance
+                - cross_margin: Always True for MetaTrader (not applicable)
+                - one_way_mode: Always True for MetaTrader (not applicable)
+                - trading_permissions: Whether trading is enabled on the account
         """
         if not self._check_credentials():
             return {
                 "credentials_configured": False,
-                "trading_allowed": False,
-                "has_balance": False,
+                "required_leverage": False,
+                "usdt_balance": False,
+                "cross_margin": False,
+                "one_way_mode": False,
+                "trading_permissions": False,
             }
 
         account = self.get_account()
@@ -78,8 +84,11 @@ class AccountComponent(BaseComponent):
         if not account:
             return {
                 "credentials_configured": True,
-                "trading_allowed": False,
-                "has_balance": False,
+                "required_leverage": False,
+                "usdt_balance": False,
+                "cross_margin": False,
+                "one_way_mode": False,
+                "trading_permissions": False,
             }
 
         trading_allowed = self._check_trading_allowed(response=account.response)
@@ -87,8 +96,11 @@ class AccountComponent(BaseComponent):
 
         return {
             "credentials_configured": True,
-            "trading_allowed": trading_allowed,
-            "has_balance": has_balance,
+            "required_leverage": True,
+            "usdt_balance": has_balance,
+            "cross_margin": True,
+            "one_way_mode": True,
+            "trading_permissions": trading_allowed,
         }
 
     def _adapt_account_response(
@@ -98,8 +110,7 @@ class AccountComponent(BaseComponent):
         """
         Adapt MetaAPI account response to GatewayAccountModel.
 
-        Transforms the raw API response into the internal account model format,
-        matching the Binance gateway response structure.
+        Transforms the raw API response into the internal account model format.
 
         Args:
             response: Raw API response dictionary from MetaAPI.

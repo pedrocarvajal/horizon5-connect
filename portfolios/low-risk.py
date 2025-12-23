@@ -1,6 +1,5 @@
 """Low-risk portfolio configuration with conservative asset allocation."""
 
-# from assets.btcusdt import Asset as BTCUSDTAsset
 from assets.ndx import Asset as NDXAsset
 from assets.xauusd import Asset as XAUUSDAsset
 from vendor.enums.asset_quality_method import AssetQualityMethod

@@ -18,8 +18,8 @@ class GatewayKlineModel(BaseModel):
     raw gateway-specific response data for additional information.
 
     Attributes:
-        source: The source of the data (e.g., "binance").
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        source: The source of the data (e.g., "metaapi").
+        symbol: The symbol of the asset (e.g., "XAUUSD").
         open_time: Opening time of the candle in unix timestamp seconds
             (e.g., 1704067200).
         open_price: Opening price of the candle (e.g., 42350.50).
@@ -45,11 +45,11 @@ class GatewayKlineModel(BaseModel):
 
     source: str = Field(
         default="",
-        description="The source of the data, like binance",
+        description="The source of the data, like metaapi",
     )
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     open_time: int = Field(
         default=0,

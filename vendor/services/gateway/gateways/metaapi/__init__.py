@@ -413,15 +413,20 @@ class MetaApi(GatewayInterface):
         Args:
             **kwargs: Keyword arguments:
                 - symbols: List of trading symbols to stream (e.g., ["XAUUSD"]).
+                - streams: Alternative to symbols, accepts stream format (e.g., ["xauusd@bookTicker"]).
                 - callback: Async callback function that receives TickModel instances.
                 - poll_interval: Polling interval in seconds (default: 1.0, min: 0.5).
         """
         symbols = kwargs.get("symbols", [])
+        streams = kwargs.get("streams", [])
         callback = kwargs.get("callback")
         poll_interval = kwargs.get("poll_interval")
 
+        if not symbols and streams:
+            symbols = [stream.split("@")[0].upper() for stream in streams]
+
         if not symbols:
-            self._log.error("symbols is required for stream")
+            self._log.error("symbols or streams is required for stream")
             return
 
         if not callback:

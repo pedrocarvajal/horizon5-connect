@@ -24,7 +24,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         ):
             gateway_order = GatewayOrderModel(
                 id="gw-123",
-                symbol="BTCUSDT",
+                symbol="XAUUSD",
                 side=OrderSide.BUY,
                 price=50000.0,
                 executed_volume=0.01,
@@ -57,7 +57,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -74,7 +74,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -91,7 +91,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -108,7 +108,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -125,7 +125,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -142,7 +142,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
         symbol_info = GatewaySymbolInfoModel(
-            symbol="BTCUSDT",
+            symbol="XAUUSD",
             min_quantity=0.001,
             max_quantity=1000.0,
             min_price=0.01,
@@ -158,13 +158,13 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
     def test_symbol_info_cached_after_first_request(self) -> None:
         orderbook = self._create_orderbook()
         orderbook.is_backtest = False
-        symbol_info = GatewaySymbolInfoModel(symbol="BTCUSDT")
+        symbol_info = GatewaySymbolInfoModel(symbol="XAUUSD")
         mock_get_symbol_info = Mock(return_value=symbol_info)
         handler = cast(GatewayHandlerService, orderbook.gateway_handler)
         with patch.object(orderbook.gateway_handler.gateway, "get_symbol_info", mock_get_symbol_info):
-            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
-            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
-            handler._get_symbol_info("BTCUSDT")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("XAUUSD")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("XAUUSD")  # pyright: ignore[reportPrivateUsage]
+            handler._get_symbol_info("XAUUSD")  # pyright: ignore[reportPrivateUsage]
         assert mock_get_symbol_info.call_count == 1
 
     def test_concurrent_open_orders_no_over_leverage(self) -> None:
@@ -251,7 +251,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        with patch.object(orderbook.gateway_handler, "open_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "place_order", return_value=False):
             order = self._create_order(volume=0.01, price=50000.0)
             orderbook.open(order)
         assert order.status == OrderStatus.CANCELLED
@@ -263,13 +263,13 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         order = self._create_order(volume=0.01, price=50000.0)
-        with patch.object(orderbook.gateway_handler, "open_order", return_value=True):
+        with patch.object(orderbook.gateway_handler, "place_order", return_value=True):
             orderbook.open(order)
         order.status = OrderStatus.OPEN
         profit_tick = self._create_tick(51000.0)
         orderbook.refresh(profit_tick)
         balance_before_close = orderbook.balance
-        with patch.object(orderbook.gateway_handler, "close_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "close_position", return_value=False):
             orderbook.close(order)
         assert order.status == OrderStatus.OPEN
         assert abs(orderbook.balance - balance_before_close) < self._EPSILON
@@ -280,7 +280,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
-        with patch.object(orderbook.gateway_handler, "open_order", return_value=False):
+        with patch.object(orderbook.gateway_handler, "place_order", return_value=False):
             for _ in range(5):
                 order = self._create_order(volume=0.01, price=50000.0)
                 orderbook.open(order)

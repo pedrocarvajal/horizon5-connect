@@ -20,7 +20,7 @@ class GatewayOrderModel(BaseModel):
 
     Attributes:
         id: Order ID from the gateway/exchange.
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        symbol: The symbol of the asset (e.g., "XAUUSD").
         side: Order side: BUY or SELL. None if side is not specified.
         order_type: Order type: MARKET. Defaults to MARKET.
         status: Order status: PENDING, EXECUTED, CANCELLED. Defaults to PENDING.
@@ -42,7 +42,7 @@ class GatewayOrderModel(BaseModel):
     )
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     side: Optional[OrderSide] = Field(
         default=None,

@@ -15,7 +15,7 @@ class TradeComponent(BaseComponent):
 
     Provides methods to retrieve trade history (deals) from MetaAPI.
     Handles trade data retrieval, validation, and adaptation to internal
-    models matching the Binance gateway response format.
+    gateway trade models.
     """
 
     TIMEZONE_SUFFIX_UTC = "Z"

@@ -18,7 +18,7 @@ class GatewayTradeModel(BaseModel):
     Attributes:
         id: Trade ID from the gateway/exchange.
         order_id: Order ID that this trade belongs to.
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        symbol: The symbol of the asset (e.g., "XAUUSD").
         side: Trade side: BUY or SELL.
         price: Trade execution price.
         volume: Trade volume.
@@ -43,7 +43,7 @@ class GatewayTradeModel(BaseModel):
     )
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     side: Optional[OrderSide] = Field(
         default=None,

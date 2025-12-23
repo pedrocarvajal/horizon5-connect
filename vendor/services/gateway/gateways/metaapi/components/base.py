@@ -55,5 +55,4 @@ class BaseComponent:
             auth_token=self._config.auth_token,
             params=params,
             json_body=json_body,
-            log_error=self._log.error,
         )

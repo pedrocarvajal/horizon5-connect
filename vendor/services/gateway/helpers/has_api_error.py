@@ -5,9 +5,9 @@ from typing import Any, Dict, Optional, Tuple, cast
 
 def has_api_error(response: Any) -> Tuple[bool, Optional[str], Optional[int]]:
     """
-    Check if API response contains an error (Binance API format).
+    Check if API response contains an error.
 
-    Binance API returns errors in the format: {"code": <int>, "msg": "<string>"}
+    Checks for error responses in the format: {"code": <int>, "msg": "<string>"}
     This function checks if the response contains an error code.
 
     Args:

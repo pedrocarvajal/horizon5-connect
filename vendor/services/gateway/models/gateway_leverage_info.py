@@ -16,7 +16,7 @@ class GatewayLeverageInfoModel(BaseModel):
     gateway-specific response data for additional information.
 
     Attributes:
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        symbol: The symbol of the asset (e.g., "XAUUSD").
         leverage: Maximum available leverage for the symbol. Must be >= 1.
             Defaults to 1 (no leverage).
         response: Raw broker-specific data for additional information.
@@ -29,7 +29,7 @@ class GatewayLeverageInfoModel(BaseModel):
 
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     leverage: int = Field(
         default=1,

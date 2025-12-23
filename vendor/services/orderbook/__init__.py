@@ -1,7 +1,8 @@
 """Orderbook service for order lifecycle and portfolio state management."""
 
+import datetime
 import threading
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
@@ -10,11 +11,13 @@ from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
 from vendor.services.logging import LoggingService
+from vendor.services.orderbook.models import OrderSyncResult
 
 from .gateway import GatewayHandlerService
 
 MARGIN_LIQUIDATION_RATIO: float = 0.001
 MARGIN_RECOVERY_RATIO: float = 0.05
+SYNC_INTERVAL_SECONDS: int = 60
 
 
 class OrderbookService(OrderbookInterface):
@@ -57,6 +60,7 @@ class OrderbookService(OrderbookInterface):
     _log: LoggingService
     _balance_lock: threading.Lock
     _orders_lock: threading.Lock
+    _last_sync_time: Optional[datetime.datetime]
 
     def __init__(
         self,
@@ -96,6 +100,7 @@ class OrderbookService(OrderbookInterface):
         self._tick = None
         self._balance_lock = threading.Lock()
         self._orders_lock = threading.Lock()
+        self._last_sync_time = None
 
         self._gateway_handler = GatewayHandlerService(
             gateway=gateway,
@@ -244,7 +249,7 @@ class OrderbookService(OrderbookInterface):
                 self._open_orders_index.discard(order.id)
 
         if not self._backtest:
-            gateway_success = self._gateway_handler.close_order(order)
+            gateway_success = self._gateway_handler.close_position(order)
 
             if not gateway_success:
                 with self._balance_lock:
@@ -334,7 +339,7 @@ class OrderbookService(OrderbookInterface):
                 self._open_orders_index.add(order.id)
 
         if not self._backtest:
-            gateway_success = self._gateway_handler.open_order(order)
+            gateway_success = self._gateway_handler.place_order(order)
 
             if not gateway_success:
                 with self._balance_lock:
@@ -358,7 +363,8 @@ class OrderbookService(OrderbookInterface):
         Refresh orderbook state with new market tick.
 
         Updates current tick, checks for margin calls, updates order prices,
-        and evaluates stop loss/take profit conditions for all open orders.
+        evaluates stop loss/take profit conditions for all open orders,
+        and periodically syncs with gateway to detect external closures.
 
         Args:
             tick: Current market tick data.
@@ -388,6 +394,8 @@ class OrderbookService(OrderbookInterface):
                 margin_level=f"{self.margin_level:.2f}",
             )
 
+        self._sync_orders()
+
         with self._orders_lock:
             open_order_ids = list(self._open_orders_index)
 
@@ -402,6 +410,7 @@ class OrderbookService(OrderbookInterface):
             if ready_to_close_take_profit or ready_to_close_stop_loss:
                 with self._orders_lock:
                     self._orders[order.id].status = OrderStatus.CLOSING
+
                 self.close(order)
 
     def where(
@@ -440,6 +449,96 @@ class OrderbookService(OrderbookInterface):
 
         with self._orders_lock:
             self._orders[order.id] = order
+
+        self._on_transaction(order)
+
+    def _sync_orders(self) -> None:
+        """
+        Sync local orders with gateway positions periodically.
+
+        Checks if enough time has passed since last sync, then queries gateway
+        for current positions. Orders that have changed state are processed.
+        """
+        if self._backtest:
+            return
+
+        if self._tick is None:
+            return
+
+        current_time = self._tick.date
+
+        if self._last_sync_time is not None:
+            elapsed = (current_time - self._last_sync_time).total_seconds()
+
+            if elapsed < SYNC_INTERVAL_SECONDS:
+                return
+
+        self._last_sync_time = current_time
+
+        with self._orders_lock:
+            open_orders: Dict[str, OrderModel] = {
+                order_id: self._orders[order_id]
+                for order_id in self._open_orders_index
+                if order_id in self._orders and self._orders[order_id].status.is_open()
+            }
+
+        if not open_orders:
+            return
+
+        update_results = self._gateway_handler.sync_orders(open_orders)
+
+        for order_id, result in update_results.items():
+            self._process_order_update(order_id, result)
+
+    def _process_order_update(
+        self,
+        order_id: str,
+        result: OrderSyncResult,
+    ) -> None:
+        """
+        Process an order update result from gateway sync.
+
+        Updates order status, releases margin, and triggers callback
+        based on the update result from gateway.
+
+        Args:
+            order_id: ID of the order to update.
+            result: OrderUpdateResult from gateway sync.
+        """
+        with self._orders_lock:
+            if order_id not in self._orders:
+                return
+
+            order = self._orders[order_id]
+
+        if not order.status.is_open():
+            return
+
+        if result.exists:
+            return
+
+        margin_used = (order.executed_volume * order.price) / self._leverage
+
+        order.status = result.status
+        order.close_price = result.close_price
+
+        if self._tick:
+            order.updated_at = self._tick.date
+
+        with self._balance_lock:
+            self._balance += margin_used
+            self._balance += result.profit
+
+            with self._orders_lock:
+                self._orders[order.id] = order
+                self._open_orders_index.discard(order.id)
+
+        self._log.info(
+            "Order closed due to external intervention",
+            order_id=order.id,
+            close_price=result.close_price,
+            profit=result.profit,
+        )
 
         self._on_transaction(order)
 

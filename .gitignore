@@ -208,7 +208,7 @@ marimo/_lsp/
 __marimo__/
 
 # Custom
-storage/binance/
+storage/metaapi/
 *.lock
 .notes
 *.pkl

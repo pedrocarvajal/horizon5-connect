@@ -23,7 +23,7 @@ Select all that apply:
 
 - [ ] Backtest Service
 - [ ] Production Service
-- [ ] Gateway Service (Binance/other)
+- [ ] Gateway Service (MetaAPI/other)
 - [ ] Strategy Service
 - [ ] Analytic Service
 - [ ] Portfolio Service

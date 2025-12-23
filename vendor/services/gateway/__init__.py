@@ -3,7 +3,6 @@
 from typing import Any, Dict, List, Optional
 
 from vendor.configs.gateways import GATEWAYS
-from vendor.helpers.get_env import get_env
 from vendor.interfaces.gateway import GatewayInterface
 from vendor.services.gateway.models.gateway_account import GatewayAccountModel
 from vendor.services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
@@ -21,12 +20,11 @@ class GatewayService(GatewayInterface):
 
     This service acts as a facade/wrapper for gateway implementations,
     providing a unified interface to interact with different trading
-    gateways (e.g., Binance). It handles gateway initialization,
-    configuration, and delegates all operations to the underlying
-    gateway implementation.
+    gateways. It handles gateway initialization, configuration, and
+    delegates all operations to the underlying gateway implementation.
 
     Attributes:
-        _name: Name of the gateway to use (e.g., "binance").
+        _name: Name of the gateway to use (e.g., "metaapi").
         _sandbox: Whether to use sandbox/testnet mode.
         _gateways: Dictionary containing gateway configurations.
         _gateway: Instance of the underlying gateway implementation.
@@ -50,7 +48,7 @@ class GatewayService(GatewayInterface):
         Initialize the gateway service.
 
         Args:
-            gateway: Name of the gateway to use (e.g., "binance").
+            gateway: Name of the gateway to use (e.g., "metaapi").
                 Must be a key in the GATEWAYS configuration.
             **kwargs: Additional keyword arguments. Supported keys:
                 - sandbox: Whether to use sandbox/testnet mode (default: False).
@@ -78,7 +76,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's cancel_order method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - symbol: Trading symbol (e.g., "BTCUSD")
                 - order_id: Gateway order ID
                 - client_order_id: Client-side order identifier
 
@@ -169,7 +167,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's get_orders method.
                 Common arguments include:
-                - symbol: Trading symbol to filter orders (e.g., "BTCUSDT")
+                - symbol: Trading symbol to filter orders (e.g., "BTCUSD")
                 - start_time: Start timestamp for order filtering
                 - end_time: End timestamp for order filtering
                 - limit: Maximum number of orders to return
@@ -190,7 +188,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's get_positions method.
                 Common arguments include:
-                - symbol: Trading symbol to filter positions (e.g., "BTCUSDT").
+                - symbol: Trading symbol to filter positions (e.g., "BTCUSD").
                     If not provided, returns all positions.
 
         Returns:
@@ -226,7 +224,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's get_trades method.
                 Common arguments include:
-                - symbol: Trading symbol to filter trades (e.g., "BTCUSDT")
+                - symbol: Trading symbol to filter trades (e.g., "BTCUSD")
                 - start_time: Start timestamp for trade filtering
                 - end_time: End timestamp for trade filtering
                 - limit: Maximum number of trades to return
@@ -267,7 +265,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's get_verification method.
                 Common arguments include:
-                - symbol: Trading symbol to check leverage for (default: "BTCUSDT").
+                - symbol: Trading symbol to check leverage for (default: "BTCUSD").
 
         Returns:
             Dictionary containing verification status information with boolean values.
@@ -288,7 +286,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's modify_order method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - symbol: Trading symbol (e.g., "BTCUSD")
                 - order_id: Gateway order ID
                 - client_order_id: Client-side order identifier
                 - volume: New order volume/quantity
@@ -309,7 +307,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's place_order method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - symbol: Trading symbol (e.g., "BTCUSD")
                 - side: Order side (BUY or SELL)
                 - order_type: Order type (MARKET)
                 - volume: Order volume/quantity
@@ -331,7 +329,7 @@ class GatewayService(GatewayInterface):
         Args:
             **kwargs: Keyword arguments passed to the gateway's set_leverage method.
                 Common arguments include:
-                - symbol: Trading symbol (e.g., "BTCUSDT")
+                - symbol: Trading symbol (e.g., "BTCUSD")
                 - leverage: Leverage value to set
 
         Returns:
@@ -379,23 +377,6 @@ class GatewayService(GatewayInterface):
         gateway_config = self._gateways[self._name]
         gateway_kwargs = gateway_config["kwargs"].copy()
 
-        if self._sandbox is not None:
-            if self._sandbox:
-                gateway_kwargs["api_key"] = get_env("BINANCE_TESTNET_API_KEY")
-                gateway_kwargs["api_secret"] = get_env("BINANCE_TESTNET_API_SECRET")
-            else:
-                gateway_kwargs["api_key"] = get_env("BINANCE_API_KEY")
-                gateway_kwargs["api_secret"] = get_env("BINANCE_API_SECRET")
-        else:
-            self._sandbox = gateway_kwargs.get("sandbox", False)
-
-        if self._backtest:
-            gateway_kwargs["sandbox"] = False
-            gateway_kwargs["api_key"] = None
-            gateway_kwargs["api_secret"] = None
-        else:
-            gateway_kwargs["sandbox"] = self._sandbox
-
         self._gateway = gateway_config["class"](**gateway_kwargs)
 
     @property
@@ -404,7 +385,7 @@ class GatewayService(GatewayInterface):
         Get the gateway name.
 
         Returns:
-            Name of the gateway being used (e.g., "binance").
+            Name of the gateway being used (e.g., "metaapi").
         """
         return self._name
 

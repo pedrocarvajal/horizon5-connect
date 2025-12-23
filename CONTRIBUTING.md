@@ -70,8 +70,8 @@ cp .env.example .env
 
 Configure your environment variables:
 
-- `BINANCE_API_KEY` - Your Binance API key (testnet recommended)
-- `BINANCE_API_SECRET` - Your Binance API secret
+- `METAAPI_AUTH_TOKEN` - Your MetaAPI authentication token
+- `METAAPI_ACCOUNT_ID` - Your MetaAPI account ID
 - Other gateway credentials as needed
 
 ### 4. Verify Setup
@@ -86,7 +86,7 @@ make run-tests
 
 ```
 horizon5-connect/
-├── assets/          # Asset configurations (e.g., btcusdt)
+├── assets/          # Asset configurations (e.g., xauusd)
 ├── configs/         # System-wide configurations
 ├── enums/           # Enumerations (order types, status, etc.)
 ├── helpers/         # Generic utility functions

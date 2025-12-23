@@ -17,7 +17,7 @@ class GatewayPositionModel(BaseModel):
     additional information.
 
     Attributes:
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
+        symbol: The symbol of the asset (e.g., "XAUUSD").
         side: Position side: LONG (BUY) or SHORT (SELL). None if position
             is closed or side is not specified.
         volume: Position volume. Positive for LONG positions, negative for
@@ -34,7 +34,7 @@ class GatewayPositionModel(BaseModel):
 
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     side: Optional[OrderSide] = Field(
         default=None,

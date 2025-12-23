@@ -28,6 +28,38 @@ class TestMetaApiOrder(MetaApiWrapper):
         assert order is not None
         self._close_position_for_order(order=order)
 
+    def test_get_order_returns_none_for_executed_market_order(self) -> None:
+        """Test that get_order returns None for executed MARKET orders.
+
+        When a MARKET order is executed, it becomes a position immediately
+        and is no longer in pending orders. The get_order method returns None,
+        and the orderbook handles the fallback to positions.
+        """
+        order = self._place_test_order(
+            symbol=self._SYMBOL,
+            side=OrderSide.BUY,
+            volume=self._DEFAULT_VOLUME,
+        )
+        assert order is not None, "Order should be placed successfully"
+        assert order.status == GatewayOrderStatus.EXECUTED, "MARKET order should be EXECUTED"
+
+        self._log.info(f"Order placed: id={order.id}, status={order.status}")
+
+        found_order = self._gateway.get_order(order_id=order.id)
+
+        self._log.info(f"get_order result: {found_order}")
+
+        assert found_order is None, "get_order should return None for executed MARKET order"
+
+        positions = self._gateway.get_positions(symbol=self._SYMBOL)
+        assert len(positions) > 0, "Position should exist for executed order"
+
+        position = positions[0]
+        position_id = position.response.get("id") if position.response else None
+        assert str(position_id) == order.id, "Position ID should match order ID"
+
+        self._close_position_for_order(order=order)
+
     def test_get_orders(self) -> None:
         """Test retrieving pending orders."""
         orders = self._gateway.get_orders()

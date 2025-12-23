@@ -12,7 +12,6 @@ from vendor.configs.system import SYSTEM_PREFIX
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.enums.order_type import OrderType
-from vendor.helpers.get_slug import get_slug
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.models.tick import TickModel
@@ -219,20 +218,14 @@ class OrderModel(BaseModel):
     @computed_field
     @property
     def client_order_id(self) -> str:
-        """Generate exchange-compatible client order ID."""
-        max_length = 16
-        max_length_for_system_prefix = 4
+        """Generate exchange-compatible client order ID.
 
-        id_suffix = self.id.split("-")[-1]
-        client_order_id = get_slug(f"{SYSTEM_PREFIX}-{id_suffix}")[:16].lower()
-
-        if len(SYSTEM_PREFIX) > max_length_for_system_prefix:
-            raise ValueError("System prefix must be less than 4 characters.")
-
-        if len(client_order_id) > max_length:
-            raise ValueError("Client order ID must be less than 16 characters.")
-
-        return client_order_id
+        Format: {PREFIX}_{SYMBOL}_{ID} (e.g., HRZ_XAUUSD_abc123)
+        MetaAPI requires pattern: ${strategyId}_${positionId}_${orderId}
+        """
+        id_suffix = self.id.split("-")[-1][:8]
+        symbol_part = self.symbol[:6] if self.symbol else "UNK"
+        return f"{SYSTEM_PREFIX}_{symbol_part}_{id_suffix}"
 
     @computed_field
     @property

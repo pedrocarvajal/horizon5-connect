@@ -18,8 +18,8 @@
   "ruff.enable": true,
   "cSpell.words": [
     "Backtest",
-    "binance",
-    "BTCUSDT",
+    "metaapi",
+    "XAUUSD",
     "fstream",
     "kline",
     "levelname"

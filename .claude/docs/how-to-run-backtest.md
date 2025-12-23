@@ -12,7 +12,7 @@ uv run python backtest.py --portfolio-path <path> --from-date <date> [--to-date 
 
 | Argument | Description |
 |----------|-------------|
-| `--portfolio-path` | Path to portfolio file (e.g., `portfolios/btcusdt-test.py`) |
+| `--portfolio-path` | Path to portfolio file (e.g., `portfolios/xauusd-test.py`) |
 | `--from-date` | Start date in `YYYY-MM-DD` format |
 
 ### Optional
@@ -25,11 +25,11 @@ uv run python backtest.py --portfolio-path <path> --from-date <date> [--to-date 
 ## Examples
 
 ```bash
-uv run python backtest.py --portfolio-path portfolios/btcusdt-test.py --from-date 2022-01-01
+uv run python backtest.py --portfolio-path portfolios/xauusd-test.py --from-date 2022-01-01
 
-uv run python backtest.py --portfolio-path portfolios/bnbusdt-test.py --from-date 2021-06-01 --to-date 2024-01-01
+uv run python backtest.py --portfolio-path portfolios/gbpusd-test.py --from-date 2021-06-01 --to-date 2024-01-01
 
-uv run python backtest.py --portfolio-path portfolios/ethusdt-test.py --from-date 2022-01-01 --restore-ticks true
+uv run python backtest.py --portfolio-path portfolios/eurusd-test.py --from-date 2022-01-01 --restore-ticks true
 ```
 
 ## Analyzing Results

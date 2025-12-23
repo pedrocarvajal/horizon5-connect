@@ -15,7 +15,7 @@ class SymbolComponent(BaseComponent):
 
     Provides methods to retrieve symbol specifications, leverage info, and
     trading fees from MetaAPI. Handles data retrieval, validation, and
-    adaptation to internal models matching the Binance gateway response format.
+    adaptation to internal gateway models.
     """
 
     def get_symbol_info(
@@ -138,8 +138,7 @@ class SymbolComponent(BaseComponent):
         """
         Adapt MetaAPI symbol specification to GatewaySymbolInfoModel.
 
-        Transforms the raw API response into the internal symbol model format,
-        matching the Binance gateway response structure.
+        Transforms the raw API response into the internal symbol model format.
 
         Args:
             response: Raw API response dictionary from MetaAPI.

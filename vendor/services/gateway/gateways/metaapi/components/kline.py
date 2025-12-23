@@ -49,7 +49,7 @@ class KlineComponent(BaseComponent):
         Fetches klines for the specified symbol and timeframe within the given
         date range. MetaAPI returns data in reverse chronological order, so this
         method accumulates all data and delivers it in forward chronological order
-        (oldest to newest) to match the behavior of other gateways like Binance.
+        (oldest to newest) for consistent chronological processing.
 
         Args:
             symbol: Trading symbol (e.g., "XAUUSD", "EURUSD").

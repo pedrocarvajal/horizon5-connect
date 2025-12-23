@@ -19,9 +19,9 @@ class GatewaySymbolInfoModel(BaseModel):
     and raw gateway-specific response data for additional information.
 
     Attributes:
-        symbol: The symbol of the asset (e.g., "BTCUSDT").
-        base_asset: The base asset being traded (e.g., "BTC" in BTCUSDT).
-        quote_asset: The quote asset used for pricing (e.g., "USDT" in BTCUSDT).
+        symbol: The symbol of the asset (e.g., "XAUUSD").
+        base_asset: The base asset being traded (e.g., "XAU" in XAUUSD).
+        quote_asset: The quote asset used for pricing (e.g., "USD" in XAUUSD).
         price_precision: Number of decimal places for price (e.g., 2 for $100.50).
         quantity_precision: Number of decimal places for quantity (e.g., 3 for 0.001 BTC).
         min_price: Minimum allowed price (e.g., 0.01).
@@ -43,15 +43,15 @@ class GatewaySymbolInfoModel(BaseModel):
 
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like BTCUSDT",
+        description="The symbol of the asset, like XAUUSD",
     )
     base_asset: str = Field(
         default="",
-        description="The base asset being traded, like BTC in BTCUSDT",
+        description="The base asset being traded, like XAU in XAUUSD",
     )
     quote_asset: str = Field(
         default="",
-        description="The quote asset used for pricing, like USDT in BTCUSDT",
+        description="The quote asset used for pricing, like USD in XAUUSD",
     )
     price_precision: int = Field(
         default=2,

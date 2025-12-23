@@ -16,7 +16,7 @@ Please select the component(s) affected:
 
 - [ ] Backtest Service
 - [ ] Production Service
-- [ ] Gateway (Binance/other)
+- [ ] Gateway (MetaAPI/other)
 - [ ] Strategy Service
 - [ ] Analytic Service
 - [ ] Order Management
@@ -55,7 +55,7 @@ What actually happened? Include:
 - **OS**: [e.g. macOS 13.0, Ubuntu 22.04, Windows 11]
 - **Python Version**: [e.g. 3.11.5]
 - **Horizon Connect Version**: [e.g. 0.1.0]
-- **Gateway**: [e.g. Binance Futures]
+- **Gateway**: [e.g. MetaAPI/MetaTrader]
 - **Dependencies**: Run `uv pip list` and paste relevant versions
 
 ## Logs
@@ -63,7 +63,7 @@ What actually happened? Include:
 Please attach relevant log files from the `logs/` directory:
 
 - `backtest.log`
-- `gateway-binance.log`
+- `gateway-metaapi.log`
 - Other relevant logs
 
 ## Additional Context
