@@ -49,7 +49,7 @@ class Asset(AssetService):
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
                 allocation=0.0,
-                enabled=False,
+                enabled=True,
                 settings={
                     "entry_allow_multiple": False,
                     "entry_waiting_time": 0,
@@ -70,7 +70,7 @@ class Asset(AssetService):
             TurtleTradingStrategy(
                 id="turtle_trading",
                 allocation=0.0,
-                enabled=False,
+                enabled=True,
                 settings={
                     "volume_percentage": 0.09,
                     "donchian_entry_period": 55,
@@ -85,7 +85,7 @@ class Asset(AssetService):
             MebFaberTimingStrategy(
                 id="meb_faber_timing",
                 allocation=0.0,
-                enabled=False,
+                enabled=True,
                 settings={
                     "volume_percentage": 1.0,
                     "sma_period": 10,
