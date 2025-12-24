@@ -22,21 +22,13 @@ MAX_LEVERAGE: int = 1000
 class AssetService(AssetInterface):
     """Service managing strategies and gateway for a specific trading asset."""
 
-    _allocation: float
-    _backtest: bool
-    _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
-    _gateway: GatewayInterface
+
     _gateway_name: str
-    _is_historical_filling: bool
-    _leverage: int
-    _portfolio: Optional[PortfolioInterface]
-    _strategies: List[StrategyInterface]
-    _symbol: str
-    _tick: Optional[TickModel]
 
     _analytic: AnalyticInterface
+    _gateway: GatewayInterface
     _log: LoggingInterface
 
     def __init__(self, allocation: float = 0.0, leverage: int = 1) -> None:
@@ -46,8 +38,6 @@ class AssetService(AssetInterface):
             allocation: Total allocation for this asset to distribute among strategies.
             leverage: Leverage multiplier for trading (default: 1).
         """
-        self._log = LoggingService()
-
         if allocation < 0:
             raise ValueError("Allocation must be >= 0")
 
@@ -56,14 +46,17 @@ class AssetService(AssetInterface):
 
         self._allocation = allocation
         self._leverage = leverage
-        self._strategies = []
-        self._commands_queue = None
-        self._events_queue = None
+
         self._backtest = False
         self._backtest_id = None
-        self._portfolio = None
+        self._commands_queue = None
+        self._events_queue = None
         self._is_historical_filling = False
+        self._portfolio = None
+        self._strategies = []
         self._tick = None
+
+        self._log = LoggingService()
 
     def on_end(self) -> Dict[str, Any]:
         """Notify all strategies that execution has ended.
@@ -133,16 +126,16 @@ class AssetService(AssetInterface):
         commands_queue = kwargs.get("commands_queue")
         events_queue = kwargs.get("events_queue")
 
-        if commands_queue is None:
+        if not commands_queue:
             raise ValueError("Commands queue is required")
 
-        if events_queue is None:
+        if not events_queue:
             raise ValueError("Events queue is required")
 
         if backtest and not backtest_id:
             raise ValueError("Backtest ID is required")
 
-        if portfolio is None:
+        if not portfolio:
             raise ValueError("Portfolio is required")
 
         self._backtest = backtest
@@ -161,6 +154,14 @@ class AssetService(AssetInterface):
 
         self._log.setup_prefix(f"[{self._symbol}]")
         self._log.success("Setup finished.", symbol=self._symbol, allocation=self._allocation)
+
+    def start_historical_filling(self) -> None:
+        """Mark the asset as currently processing historical data."""
+        self._is_historical_filling = True
+
+    def stop_historical_filling(self) -> None:
+        """Mark the asset as no longer processing historical data."""
+        self._is_historical_filling = False
 
     def _configure_strategies(self) -> None:
         """Configure strategies."""
@@ -192,28 +193,20 @@ class AssetService(AssetInterface):
             portfolio_id=self._portfolio.id if self._portfolio else None,
         )
 
-    def start_historical_filling(self) -> None:
-        """Mark the asset as currently processing historical data."""
-        self._is_historical_filling = True
-
-    def stop_historical_filling(self) -> None:
-        """Mark the asset as no longer processing historical data."""
-        self._is_historical_filling = False
-
     @property
     def allocation(self) -> float:
         """Return the asset allocation."""
         return self._allocation
 
-    @allocation.setter
-    def allocation(self, value: float) -> None:
-        """Set the asset allocation."""
-        self._allocation = value
-
     @property
     def analytic(self) -> AnalyticInterface:
         """Return the analytics service for this asset."""
         return self._analytic
+
+    @property
+    def backtest(self) -> bool:
+        """Return whether running in backtest mode."""
+        return self._backtest
 
     @property
     def gateway(self) -> GatewayInterface:
@@ -226,9 +219,19 @@ class AssetService(AssetInterface):
         return self._is_historical_filling
 
     @property
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this asset."""
+        return self._leverage
+
+    @property
     def name(self) -> str:
         """Return the asset display name."""
         return self._symbol
+
+    @property
+    def portfolio(self) -> Optional[PortfolioInterface]:
+        """Return the portfolio for this asset."""
+        return self._portfolio
 
     @property
     def strategies(self) -> List[StrategyInterface]:
@@ -241,6 +244,11 @@ class AssetService(AssetInterface):
         return self._symbol
 
     @property
-    def leverage(self) -> int:
-        """Return the leverage multiplier for this asset."""
-        return self._leverage
+    def tick(self) -> Optional[TickModel]:
+        """Return the latest tick data."""
+        return self._tick
+
+    @allocation.setter
+    def allocation(self, value: float) -> None:
+        """Set the asset allocation."""
+        self._allocation = value

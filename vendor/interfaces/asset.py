@@ -1,11 +1,12 @@
 """Asset interface for trading instrument abstraction."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from vendor.interfaces.analytic import AnalyticInterface
     from vendor.interfaces.gateway import GatewayInterface
+    from vendor.interfaces.portfolio import PortfolioInterface
     from vendor.interfaces.strategy import StrategyInterface
 
 from vendor.models.tick import TickModel
@@ -13,6 +14,16 @@ from vendor.models.tick import TickModel
 
 class AssetInterface(ABC):
     """Abstract interface (see implementations for details)."""
+
+    _symbol: str
+    _allocation: float
+    _backtest: bool
+    _backtest_id: Optional[str]
+    _is_historical_filling: bool
+    _leverage: int
+    _portfolio: Optional["PortfolioInterface"]
+    _strategies: List["StrategyInterface"]
+    _tick: Optional[TickModel]
 
     @abstractmethod
     def __init__(self, allocation: float = 0.0) -> None:
@@ -75,16 +86,16 @@ class AssetInterface(ABC):
         """Return the asset allocation."""
         pass
 
-    @allocation.setter
-    @abstractmethod
-    def allocation(self, value: float) -> None:
-        """Set the asset allocation."""
-        pass
-
     @property
     @abstractmethod
     def analytic(self) -> "AnalyticInterface":
         """Return the analytics service for this asset."""
+        pass
+
+    @property
+    @abstractmethod
+    def backtest(self) -> bool:
+        """Return whether running in backtest mode."""
         pass
 
     @property
@@ -101,8 +112,20 @@ class AssetInterface(ABC):
 
     @property
     @abstractmethod
+    def leverage(self) -> int:
+        """Return the leverage multiplier for this asset."""
+        pass
+
+    @property
+    @abstractmethod
     def name(self) -> str:
         """Return the asset display name."""
+        pass
+
+    @property
+    @abstractmethod
+    def portfolio(self) -> Optional["PortfolioInterface"]:
+        """Return the portfolio for this asset."""
         pass
 
     @property
@@ -119,6 +142,12 @@ class AssetInterface(ABC):
 
     @property
     @abstractmethod
-    def leverage(self) -> int:
-        """Return the leverage multiplier for this asset."""
+    def tick(self) -> Optional[TickModel]:
+        """Return the latest tick data."""
+        pass
+
+    @allocation.setter
+    @abstractmethod
+    def allocation(self, value: float) -> None:
+        """Set the asset allocation."""
         pass

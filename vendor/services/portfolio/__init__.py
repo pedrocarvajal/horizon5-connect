@@ -9,13 +9,12 @@ from typing import Any, Dict, List, Optional
 from vendor.enums.timeframe import Timeframe
 from vendor.helpers.get_asset_by_path import get_asset_by_path
 from vendor.helpers.get_slug import get_slug
-from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.models.tick import TickModel
-from vendor.services.analytic import PortfolioAnalytic
 from vendor.services.logging import LoggingService
+from vendor.services.portfolio.components.analytic import AnalyticComponent
 from vendor.services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
@@ -27,7 +26,7 @@ class PortfolioService(PortfolioInterface):
     _allocation: float
     _assets: List[AssetInterface]
 
-    _analytic: Optional[AnalyticInterface]
+    _analytic_component: AnalyticComponent
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
@@ -44,7 +43,7 @@ class PortfolioService(PortfolioInterface):
 
         self._last_timestamps = {}
 
-        self._analytic = None
+        self._analytic_component = AnalyticComponent()
         self._backtest = False
         self._backtest_id = None
         self._commands_queue = None
@@ -54,10 +53,10 @@ class PortfolioService(PortfolioInterface):
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
-        if not self._analytic:
+        if not self._analytic_component.analytic:
             return {}
 
-        report = self._analytic.on_end()
+        report = self._analytic_component.analytic.on_end()
         return report if report else {}
 
     def on_new_day(self) -> None:
@@ -65,16 +64,16 @@ class PortfolioService(PortfolioInterface):
         for asset in self._assets:
             asset.on_new_day()
 
-        if self._analytic:
-            self._analytic.on_new_day()
+        if self._analytic_component.analytic:
+            self._analytic_component.analytic.on_new_day()
 
     def on_new_hour(self) -> None:
         """Handle a new hour event. Cascades to all assets."""
         for asset in self._assets:
             asset.on_new_hour()
 
-        if self._analytic:
-            self._analytic.on_new_hour()
+        if self._analytic_component.analytic:
+            self._analytic_component.analytic.on_new_hour()
 
     def on_new_minute(self) -> None:
         """Handle a new minute event. Cascades to all assets."""
@@ -86,16 +85,16 @@ class PortfolioService(PortfolioInterface):
         for asset in self._assets:
             asset.on_new_month()
 
-        if self._analytic:
-            self._analytic.on_new_month()
+        if self._analytic_component.analytic:
+            self._analytic_component.analytic.on_new_month()
 
     def on_new_week(self) -> None:
         """Handle a new week event. Cascades to all assets."""
         for asset in self._assets:
             asset.on_new_week()
 
-        if self._analytic:
-            self._analytic.on_new_week()
+        if self._analytic_component.analytic:
+            self._analytic_component.analytic.on_new_week()
 
     def on_tick(self, ticks: Dict[str, TickModel]) -> None:
         """Process tick data for all assets.
@@ -111,8 +110,8 @@ class PortfolioService(PortfolioInterface):
             if tick:
                 asset.on_tick(tick)
 
-                if self._analytic:
-                    self._analytic.on_tick(tick)
+                if self._analytic_component.analytic:
+                    self._analytic_component.analytic.on_tick(tick)
 
                 last_tick = tick
 
@@ -160,33 +159,9 @@ class PortfolioService(PortfolioInterface):
             asset.allocation = self._allocation / len(self._assets)
             asset.setup(portfolio=self, **kwargs)
 
-        self.setup_analytic()
-
-    def setup_analytic(self, **kwargs: Any) -> None:
-        """Initialize the portfolio analytics service.
-
-        This method can be called separately when assets are setup externally
-        (e.g., by BacktestService for parallel downloads).
-
-        Args:
-            **kwargs: Configuration parameters including:
-                backtest: Whether running in backtest mode.
-                backtest_id: Backtest identifier.
-                commands_queue: Queue for commands.
-                events_queue: Queue for events.
-        """
-        if kwargs:
-            self._backtest = kwargs.get("backtest", self._backtest)
-            self._backtest_id = kwargs.get("backtest_id", self._backtest_id)
-            self._commands_queue = kwargs.get("commands_queue", self._commands_queue)
-            self._events_queue = kwargs.get("events_queue", self._events_queue)
-
-        if not self._commands_queue or not self._events_queue:
-            return
-
-        self._analytic = PortfolioAnalytic(
+        self._analytic_component.setup_analytic(
             portfolio_id=self._id,
-            assets=self.assets,
+            assets=self._assets,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             commands_queue=self._commands_queue,
