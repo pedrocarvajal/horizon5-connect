@@ -15,6 +15,7 @@ from vendor.enums.backtest_event import BacktestEvent
 from vendor.enums.backtest_status import BacktestStatus
 from vendor.helpers.get_portfolio_by_path import get_portfolio_by_path
 from vendor.helpers.parse_date import parse_date
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.models.backtest_settings import (
     AssetSettingsModel,
@@ -38,7 +39,7 @@ class EventHandler:
     _portfolio_id: str
 
     _horizon_router: HorizonRouterProvider
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,
@@ -110,33 +111,24 @@ def create_backtest(
     horizon_router = HorizonRouterProvider()
     asset_settings_list: List[AssetSettingsModel] = []
 
-    for asset_config in portfolio.assets:
-        asset_class = asset_config["asset"]
-        allocation = asset_config["allocation"]
-        enabled = asset_config.get("enabled", True)
-
-        if not enabled:
-            continue
-
-        asset_instance = asset_class(allocation=allocation, enabled=enabled)
+    for asset in portfolio.assets:
         strategy_settings_list: List[StrategySettingsModel] = []
 
-        for strategy in asset_instance.strategies:
+        for strategy in asset.strategies:
             strategy_settings = getattr(strategy, "_settings", {})
             strategy_settings_list.append(
                 StrategySettingsModel(
                     id=strategy.id,
-                    enabled=strategy.enabled,
                     allocation=strategy.allocation,
-                    leverage=asset_instance.leverage,
+                    leverage=asset.leverage,
                     settings=strategy_settings,
                 )
             )
 
         asset_settings_list.append(
             AssetSettingsModel(
-                symbol=asset_instance.symbol,
-                gateway=getattr(asset_instance, "_gateway_name", ""),
+                symbol=asset.symbol,
+                gateway=getattr(asset, "_gateway_name", ""),
                 strategies=strategy_settings_list,
             )
         )
@@ -226,23 +218,6 @@ if __name__ == "__main__":
         parser.error("Portfolio must define at least one asset.")
 
     log = LoggingService()
-
-    has_enabled_assets = False
-    for asset_config in portfolio.assets:
-        asset_class = asset_config["asset"]
-        allocation = asset_config["allocation"]
-        enabled = asset_config.get("enabled", True)
-
-        if enabled:
-            has_enabled_assets = True
-        else:
-            log.warning(
-                "Asset is not enabled",
-                asset=asset_class.__name__,
-            )
-
-    if not has_enabled_assets:
-        parser.error("No enabled assets found in portfolio.")
 
     backtest_id = create_backtest(
         portfolio_path=args.portfolio_path,

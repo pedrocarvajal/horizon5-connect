@@ -8,6 +8,7 @@ import questionary
 
 from vendor.enums.http_status import HttpStatus
 from vendor.interfaces.authentication import AuthenticationInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.providers.exceptions import ProviderHTTPError
 from vendor.providers.horizon_router import HorizonRouterProvider
 from vendor.services.logging import LoggingService
@@ -29,7 +30,7 @@ class AuthenticationService(AuthenticationInterface):
 
     _token: Optional[str]
     _user: Optional[Dict[str, Any]]
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(self) -> None:
         """Initialize authentication service with empty session."""

@@ -10,6 +10,7 @@ from typing import Any, List, Optional
 from vendor.enums.command import Command
 from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.interfaces.analytic import AnalyticInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.models.snapshot import SnapshotModel
 from vendor.models.tick import TickModel
 from vendor.providers.horizon_router import HorizonRouterProvider
@@ -26,7 +27,6 @@ from vendor.services.analytic.helpers.get_sharpe_ratio import get_sharpe_ratio
 from vendor.services.analytic.helpers.get_sortino_ratio import get_sortino_ratio
 from vendor.services.analytic.helpers.get_tracking_error import get_tracking_error
 from vendor.services.analytic.helpers.get_ulcer_index import get_ulcer_index
-from vendor.services.logging import LoggingService
 
 MIN_OBSERVATIONS_FOR_BENCHMARK = 2
 
@@ -59,7 +59,7 @@ class AnalyticWrapper(AnalyticInterface):
     _started_at: Optional[datetime.datetime]
     _tick: Optional[TickModel]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def on_new_day(self) -> None:
         """Handle a new day event. Template method for daily processing.

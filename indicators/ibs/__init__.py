@@ -4,6 +4,7 @@ import datetime
 from typing import List, Optional
 
 from vendor.interfaces.indicator import IndicatorInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.models.candle import CandleModel
 from vendor.models.tick import TickModel
 from vendor.services.logging import LoggingService
@@ -30,7 +31,7 @@ class IBSIndicator(IndicatorInterface):
     _candles: List[CandleModel]
     _values: List[IBSValueModel]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

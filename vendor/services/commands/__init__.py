@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 
 from vendor.enums.command import Command
 from vendor.interfaces.commands import CommandInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.models.command import CommandModel
 from vendor.services.logging import LoggingService
 
@@ -23,7 +24,7 @@ class CommandService(CommandInterface):
     _last_log_time: float
     _processed_count: int
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the commands service with queue connections."""

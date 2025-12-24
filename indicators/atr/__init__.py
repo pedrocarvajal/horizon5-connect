@@ -4,6 +4,7 @@ import datetime
 from typing import List, Optional
 
 from vendor.interfaces.indicator import IndicatorInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.models.candle import CandleModel
 from vendor.models.tick import TickModel
 from vendor.services.logging import LoggingService
@@ -23,7 +24,7 @@ class ATRIndicator(IndicatorInterface):
     _values: List[ATRValueModel]
     _true_ranges: List[float]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

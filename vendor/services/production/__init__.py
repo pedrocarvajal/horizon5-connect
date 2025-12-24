@@ -9,6 +9,7 @@ from vendor.configs.timezone import TIMEZONE
 from vendor.enums.command import Command
 from vendor.helpers.get_portfolio_by_path import get_portfolio_by_path
 from vendor.interfaces.asset import AssetInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.interfaces.production import ProductionInterface
 from vendor.models.tick import TickModel
@@ -31,7 +32,7 @@ class ProductionService(ProductionInterface):
     _stream_started_at: datetime.datetime
     _stream_tasks: List[asyncio.Task[None]]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(self) -> None:
         """Initialize production service."""
@@ -88,23 +89,10 @@ class ProductionService(ProductionInterface):
         if not self._portfolio or not self._commands_queue or not self._events_queue:
             raise ValueError("Service not properly setup")
 
-        for asset_config in self._portfolio.assets:
-            asset_class = asset_config["asset"]
-            allocation = asset_config["allocation"]
-            enabled = asset_config.get("enabled", True)
-
-            if not enabled:
-                self._log.warning(
-                    "Asset is disabled in portfolio config",
-                    asset=asset_class.__name__,
-                )
-                continue
-
-            asset_instance = asset_class(allocation=allocation, enabled=enabled)
-            self._assets.append(asset_instance)
+        self._assets = list(self._portfolio.assets)
 
         if not self._assets:
-            raise ValueError("No enabled assets found in portfolio")
+            raise ValueError("No assets found in portfolio")
 
         for asset in self._assets:
             asset.setup(

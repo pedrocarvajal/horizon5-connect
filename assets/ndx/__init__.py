@@ -16,25 +16,21 @@ class Asset(AssetService):
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
-    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 20) -> None:
+    def __init__(self, allocation: float = 0.0, leverage: int = 20) -> None:
         """Initialize NDX asset with IBS strategy.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
-            enabled: Whether this asset is enabled for execution.
-            leverage: Leverage multiplier for trading (default: 10 for indices).
+            leverage: Leverage multiplier for trading (default: 20 for indices).
         """
-        super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
+        super().__init__(allocation=allocation, leverage=leverage)
 
         self._setup_strategies()
-        self._setup_allocation()
 
     def _setup_strategies(self) -> None:
         self._strategies = [
             IBSStrategy(
                 id="ibs",
-                allocation=0.0,
-                enabled=True,
                 settings={
                     "volume_percentage": 0.60,
                     "ibs_threshold": 0.20,
@@ -46,10 +42,3 @@ class Asset(AssetService):
                 },
             ),
         ]
-
-    def _setup_allocation(self) -> None:
-        enabled_strategies = [s for s in self._strategies if s.enabled]
-        allocation_per_strategy = self.allocation / max(len(enabled_strategies), 1)
-
-        for strategy in enabled_strategies:
-            strategy.allocation = allocation_per_strategy

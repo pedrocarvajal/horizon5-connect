@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Union
 
+from vendor.interfaces.logging import LoggingInterface
 from vendor.services.gateway.gateways.metaapi.helpers import execute_request
 from vendor.services.gateway.gateways.metaapi.models.config import MetaApiConfigModel
 from vendor.services.logging import LoggingService
@@ -11,7 +12,7 @@ class BaseComponent:
     """Base class providing common functionality for MetaAPI components."""
 
     _config: MetaApiConfigModel
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

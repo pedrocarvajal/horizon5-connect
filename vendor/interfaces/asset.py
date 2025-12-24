@@ -15,12 +15,11 @@ class AssetInterface(ABC):
     """Abstract interface (see implementations for details)."""
 
     @abstractmethod
-    def __init__(self, allocation: float = 0.0, enabled: bool = True) -> None:
+    def __init__(self, allocation: float = 0.0) -> None:
         """Initialize the asset with allocation.
 
         Args:
             allocation: Total allocation for this asset.
-            enabled: Whether this asset is enabled for execution.
         """
         pass
 
@@ -76,16 +75,16 @@ class AssetInterface(ABC):
         """Return the asset allocation."""
         pass
 
-    @property
+    @allocation.setter
     @abstractmethod
-    def analytic(self) -> "AnalyticInterface":
-        """Return the analytics service for this asset."""
+    def allocation(self, value: float) -> None:
+        """Set the asset allocation."""
         pass
 
     @property
     @abstractmethod
-    def enabled(self) -> bool:
-        """Return whether asset is enabled."""
+    def analytic(self) -> "AnalyticInterface":
+        """Return the analytics service for this asset."""
         pass
 
     @property

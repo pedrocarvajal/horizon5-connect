@@ -12,6 +12,7 @@ import polars
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.interfaces.asset import AssetInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.ticks import TicksInterface
 from vendor.models.tick import TickModel
 from vendor.services.gateway.models.gateway_kline import GatewayKlineModel
@@ -38,7 +39,7 @@ class TicksService(TicksInterface):
     _should_restore_ticks: bool = False
     _ticks_folder: Path = _PROJECT_ROOT / "storage" / "ticks"
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(self) -> None:
         """Initialize ticks service."""

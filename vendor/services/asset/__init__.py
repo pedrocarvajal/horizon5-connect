@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.gateway import GatewayInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.interfaces.strategy import StrategyInterface
 from vendor.models.tick import TickModel
@@ -25,27 +26,24 @@ class AssetService(AssetInterface):
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
-    _enabled: bool
     _events_queue: Optional[Queue[Any]]
     _gateway: GatewayInterface
     _gateway_name: str
     _is_historical_filling: bool
     _leverage: int
-    _name: str
     _portfolio: Optional[PortfolioInterface]
     _strategies: List[StrategyInterface]
     _symbol: str
     _tick: Optional[TickModel]
 
     _analytic: AnalyticInterface
-    _log: LoggingService
+    _log: LoggingInterface
 
-    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 1) -> None:
+    def __init__(self, allocation: float = 0.0, leverage: int = 1) -> None:
         """Initialize the asset service with default configuration.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
-            enabled: Whether this asset is enabled for execution.
             leverage: Leverage multiplier for trading (default: 1).
         """
         self._log = LoggingService()
@@ -57,7 +55,6 @@ class AssetService(AssetInterface):
             raise ValueError(f"Leverage must be >= 1 and < {MAX_LEVERAGE}")
 
         self._allocation = allocation
-        self._enabled = enabled
         self._leverage = leverage
         self._strategies = []
         self._commands_queue = None
@@ -67,10 +64,6 @@ class AssetService(AssetInterface):
         self._portfolio = None
         self._is_historical_filling = False
         self._tick = None
-
-        self._gateway = GatewayService(
-            gateway=self._gateway_name,
-        )
 
     def on_end(self) -> Dict[str, Any]:
         """Notify all strategies that execution has ended.
@@ -152,9 +145,6 @@ class AssetService(AssetInterface):
         if portfolio is None:
             raise ValueError("Portfolio is required")
 
-        if not portfolio.ready:
-            raise ValueError("Portfolio is not ready")
-
         self._backtest = backtest
         self._backtest_id = backtest_id
         self._commands_queue = commands_queue
@@ -169,27 +159,26 @@ class AssetService(AssetInterface):
         self._configure_strategies()
         self._setup_analytic()
 
+        self._log.setup_prefix(f"[{self._symbol}]")
+        self._log.success("Setup finished.", symbol=self._symbol, allocation=self._allocation)
+
     def _configure_strategies(self) -> None:
-        """Filter and configure enabled strategies."""
+        """Configure strategies."""
+        strategies_count = len(self._strategies)
+        allocation_per_strategy = self._allocation / strategies_count if strategies_count > 0 else 0.0
+
         for strategy in self._strategies:
-            if not strategy.enabled:
-                self._log.warning(f"Strategy {strategy.name} is not enabled")
-
-        enabled_strategies = [s for s in self._strategies if s.enabled]
-
-        strategy_kwargs = {
-            "asset": self,
-            "backtest": self._backtest,
-            "backtest_id": self._backtest_id,
-            "portfolio": self._portfolio,
-            "commands_queue": self._commands_queue,
-            "events_queue": self._events_queue,
-        }
-
-        for strategy in enabled_strategies:
-            strategy.setup(**strategy_kwargs)
-
-        self._strategies = [s for s in enabled_strategies if s.enabled]
+            strategy.setup(
+                **{
+                    "asset": self,
+                    "allocation": allocation_per_strategy,
+                    "backtest": self._backtest,
+                    "backtest_id": self._backtest_id,
+                    "portfolio": self._portfolio,
+                    "commands_queue": self._commands_queue,
+                    "events_queue": self._events_queue,
+                }
+            )
 
     def _setup_analytic(self) -> None:
         """Initialize the asset analytics service."""
@@ -216,15 +205,15 @@ class AssetService(AssetInterface):
         """Return the asset allocation."""
         return self._allocation
 
+    @allocation.setter
+    def allocation(self, value: float) -> None:
+        """Set the asset allocation."""
+        self._allocation = value
+
     @property
     def analytic(self) -> AnalyticInterface:
         """Return the analytics service for this asset."""
         return self._analytic
-
-    @property
-    def enabled(self) -> bool:
-        """Return whether asset is enabled."""
-        return self._enabled
 
     @property
     def gateway(self) -> GatewayInterface:
@@ -239,7 +228,7 @@ class AssetService(AssetInterface):
     @property
     def name(self) -> str:
         """Return the asset display name."""
-        return self._name
+        return self._symbol
 
     @property
     def strategies(self) -> List[StrategyInterface]:

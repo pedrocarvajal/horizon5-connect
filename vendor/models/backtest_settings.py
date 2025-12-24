@@ -9,7 +9,6 @@ class StrategySettingsModel(BaseModel):
     """Configuration settings for a single trading strategy within a backtest."""
 
     id: str
-    enabled: bool = Field(default=True)
     allocation: float = Field(default=0.0, ge=0)
     leverage: int = Field(default=1, ge=1)
     settings: Dict[str, Any] = Field(default_factory=dict)

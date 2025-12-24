@@ -12,6 +12,7 @@ from vendor.enums.order_status import OrderStatus
 from vendor.enums.order_type import OrderType
 from vendor.interfaces.gateway import GatewayInterface
 from vendor.interfaces.gateway_handler import GatewayHandlerInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.models.order import OrderModel
 from vendor.services.gateway.models.enums.gateway_order_status import GatewayOrderStatus
 from vendor.services.gateway.models.gateway_order import GatewayOrderModel
@@ -55,7 +56,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
     _symbol_info_cache: Dict[str, GatewaySymbolInfoModel]
     _verification: Optional[Dict[str, bool]]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

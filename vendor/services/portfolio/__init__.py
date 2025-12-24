@@ -7,10 +7,12 @@ from multiprocessing import Queue
 from typing import Any, Dict, List, Optional
 
 from vendor.enums.timeframe import Timeframe
+from vendor.helpers.get_asset_by_path import get_asset_by_path
 from vendor.helpers.get_slug import get_slug
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
-from vendor.interfaces.portfolio import AssetConfig, PortfolioInterface
+from vendor.interfaces.logging import LoggingInterface
+from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.models.tick import TickModel
 from vendor.services.analytic import PortfolioAnalytic
 from vendor.services.logging import LoggingService
@@ -20,34 +22,34 @@ from vendor.services.strategy.helpers.get_truncated_timeframe import get_truncat
 class PortfolioService(PortfolioInterface):
     """Service for managing a portfolio of trading assets."""
 
+    _id: str
     _name: str
-    _ready: bool
+    _allocation: float
+    _assets: List[AssetInterface]
+
     _analytic: Optional[AnalyticInterface]
-    _assets: List[AssetConfig]
-    _asset_instances: List[AssetInterface]
     _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Optional[Queue[Any]]
-    _id: str
     _last_timestamps: Dict[Timeframe, datetime.datetime]
-    _log: LoggingService
+    _log: LoggingInterface
 
-    def __init__(self) -> None:
+    def __init__(self, name: str, allocation: float, assets: List[str]) -> None:
         """Initialize the portfolio with an empty asset list."""
-        self._id = ""
-        self._name = ""
-        self._ready = False
+        self._name = name
+        self._id = get_slug(self._name)
+        self._allocation = allocation
+        self._assets = [get_asset_by_path(path)() for path in assets]
+
+        self._last_timestamps = {}
 
         self._analytic = None
-        self._assets = []
-        self._asset_instances = []
         self._backtest = False
         self._backtest_id = None
         self._commands_queue = None
         self._events_queue = None
 
-        self._last_timestamps = {}
         self._log = LoggingService()
 
     def on_end(self) -> Dict[str, Any]:
@@ -60,7 +62,7 @@ class PortfolioService(PortfolioInterface):
 
     def on_new_day(self) -> None:
         """Handle a new day event. Cascades to all assets."""
-        for asset in self._asset_instances:
+        for asset in self._assets:
             asset.on_new_day()
 
         if self._analytic:
@@ -68,7 +70,7 @@ class PortfolioService(PortfolioInterface):
 
     def on_new_hour(self) -> None:
         """Handle a new hour event. Cascades to all assets."""
-        for asset in self._asset_instances:
+        for asset in self._assets:
             asset.on_new_hour()
 
         if self._analytic:
@@ -76,12 +78,12 @@ class PortfolioService(PortfolioInterface):
 
     def on_new_minute(self) -> None:
         """Handle a new minute event. Cascades to all assets."""
-        for asset in self._asset_instances:
+        for asset in self._assets:
             asset.on_new_minute()
 
     def on_new_month(self) -> None:
         """Handle a new month event. Cascades to all assets."""
-        for asset in self._asset_instances:
+        for asset in self._assets:
             asset.on_new_month()
 
         if self._analytic:
@@ -89,7 +91,7 @@ class PortfolioService(PortfolioInterface):
 
     def on_new_week(self) -> None:
         """Handle a new week event. Cascades to all assets."""
-        for asset in self._asset_instances:
+        for asset in self._assets:
             asset.on_new_week()
 
         if self._analytic:
@@ -103,7 +105,7 @@ class PortfolioService(PortfolioInterface):
         """
         last_tick: Optional[TickModel] = None
 
-        for asset in self._asset_instances:
+        for asset in self._assets:
             tick = ticks.get(asset.symbol)
 
             if tick:
@@ -128,14 +130,8 @@ class PortfolioService(PortfolioInterface):
                 commands_queue: Queue for commands.
                 events_queue: Queue for events.
         """
-        name = kwargs.get("name")
         commands_queue = kwargs.get("commands_queue")
         events_queue = kwargs.get("events_queue")
-
-        if name:
-            self._name = name
-            self._id = get_slug(name)
-            self._ready = True
 
         if commands_queue is None and events_queue is None:
             return
@@ -146,24 +142,23 @@ class PortfolioService(PortfolioInterface):
         if events_queue is None:
             raise ValueError("Events queue is required")
 
+        if not self._allocation or self._allocation <= 0:
+            raise ValueError("Allocation is required")
+
+        if len(self._assets) == 0:
+            raise ValueError("Assets is required")
+
+        if len(self._name) == 0:
+            raise ValueError("Name is required")
+
         self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
         self._commands_queue = commands_queue
         self._events_queue = events_queue
 
-        for asset_config in self._assets:
-            asset_class = asset_config["asset"]
-            allocation = asset_config["allocation"]
-            enabled = asset_config.get("enabled", True)
-
-            if not enabled:
-                self._log.warning(f"Asset {asset_class.__name__} is disabled in portfolio config")
-                continue
-
-            asset_instance = asset_class(allocation=allocation, enabled=enabled)
-            asset_instance.setup(**kwargs)
-
-            self._asset_instances.append(asset_instance)
+        for asset in self._assets:
+            asset.allocation = self._allocation / len(self._assets)
+            asset.setup(portfolio=self, **kwargs)
 
         self.setup_analytic()
 
@@ -191,7 +186,7 @@ class PortfolioService(PortfolioInterface):
 
         self._analytic = PortfolioAnalytic(
             portfolio_id=self._id,
-            assets=self._asset_instances,
+            assets=self.assets,
             backtest=self._backtest,
             backtest_id=self._backtest_id,
             commands_queue=self._commands_queue,

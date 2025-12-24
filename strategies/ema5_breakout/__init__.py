@@ -62,7 +62,6 @@ class EMA5BreakoutStrategy(StrategyService):
         "recovery_take_profit_method": TpSlMethod.PERCENTAGE,
     }
 
-    _enabled = True
     _name = "EMA5Breakout"
     _settings: Dict[str, Any]
 

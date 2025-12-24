@@ -10,9 +10,10 @@ from vendor.configs.timezone import TIMEZONE
 from vendor.enums.backtest_event import BacktestEvent
 from vendor.enums.command import Command
 from vendor.helpers.get_duration import get_duration
-from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.backtest import BacktestInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
+from vendor.interfaces.ticks import TicksInterface
 from vendor.services.logging import LoggingService
 from vendor.services.ticks import DownloadTask, TicksService
 
@@ -22,15 +23,16 @@ class BacktestService(BacktestInterface):
 
     _commands_queue: Optional[Queue[Any]]
     _events_queue: Queue[Any]
-    _from_date: datetime.datetime
-    _id: str
-    _portfolio: PortfolioInterface
-    _should_restore_ticks: bool
-    _start_at: datetime.datetime
-    _to_date: datetime.datetime
 
-    _log: LoggingService
-    _ticks_service: TicksService
+    _id: str
+    _from_date: datetime.datetime
+    _to_date: datetime.datetime
+    _start_at: datetime.datetime
+    _should_restore_ticks: bool
+
+    _portfolio: PortfolioInterface
+    _log: LoggingInterface
+    _ticks_service: TicksInterface
 
     def __init__(
         self,
@@ -44,26 +46,29 @@ class BacktestService(BacktestInterface):
     ) -> None:
         """Initialize backtest service with portfolio and date range."""
         self._id = backtest_id
-        self._start_at = datetime.datetime.now(tz=TIMEZONE)
         self._from_date = from_date
         self._to_date = to_date
         self._should_restore_ticks = restore_ticks
         self._commands_queue = commands_queue
         self._events_queue = events_queue
-        self._portfolio = portfolio
+
+        self._start_at = datetime.datetime.now(tz=TIMEZONE)
 
         self._log = LoggingService()
         self._ticks_service = TicksService()
+
         self._log.info(
             "Backtesting service started",
             backtest_id=self._id,
         )
 
-        self._setup_portfolio()
+        self.setup(
+            portfolio=portfolio,
+        )
 
     def run(self) -> None:
         """Execute backtest by iterating timeline and feeding ticks to portfolio."""
-        assets = self._portfolio.asset_instances
+        assets = self._portfolio.assets
 
         if not assets:
             self._log.error("No enabled assets found")
@@ -97,6 +102,7 @@ class BacktestService(BacktestInterface):
 
             if (index + 1) % 100000 == 0:
                 progress = ((index + 1) / total_ticks) * 100
+
                 self._log.info(
                     "Backtest progress",
                     progress=f"{progress:.1f}%",
@@ -138,74 +144,39 @@ class BacktestService(BacktestInterface):
         self._send_shutdown()
 
     def _send_shutdown(self) -> None:
-        if self._commands_queue is None:
+        if not self._commands_queue:
             return
 
         self._commands_queue.put({"command": Command.SHUTDOWN})
 
-    def _setup_portfolio(self) -> None:
+    def setup(self, portfolio: PortfolioInterface) -> None:
         """Configure portfolio and download tick data for all assets in parallel."""
-        setup_kwargs = {
-            "backtest": True,
-            "backtest_id": self._id,
-            "commands_queue": self._commands_queue,
-            "events_queue": self._events_queue,
-            "portfolio": self._portfolio,
-        }
+        self._portfolio = portfolio
+        self._portfolio.setup(
+            backtest=True,
+            backtest_id=self._id,
+            commands_queue=self._commands_queue,
+            events_queue=self._events_queue,
+        )
 
-        enabled_asset_instances: List[AssetInterface] = []
-        download_tasks: List[DownloadTask] = []
-
-        for asset_config in self._portfolio.assets:
-            asset_class = asset_config["asset"]
-            allocation = asset_config["allocation"]
-            enabled = asset_config.get("enabled", True)
-
-            if not enabled:
-                self._log.warning(
-                    "Asset is disabled in portfolio config",
-                    asset=asset_class.__name__,
-                )
-
-                continue
-
-            asset_instance = asset_class(allocation=allocation, enabled=enabled)
-            enabled_asset_instances.append(asset_instance)
-            download_tasks.append(
-                DownloadTask(
-                    asset=asset_instance,
-                    restore_ticks=self._should_restore_ticks,
-                )
-            )
+        download_tasks: List[DownloadTask] = [
+            DownloadTask(asset=asset, restore_ticks=self._should_restore_ticks) for asset in self._portfolio.assets
+        ]
 
         if not download_tasks:
             return
 
         def _on_download_complete(symbol: str) -> None:
-            self._log.info(f"Tick data ready for {symbol}")
+            self._log.info(
+                "Tick data ready",
+                symbol=symbol,
+            )
 
         def _on_all_downloads_complete() -> None:
-            self._log.info("All tick data downloads completed, proceeding with backtest setup")
+            self._log.info("All tick data downloads completed")
 
-        tick_services_by_symbol = TicksService.download_parallel(
+        TicksService.download_parallel(
             tasks=download_tasks,
             on_complete=_on_download_complete,
             on_all_complete=_on_all_downloads_complete,
         )
-
-        for asset_instance in enabled_asset_instances:
-            tick_service = tick_services_by_symbol.get(asset_instance.symbol)
-
-            if tick_service is None:
-                self._log.error(f"No tick service for {asset_instance.symbol}")
-                continue
-
-            asset_instance.setup(
-                tick=tick_service,
-                asset=asset_instance,
-                **setup_kwargs,
-            )
-
-            self._portfolio.asset_instances.append(asset_instance)
-
-        self._portfolio.setup_analytic(**setup_kwargs)

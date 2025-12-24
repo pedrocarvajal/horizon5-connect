@@ -18,7 +18,6 @@ class StrategyInterface(ABC):
     _id: str
     _name: str
     _allocation: float
-    _enabled: bool
     _backtest: bool
     _analytic: Optional["AnalyticInterface"]
     _asset: Optional["AssetInterface"]
@@ -74,11 +73,6 @@ class StrategyInterface(ABC):
     def name(self) -> str:
         """Return strategy display name."""
         return self._name
-
-    @property
-    def enabled(self) -> bool:
-        """Return whether strategy is enabled."""
-        return self._enabled
 
     @property
     def allocation(self) -> float:

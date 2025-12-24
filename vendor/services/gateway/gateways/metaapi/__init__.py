@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from vendor.interfaces.gateway import GatewayInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.services.gateway.gateways.metaapi.components.account import AccountComponent
 from vendor.services.gateway.gateways.metaapi.components.kline import KlineComponent
 from vendor.services.gateway.gateways.metaapi.components.order import OrderComponent
@@ -48,7 +49,7 @@ class MetaApi(GatewayInterface):
     _stream_component: StreamComponent
     _symbol_component: SymbolComponent
     _trade_component: TradeComponent
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

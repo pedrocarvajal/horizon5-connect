@@ -40,7 +40,6 @@ class RSIBollingerBreakoutStrategy(StrategyService):
 
     _MIN_CANDLES_REQUIRED: int = 2
 
-    _enabled = True
     _name = "RSIBollingerBreakout"
     _settings: Dict[str, Any]
 

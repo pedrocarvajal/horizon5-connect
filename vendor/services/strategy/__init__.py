@@ -10,6 +10,7 @@ from vendor.enums.timeframe import Timeframe
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.candle import CandleInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.interfaces.strategy import StrategyInterface
@@ -39,11 +40,9 @@ class StrategyService(StrategyInterface):
     Attributes:
         _id: Unique identifier for the strategy.
         _name: Name of the strategy (typically set by child classes).
-        _enabled: Whether the strategy is enabled for execution.
         _backtest: Whether running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _asset: Reference to the asset service managing this strategy.
-        _allocation: Capital allocation for this strategy.
         _leverage: Leverage multiplier for trading.
         _candles: Dictionary of candle services by timeframe.
         _orderbook: Service for managing orders and portfolio state.
@@ -65,7 +64,7 @@ class StrategyService(StrategyInterface):
     _portfolio: Optional[PortfolioInterface]
     _tick: Optional[TickModel]
 
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,
@@ -78,7 +77,6 @@ class StrategyService(StrategyInterface):
             **kwargs: Additional keyword arguments:
                 id: Unique identifier for the strategy.
                 name: Name of the strategy (default: empty string).
-                allocation: Capital allocation for this strategy (default: 0.0).
                 leverage: Leverage multiplier for trading (default: 1).
                 enabled: Whether the strategy is enabled (default: True).
         """
@@ -99,9 +97,8 @@ class StrategyService(StrategyInterface):
 
         self._id = kwargs.get("id", getattr(self, "_id", ""))
         self._name = kwargs.get("name", getattr(self, "_name", ""))
-        self._allocation = kwargs.get("allocation", 0.0)
         self._leverage = kwargs.get("leverage", 1)
-        self._enabled = kwargs.get("enabled", True)
+        self._allocation = 0
 
     def on_end(self) -> Optional[Dict[str, Any]]:
         """
@@ -310,6 +307,7 @@ class StrategyService(StrategyInterface):
         backtest = kwargs.get("backtest", False)
         backtest_id = kwargs.get("backtest_id")
         portfolio = kwargs.get("portfolio")
+        allocation = kwargs.get("allocation", 0)
         commands_queue = kwargs.get("commands_queue")
         events_queue = kwargs.get("events_queue")
 
@@ -328,14 +326,14 @@ class StrategyService(StrategyInterface):
         if not self._id:
             raise ValueError("Strategy ID is required")
 
-        if self._allocation <= 0:
-            self._enabled = False
-            return
+        if allocation <= 0:
+            raise ValueError("Allocation must be greater than 0")
 
         if self._leverage <= 0:
             raise ValueError("Leverage must be greater than 0")
 
         self._asset = asset
+        self._allocation = allocation
         self._backtest = backtest
         self._backtest_id = backtest_id
         self._commands_queue = commands_queue
@@ -349,7 +347,7 @@ class StrategyService(StrategyInterface):
         self._setup_analytic(asset)
 
         self._log.setup_prefix(f"[{asset.symbol}|{self._name}]")
-        self._log.info(f"Setting up {self.name}")
+        self._log.success("Setup finished.", allocation=self._allocation)
 
     def _setup_orderbook(self, asset: AssetInterface) -> None:
         """Initialize the orderbook service."""

@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from vendor.configs.gateways import GATEWAYS
 from vendor.interfaces.gateway import GatewayInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.services.gateway.models.gateway_account import GatewayAccountModel
 from vendor.services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from vendor.services.gateway.models.gateway_order import GatewayOrderModel
@@ -35,7 +36,7 @@ class GatewayService(GatewayInterface):
     _gateways: Dict[str, Any]
 
     _gateway: GatewayInterface
-    _log: LoggingService
+    _log: LoggingInterface
 
     def __init__(
         self,

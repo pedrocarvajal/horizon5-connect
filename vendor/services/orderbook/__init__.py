@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.interfaces.gateway import GatewayInterface
+from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
@@ -57,7 +58,7 @@ class OrderbookService(OrderbookInterface):
     _exposure: float
     _tick: Optional[TickModel]
     _on_transaction: Callable[[OrderModel], None]
-    _log: LoggingService
+    _log: LoggingInterface
     _balance_lock: threading.Lock
     _orders_lock: threading.Lock
     _last_sync_time: Optional[datetime.datetime]

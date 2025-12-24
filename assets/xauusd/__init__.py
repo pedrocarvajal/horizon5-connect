@@ -20,25 +20,21 @@ class Asset(AssetService):
     _asset_quality_method = AssetQualityMethod.WEIGHTED_AVERAGE
     _strategies: List[StrategyInterface]
 
-    def __init__(self, allocation: float = 0.0, enabled: bool = True, leverage: int = 100) -> None:
+    def __init__(self, allocation: float = 0.0, leverage: int = 100) -> None:
         """Initialize XAUUSD asset with EMA5 breakout strategy.
 
         Args:
             allocation: Total allocation for this asset to distribute among strategies.
-            enabled: Whether this asset is enabled for execution.
             leverage: Leverage multiplier for trading (default: 100 for forex/commodities).
         """
-        super().__init__(allocation=allocation, enabled=enabled, leverage=leverage)
+        super().__init__(allocation=allocation, leverage=leverage)
 
         self._setup_strategies()
-        self._setup_allocation()
 
     def _setup_strategies(self) -> None:
         self._strategies = [
             TestStrategy(
                 id="test",
-                allocation=0.0,
-                enabled=True,
                 settings={
                     "entry_waiting_time": 5,
                     "entry_volume": 0.01,
@@ -48,8 +44,6 @@ class Asset(AssetService):
             ),
             EMA5BreakoutStrategy(
                 id="ema5_breakout",
-                allocation=0.0,
-                enabled=True,
                 settings={
                     "entry_allow_multiple": False,
                     "entry_waiting_time": 0,
@@ -69,8 +63,6 @@ class Asset(AssetService):
             ),
             TurtleTradingStrategy(
                 id="turtle_trading",
-                allocation=0.0,
-                enabled=True,
                 settings={
                     "volume_percentage": 0.09,
                     "donchian_entry_period": 55,
@@ -84,18 +76,9 @@ class Asset(AssetService):
             ),
             MebFaberTimingStrategy(
                 id="meb_faber_timing",
-                allocation=0.0,
-                enabled=True,
                 settings={
                     "volume_percentage": 1.0,
                     "sma_period": 10,
                 },
             ),
         ]
-
-    def _setup_allocation(self) -> None:
-        enabled_strategies = [s for s in self._strategies if s.enabled]
-        allocation_per_strategy = self.allocation / max(len(enabled_strategies), 1)
-
-        for strategy in enabled_strategies:
-            strategy.allocation = allocation_per_strategy

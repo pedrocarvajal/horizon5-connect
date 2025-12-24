@@ -46,7 +46,6 @@ class DonchianBreakoutStrategy(StrategyService):
     _MIN_CANDLES_FOR_ATR: int = 1
     _MIN_CANDLES_REQUIRED: int = 2
 
-    _enabled = True
     _name = "DonchianBreakout"
     _settings: Dict[str, Any]
 

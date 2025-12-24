@@ -34,7 +34,6 @@ class TestStrategy(StrategyService):
         "log_interval_minutes": 1,
     }
 
-    _enabled = True
     _name = "Test"
     _settings: Dict[str, Any]
 

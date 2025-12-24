@@ -1,20 +1,10 @@
 """Portfolio interface for multi-asset container."""
 
 from abc import ABC
-from typing import Any, Dict, List, Type
-
-from typing_extensions import NotRequired, TypedDict
+from typing import Any, Dict, List
 
 from vendor.interfaces.asset import AssetInterface
 from vendor.models.tick import TickModel
-
-
-class AssetConfig(TypedDict):
-    """Configuration for an asset in a portfolio."""
-
-    asset: Type[AssetInterface]
-    allocation: float
-    enabled: NotRequired[bool]
 
 
 class PortfolioInterface(ABC):
@@ -22,9 +12,8 @@ class PortfolioInterface(ABC):
 
     _name: str
     _id: str
-    _ready: bool
-    _assets: List[AssetConfig]
-    _asset_instances: List[AssetInterface]
+    _allocation: float
+    _assets: List[AssetInterface]
 
     @property
     def id(self) -> str:
@@ -32,19 +21,19 @@ class PortfolioInterface(ABC):
         return self._id
 
     @property
-    def assets(self) -> List[AssetConfig]:
-        """Return the list of asset configurations."""
+    def name(self) -> str:
+        """Return the portfolio name."""
+        return self._name
+
+    @property
+    def allocation(self) -> float:
+        """Return the portfolio allocation."""
+        return self._allocation
+
+    @property
+    def assets(self) -> List[AssetInterface]:
+        """Return the list of assets."""
         return self._assets
-
-    @property
-    def ready(self) -> bool:
-        """Return whether the portfolio is ready."""
-        return self._ready
-
-    @property
-    def asset_instances(self) -> List[AssetInterface]:
-        """Return the list of instantiated assets."""
-        return self._asset_instances
 
     def setup(self, **kwargs: Any) -> None:  # noqa: B027
         """Configure the portfolio with runtime parameters."""
