@@ -21,6 +21,7 @@ class AnalyticComponent(PortfolioAnalytic):
         backtest_id: Optional[str] = None,
         commands_queue: Optional[Queue[Any]] = None,
     ) -> None:
+        """Initialize analytic component for portfolio."""
         super().__init__(
             portfolio_id=portfolio_id,
             assets=assets,

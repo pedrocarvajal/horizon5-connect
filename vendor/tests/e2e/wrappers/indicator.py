@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from assets.xauusd import Asset as XauusdAsset
+from assets.xauusd import Asset as XauusdAsset  # pyright: ignore[reportMissingImports,reportUnknownVariableType]
+
 from vendor.enums.timeframe import Timeframe
 from vendor.interfaces.indicator import IndicatorInterface
 from vendor.models.candle import CandleModel

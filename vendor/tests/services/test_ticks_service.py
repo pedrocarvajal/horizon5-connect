@@ -31,7 +31,7 @@ class TestTicksServiceIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self._temp_dir = tempfile.mkdtemp()
         self._log = LoggingService()
-        self._gateway = GatewayService(gateway="metaapi", backtest=True)
+        self._gateway = GatewayService(gateway="binance")
         self._service = TicksService()
         self._service._ticks_folder = Path(self._temp_dir)
 

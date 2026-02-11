@@ -1,3 +1,5 @@
+"""Orderbook service for managing order lifecycle and margin."""
+
 import datetime
 import threading
 from typing import Callable, Dict, List, Optional
@@ -22,6 +24,8 @@ SYNC_INTERVAL_SECONDS: int = 60
 
 
 class OrderbookService(OrderbookInterface):
+    """Manage order lifecycle, margin, and gateway synchronization."""
+
     _backtest_id: Optional[str]
     _nav: float
     _exposure: float
@@ -40,6 +44,7 @@ class OrderbookService(OrderbookInterface):
         gateway: GatewayInterface,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
+        """Initialize orderbook with asset allocation and gateway handler."""
         self._log = LoggingService()
 
         self._backtest_id = backtest_id
@@ -62,6 +67,7 @@ class OrderbookService(OrderbookInterface):
         )
 
     def cancel(self, order: OrderModel) -> None:
+        """Cancel an opening or open order and release its margin."""
         if self._tick is None:
             self._log.error("Tick must be set before cancelling orders.")
             return
@@ -105,6 +111,7 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def clean(self) -> None:
+        """Remove closed orders from the orderbook."""
         with self._orders_lock:
             for order_id in list(self._orders.keys()):
                 if self._orders[order_id].status in [
@@ -114,6 +121,7 @@ class OrderbookService(OrderbookInterface):
                     self._open_orders_index.discard(order_id)
 
     def close(self, order: OrderModel) -> None:
+        """Close an order, settle profit, and release margin."""
         if self._tick is None:
             self._log.error("Tick must be set before closing orders.")
             return
@@ -190,6 +198,7 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def open(self, order: OrderModel) -> None:
+        """Open an order after validating margin requirements."""
         if self._tick is None:
             self._log.error("Tick must be set before opening orders.")
             return
@@ -270,6 +279,7 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def refresh(self, tick: TickModel) -> None:
+        """Update tick, check margin levels, and sync open orders."""
         self._tick = tick
 
         if self.used_margin > 0 and self.margin_level < MARGIN_LIQUIDATION_RATIO:
@@ -319,6 +329,7 @@ class OrderbookService(OrderbookInterface):
         side: Optional[OrderSide] = None,
         status: Optional[OrderStatus] = None,
     ) -> List[OrderModel]:
+        """Filter orders by side and status."""
         with self._orders_lock:
             return [
                 order
@@ -412,6 +423,7 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def exposure(self) -> float:
+        """Return total notional exposure of open orders."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price)
@@ -421,15 +433,18 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def nav(self) -> float:
+        """Return net asset value (balance + used margin + unrealized PnL)."""
         return self._balance + self.used_margin + self.pnl
 
     @property
     def orders(self) -> List[OrderModel]:
+        """Return all orders in the orderbook."""
         with self._orders_lock:
             return list(self._orders.values())
 
     @property
     def pnl(self) -> float:
+        """Return total unrealized profit/loss of open orders."""
         with self._orders_lock:
             return sum(
                 order.profit
@@ -439,6 +454,7 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def used_margin(self) -> float:
+        """Return total margin used by open orders."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price) / self._leverage

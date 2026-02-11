@@ -12,6 +12,7 @@ class Asset(AssetService):
     """BTCUSDT (Bitcoin) trading asset with all strategies for Binance."""
 
     def __init__(self) -> None:
+        """Initialize BTCUSDT asset with all strategies."""
         super().__init__(
             symbol="BTCUSDT",
             gateway_name="binance",
@@ -64,13 +65,13 @@ class Asset(AssetService):
                 IBSStrategy(
                     id="ibs",
                     settings={
-                        "volume_percentage": 0.40,
-                        "ibs_threshold": 0.20,
+                        "volume_percentage": 0.80,
+                        "ibs_threshold": 0.12,
                         "max_holding_bars": 5,
-                        "adx_period": 14,
-                        "adx_threshold": 20.0,
+                        "adx_period": 8,
+                        "adx_threshold": 25.0,
                         "use_adx_filter": True,
-                        "stop_loss_percentage": 0.03,
+                        "stop_loss_percentage": 0.05,
                     },
                 ),
                 MebFaberTimingStrategy(

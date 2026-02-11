@@ -29,9 +29,41 @@ class GatewaySymbolInfoModel(BaseModel):
         default="",
         description="Currency pair or index identifier (e.g., XAUUSD)",
     )
+    base_asset: str = Field(
+        default="",
+        description="Base asset of the trading pair (e.g., BTC)",
+    )
+    quote_asset: str = Field(
+        default="",
+        description="Quote asset of the trading pair (e.g., USDT)",
+    )
+    price_precision: int = Field(
+        default=2,
+        description="Number of decimal places for price",
+    )
     quantity_precision: int = Field(
         default=2,
         description="Number of decimal places for quantity/volume",
+    )
+    min_price: Optional[float] = Field(
+        default=None,
+        description="Minimum allowed order price",
+    )
+    max_price: Optional[float] = Field(
+        default=None,
+        description="Maximum allowed order price",
+    )
+    tick_size: Optional[float] = Field(
+        default=None,
+        description="Minimum price movement increment",
+    )
+    min_notional: Optional[float] = Field(
+        default=None,
+        description="Minimum notional value for orders",
+    )
+    margin_percent: Optional[float] = Field(
+        default=None,
+        description="Required margin percentage for the symbol",
     )
     point: Optional[float] = Field(
         default=None,
@@ -93,9 +125,14 @@ class GatewaySymbolInfoModel(BaseModel):
     @field_validator(
         "point",
         "pip_size",
+        "min_price",
+        "max_price",
+        "tick_size",
         "min_quantity",
         "max_quantity",
         "step_size",
+        "min_notional",
+        "margin_percent",
         "contract_size",
         "initial_margin",
         "maintenance_margin",

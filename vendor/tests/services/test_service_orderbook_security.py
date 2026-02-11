@@ -18,7 +18,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         order = self._create_order()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         with patch.object(
             orderbook.gateway_handler.gateway, "get_trades", side_effect=Exception("Simulated get_trades error")
         ):
@@ -37,7 +37,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_empty_symbol_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         order = self._create_order()
         order.symbol = ""
         handler = cast(GatewayHandlerService, orderbook.gateway_handler)
@@ -46,7 +46,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_symbol_too_long_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         order = self._create_order()
         order.symbol = "A" * 25
         handler = cast(GatewayHandlerService, orderbook.gateway_handler)
@@ -55,7 +55,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_volume_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -72,7 +72,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_volume_above_maximum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -89,7 +89,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_price_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -106,7 +106,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_price_above_maximum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -123,7 +123,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_notional_below_minimum_rejected(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -140,7 +140,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_validate_valid_order_accepted(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(
             symbol="XAUUSD",
             min_quantity=0.001,
@@ -157,7 +157,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_symbol_info_cached_after_first_request(self) -> None:
         orderbook = self._create_orderbook()
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         symbol_info = GatewaySymbolInfoModel(symbol="XAUUSD")
         mock_get_symbol_info = Mock(return_value=symbol_info)
         handler = cast(GatewayHandlerService, orderbook.gateway_handler)
@@ -247,7 +247,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_open_order_gateway_failure_reverts_balance(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance
@@ -259,7 +259,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_close_order_gateway_failure_reverts_balance(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         order = self._create_order(volume=0.01, price=50000.0)
@@ -276,7 +276,7 @@ class TestServiceOrderbookSecurity(OrderbookWrapper):
 
     def test_multiple_gateway_failures_tracked_correctly(self) -> None:
         orderbook = self._create_orderbook(balance=10000.0)
-        orderbook.is_backtest = False
+        orderbook._backtest_id = None  # pyright: ignore[reportPrivateUsage]
         tick = self._create_tick(50000.0)
         orderbook.refresh(tick)
         initial_balance = orderbook.balance

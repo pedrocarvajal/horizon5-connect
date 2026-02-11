@@ -39,12 +39,14 @@ class OrderbookWrapper(unittest.TestCase):
         balance: float = _INITIAL_BALANCE,
         leverage: int = 10,
     ) -> OrderbookService:
+        asset = Mock()
+        asset.allocation = balance
+        account = Mock()
+        account.leverage = leverage
         return OrderbookService(
-            backtest=True,
             backtest_id="test-orderbook-123",
-            allocation=balance,
-            balance=balance,
-            leverage=leverage,
+            asset=asset,
+            account=account,
             gateway=self._gateway,
             on_transaction=self._on_transaction_callback,
         )

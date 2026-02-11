@@ -7,8 +7,9 @@ import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-import matplotlib  # type: ignore[import-untyped]
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from vendor.configs.timezone import TIMEZONE
 
@@ -137,7 +138,7 @@ def _generate_strategy_chart(
         drawdown_pct = ((equity - peak) / peak) * 100 if peak > 0 else 0
         drawdown_values.append(drawdown_pct)
 
-    fig, (ax_equity, ax_drawdown) = plt.subplots(
+    fig, (ax_equity, ax_drawdown) = plt.subplots(  # type: ignore[misc]
         2,
         1,
         figsize=(14, 8),
@@ -151,7 +152,11 @@ def _generate_strategy_chart(
     ax_equity.set_ylabel("Equity ($)")
     ax_equity.set_title(f"Performance: {name}", fontsize=13, fontweight="bold")
     ax_equity.grid(True, alpha=0.3)
-    ax_equity.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _pos: f"${x:,.0f}"))
+
+    def format_dollar(x: float, _pos: int) -> str:
+        return f"${x:,.0f}"
+
+    ax_equity.yaxis.set_major_formatter(FuncFormatter(format_dollar))
 
     final_equity = equity_values[-1]
     return_pct = ((final_equity - allocation) / allocation) * 100
@@ -171,13 +176,17 @@ def _generate_strategy_chart(
     ax_drawdown.set_ylabel("Drawdown (%)")
     ax_drawdown.set_xlabel("Date")
     ax_drawdown.grid(True, alpha=0.3)
-    ax_drawdown.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _pos: f"{x:.1f}%"))
+
+    def format_percent(x: float, _pos: int) -> str:
+        return f"{x:.1f}%"
+
+    ax_drawdown.yaxis.set_major_formatter(FuncFormatter(format_percent))
 
     fig.autofmt_xdate()
     plt.tight_layout()
 
     filepath = output_directory / f"performance_{name}.png"
-    fig.savefig(filepath, dpi=150, bbox_inches="tight")
+    fig.savefig(str(filepath), dpi=150, bbox_inches="tight")  # type: ignore[call-overload]
     plt.close(fig)
 
 
@@ -211,10 +220,9 @@ def _write_summary(output_directory: Path, report: Dict[str, Any]) -> None:
         for strategy_report in asset_report.get("strategies", []):
             lines.append(f"\n    [{strategy_report.get('strategy_id', 'N/A')}]")
             lines.append(f"    Trades:        {strategy_report.get('total_trades', 0)}")
-            lines.append(
-                f"    Win/Loss:      {strategy_report.get('winning_trades', 0)}"
-                f"/{strategy_report.get('losing_trades', 0)}"
-            )
+            wins = strategy_report.get("winning_trades", 0)
+            losses = strategy_report.get("losing_trades", 0)
+            lines.append(f"    Win/Loss:      {wins}/{losses}")
             lines.append(f"    Win Rate:      {strategy_report.get('win_rate', 0):.2f}%")
             lines.append(f"    Profit:        ${strategy_report.get('total_profit', 0):,.2f}")
             lines.append(f"    Gross Profit:  ${strategy_report.get('gross_profit', 0):,.2f}")

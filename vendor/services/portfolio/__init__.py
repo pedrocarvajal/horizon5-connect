@@ -53,7 +53,7 @@ class PortfolioService(PortfolioInterface):
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
-        asset_reports = []
+        asset_reports: List[Dict[str, Any]] = []
         trade_histories: Dict[str, Any] = {}
 
         for asset in self._assets:

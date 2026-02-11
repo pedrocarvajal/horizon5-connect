@@ -63,7 +63,7 @@ class AssetService(AssetInterface):
         Returns:
             Asset report with aggregated performance and strategy reports.
         """
-        strategy_reports = []
+        strategy_reports: List[Dict[str, Any]] = []
         trade_histories: Dict[str, List[Dict[str, Any]]] = {}
 
         for strategy in self._strategies:
@@ -152,6 +152,7 @@ class AssetService(AssetInterface):
         # self._analytic.on_tick(tick)
 
     def on_transaction(self, order: OrderModel) -> None:
+        """Route a transaction event to the owning strategy."""
         for strategy in self._strategies:
             if order.strategy_id != strategy.id:
                 continue
