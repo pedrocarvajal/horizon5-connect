@@ -1,7 +1,7 @@
 """Gateway handler interface for order execution."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from vendor.models.order import OrderModel
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class GatewayHandlerInterface(ABC):
     """Abstract interface for gateway handler implementations."""
 
-    _backtest: bool
+    _backtest_id: Optional[str]
     _gateway: "GatewayInterface"
 
     @abstractmethod
@@ -47,7 +47,7 @@ class GatewayHandlerInterface(ABC):
     @property
     def backtest(self) -> bool:
         """Return whether running in backtest mode."""
-        return self._backtest
+        return self._backtest_id is not None
 
     @property
     def gateway(self) -> "GatewayInterface":

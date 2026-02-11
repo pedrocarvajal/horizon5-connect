@@ -37,7 +37,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
     Attributes:
         _gateway: Gateway service instance for trading operations.
         _log: Logging service instance for logging operations.
-        _backtest: Whether running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _verification: Dictionary containing gateway verification status.
         _polling_tasks: Dictionary mapping order IDs to async polling tasks.
@@ -79,7 +78,6 @@ class GatewayHandlerService(GatewayHandlerInterface):
 
         self._gateway = gateway
 
-        self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
         self._verification = None
         self._polling_tasks = {}
@@ -87,7 +85,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
         self._symbol_info_cache = {}
         self._cache_lock = threading.Lock()
 
-        if not self._backtest:
+        if not self.backtest:
             self._verification = self._gateway.get_verification()
             self._validate_gateway_configuration()
 
@@ -940,7 +938,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
             Dictionary mapping order_id to OrderSyncResult for orders
             that were closed externally. Empty dict if no changes or backtest.
         """
-        if self._backtest or not open_orders:
+        if self.backtest or not open_orders:
             return {}
 
         gateway_positions = self._fetch_gateway_positions()
@@ -984,7 +982,7 @@ class GatewayHandlerService(GatewayHandlerInterface):
         Returns:
             OrderSyncResult with current state from gateway.
         """
-        if self._backtest:
+        if self.backtest:
             return OrderSyncResult(
                 exists=True,
                 status=order.status,

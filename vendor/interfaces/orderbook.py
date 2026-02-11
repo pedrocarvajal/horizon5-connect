@@ -18,7 +18,7 @@ class OrderbookInterface(ABC):
     _orders: Dict[str, OrderModel]
     _balance: float
     _allocation: float
-    _backtest: bool
+    _backtest_id: Optional[str]
     _leverage: int
     _margin_call_active: bool
     _open_orders_index: Set[str]
@@ -129,12 +129,7 @@ class OrderbookInterface(ABC):
     @property
     def is_backtest(self) -> bool:
         """Return whether running in backtest mode."""
-        return self._backtest
-
-    @is_backtest.setter
-    def is_backtest(self, value: bool) -> None:
-        """Set backtest mode."""
-        self._backtest = value
+        return self._backtest_id is not None
 
     @property
     def leverage(self) -> int:

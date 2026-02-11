@@ -7,13 +7,11 @@ from abc import abstractmethod
 from multiprocessing import Queue
 from typing import Any, List, Optional
 
-from vendor.enums.command import Command
 from vendor.enums.snapshot_event import SnapshotEvent
 from vendor.interfaces.analytic import AnalyticInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.models.snapshot import SnapshotModel
 from vendor.models.tick import TickModel
-from vendor.providers.horizon_router import HorizonRouterProvider
 from vendor.services.analytic.helpers.get_alpha import get_alpha
 from vendor.services.analytic.helpers.get_beta import get_beta
 from vendor.services.analytic.helpers.get_cagr import get_cagr
@@ -39,7 +37,6 @@ class AnalyticWrapper(AnalyticInterface):
     to define their specific data source behavior.
 
     Attributes:
-        _backtest: Whether running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _commands_queue: Queue for sending commands to external services.
         _snapshot: Current analytics snapshot.
@@ -49,7 +46,6 @@ class AnalyticWrapper(AnalyticInterface):
         _previous_day_nav: NAV from the previous day for daily performance calculation.
     """
 
-    _backtest: bool
     _backtest_id: Optional[str]
     _commands_queue: Optional[Queue[Any]]
     _month_start_nav: float
@@ -167,17 +163,7 @@ class AnalyticWrapper(AnalyticInterface):
             self._snapshot.performance_daily_percentage = 0.0
 
     def _send_snapshot_to_queue(self, snapshot_data: dict[str, Any]) -> None:
-        if not self._commands_queue:
-            return
-
-        provider = HorizonRouterProvider()
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": provider.snapshot_create,
-                "args": {"data": snapshot_data},
-            }
-        )
+        pass
 
     def _get_elapsed_days(self) -> int:
         """Calculate number of days elapsed since tracking started.

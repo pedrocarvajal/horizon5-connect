@@ -14,6 +14,7 @@ from vendor.interfaces.backtest import BacktestInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.interfaces.ticks import TicksInterface
+from vendor.services.backtest.report import generate_report
 from vendor.services.logging import LoggingService
 from vendor.services.ticks import DownloadTask, TicksService
 
@@ -117,11 +118,25 @@ class BacktestService(BacktestInterface):
         duration = get_duration(self._start_at, end_at)
         report = self._portfolio.on_end()
 
+        trade_histories = report.pop("trade_histories", {})
+        for asset_report in report.get("assets", []):
+            asset_report.pop("trade_histories", None)
+
+        report_path = generate_report(
+            backtest_id=self._id,
+            report=report,
+            trade_histories=trade_histories,
+            allocation=report.get("allocation", 0),
+        )
+
+        self._log.info("Report saved", path=str(report_path))
+
         self._events_queue.put(
             {
                 "event": BacktestEvent.BACKTEST_FINISHED,
                 "portfolio_id": self._portfolio.id,
                 "report": report,
+                "report_path": str(report_path),
             }
         )
 

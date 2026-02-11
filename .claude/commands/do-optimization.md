@@ -10,12 +10,12 @@ Optimize strategy configuration settings through systematic backtesting iteratio
 ## Arguments
 
 - `$ARGUMENTS` - Required. Format: `<asset> <strategy>`
-  - `<asset>`: Asset folder name (e.g., `xauusd`, `gbpusd`)
-  - `<strategy>`: Strategy class name (e.g., `DonchianBreakoutStrategy`, `EMA5BreakoutStrategy`)
+  - `<asset>`: Asset folder name (e.g., `btcusdt`)
+  - `<strategy>`: Strategy class name (e.g., `DonchianBreakoutStrategy`, `RSIBollingerBreakoutStrategy`)
 
 **Examples:**
-- `/do-optimization xauusd DonchianBreakoutStrategy`
-- `/do-optimization gbpusd RSIBollingerStrategy`
+- `/do-optimization btcusdt DonchianBreakoutStrategy`
+- `/do-optimization btcusdt TurtleTradingStrategy`
 
 ## Constraints
 
@@ -56,8 +56,8 @@ Find optimal configuration for <STRATEGY> on <ASSET> with:
 [To be filled after analysis]
 
 ## Iteration Log
-| # | Date | Parameters Changed | Return % | Drawdown % | Sharpe | Notes |
-|---|------|-------------------|----------|------------|--------|-------|
+| # | Date | Parameters Changed | Return % | Drawdown % | Profit Factor | Notes |
+|---|------|-------------------|----------|------------|---------------|-------|
 [Iterations recorded here]
 
 ## Best Configuration
@@ -95,18 +95,20 @@ Before optimizing, deeply understand the strategy:
 Create portfolio at `portfolios/<asset>-test.py`:
 
 ```python
-from interfaces.portfolio import PortfolioInterface
-from services.portfolio import PortfolioService
-from typing import List, Type
-from interfaces.asset import AssetInterface
-from assets.<asset> import <AssetClass>
+"""Test portfolio for <asset> optimization."""
+
+from vendor.services.portfolio import PortfolioService
 
 
 class Portfolio(PortfolioService):
-    _id: str = "<asset>-test"
+    """Single-asset test portfolio for optimization."""
 
-    def setup_assets(self) -> List[Type[AssetInterface]]:
-        return [<AssetClass>]
+    def __init__(self) -> None:
+        super().__init__(
+            name="<Asset> Test",
+            assets=["assets.<asset>"],
+            allocation=100_000,
+        )
 ```
 
 ### Step 5: Establish Baseline
@@ -114,12 +116,13 @@ class Portfolio(PortfolioService):
 Run initial backtest with current settings (see `.claude/docs/how-to-run-backtest.md`):
 
 1. Execute backtest with 3-year in-sample period
-2. Record baseline metrics in TRACKING file:
+2. Record baseline metrics in storage/TRACKING-{(symbol)-(strategy)}.md file:
    - Return %
    - Max Drawdown %
-   - Sharpe Ratio
+   - Profit Factor
    - Win Rate
    - Number of trades
+3. Review generated report at `storage/backtests/{backtest_id}/`
 
 ### Step 6: Iterative Optimization
 
@@ -179,12 +182,12 @@ Final report in TRACKING file and to user:
 ### In-Sample Results (YYYY-MM-DD to YYYY-MM-DD):
 - Return: X%
 - Max Drawdown: X%
-- Sharpe: X
+- Profit Factor: X
 
 ### Out-of-Sample Results (YYYY-MM-DD to YYYY-MM-DD):
 - Return: X%
 - Max Drawdown: X%
-- Sharpe: X
+- Profit Factor: X
 
 ### Robustness Assessment:
 [Analysis of IS vs OOS consistency]

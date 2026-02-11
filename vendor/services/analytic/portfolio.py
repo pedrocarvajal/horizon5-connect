@@ -41,7 +41,6 @@ class PortfolioAnalytic(AnalyticWrapper):
         self,
         portfolio_id: str,
         assets: List[AssetInterface],
-        backtest: bool = False,
         backtest_id: Optional[str] = None,
         quality_vs_benchmark_method: QualityVsBenchmarkMethod = QualityVsBenchmarkMethod.FQS_BENCHMARK,
         commands_queue: Optional[Queue[Any]] = None,
@@ -51,26 +50,20 @@ class PortfolioAnalytic(AnalyticWrapper):
         Args:
             portfolio_id: Identifier of the portfolio being analyzed.
             assets: List of asset instances to aggregate metrics from.
-            backtest: Whether running in backtest mode.
-            backtest_id: Backtest identifier (required if backtest is True).
+            backtest_id: Backtest identifier (None for live mode).
             quality_vs_benchmark_method: Method for calculating quality vs benchmark score.
             commands_queue: Queue for sending commands to external services.
 
         Raises:
             ValueError: If portfolio_id is empty.
-            ValueError: If backtest is True but backtest_id is None.
         """
         self._log = LoggingService()
 
         if not portfolio_id:
             raise ValueError("Portfolio ID is required")
 
-        if backtest and not backtest_id:
-            raise ValueError("Backtest ID is required when backtest is True")
-
         self._portfolio_id = portfolio_id
         self._assets = assets
-        self._backtest = backtest
         self._backtest_id = backtest_id
         self._quality_vs_benchmark_method = quality_vs_benchmark_method
         self._commands_queue = commands_queue
@@ -87,7 +80,7 @@ class PortfolioAnalytic(AnalyticWrapper):
             strategy_id=self._portfolio_id,
             portfolio_id=self._portfolio_id,
             backtest_id=self._backtest_id,
-            is_backtest=self._backtest,
+            is_backtest=self._backtest_id is not None,
             capital_allocation=initial_allocation,
             capital_nav=initial_allocation,
             capital_nav_peak=initial_allocation,
@@ -155,7 +148,7 @@ class PortfolioAnalytic(AnalyticWrapper):
         report: Dict[str, Any] = {
             "portfolio_id": self._portfolio_id,
             "backtest_id": self._backtest_id,
-            "is_backtest": self._backtest,
+            "is_backtest": self._backtest_id is not None,
             **self._snapshot.to_dict(),
             "assets": assets_reports,
         }

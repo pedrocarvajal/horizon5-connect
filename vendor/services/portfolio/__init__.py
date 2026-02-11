@@ -12,68 +12,83 @@ from vendor.helpers.get_slug import get_slug
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.portfolio import PortfolioInterface
+from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
 from vendor.services.logging import LoggingService
 from vendor.services.portfolio.components.analytic import AnalyticComponent
+from vendor.services.portfolio.components.gateway import GatewayComponent
+from vendor.services.portfolio.components.orderbook import OrderbookComponent
 from vendor.services.strategy.helpers.get_truncated_timeframe import get_truncated_timeframe
 
 
 class PortfolioService(PortfolioInterface):
     """Service for managing a portfolio of trading assets."""
 
+    _commands_queue: Queue[Any]
+    _events_queue: Queue[Any]
+
     _id: str
     _name: str
     _allocation: float
     _assets: List[AssetInterface]
-
-    _analytic_component: AnalyticComponent
-    _backtest: bool
     _backtest_id: Optional[str]
-    _commands_queue: Optional[Queue[Any]]
-    _events_queue: Optional[Queue[Any]]
     _last_timestamps: Dict[Timeframe, datetime.datetime]
+
+    _analytic: AnalyticComponent
+    _gateway: GatewayComponent
+    _orderbooks: OrderbookComponent
     _log: LoggingInterface
 
     def __init__(self, name: str, allocation: float, assets: List[str]) -> None:
         """Initialize the portfolio with an empty asset list."""
         self._name = name
-        self._id = get_slug(self._name)
         self._allocation = allocation
         self._assets = [get_asset_by_path(path)() for path in assets]
 
-        self._last_timestamps = {}
-
-        self._analytic_component = AnalyticComponent()
-        self._backtest = False
+        self._id = get_slug(self._name)
         self._backtest_id = None
-        self._commands_queue = None
-        self._events_queue = None
+        self._last_timestamps = {}
 
         self._log = LoggingService()
 
     def on_end(self) -> Dict[str, Any]:
         """Finalize portfolio and return aggregated report."""
-        if not self._analytic_component.analytic:
-            return {}
+        asset_reports = []
+        trade_histories: Dict[str, Any] = {}
 
-        report = self._analytic_component.analytic.on_end()
-        return report if report else {}
+        for asset in self._assets:
+            report = asset.on_end()
+            if report:
+                asset_reports.append(report)
+                for strategy_id, trades in report.get("trade_histories", {}).items():
+                    trade_histories[strategy_id] = trades
+
+        total_profit = sum(r.get("total_profit", 0) for r in asset_reports)
+        total_trades = sum(r.get("total_trades", 0) for r in asset_reports)
+
+        return {
+            "portfolio": self._name,
+            "allocation": self._allocation,
+            "total_profit": round(total_profit, 2),
+            "total_trades": total_trades,
+            "return_pct": round((total_profit / self._allocation) * 100, 2) if self._allocation > 0 else 0,
+            "assets": asset_reports,
+            "trade_histories": trade_histories,
+        }
 
     def on_new_day(self) -> None:
         """Handle a new day event. Cascades to all assets."""
         for asset in self._assets:
             asset.on_new_day()
 
-        if self._analytic_component.analytic:
-            self._analytic_component.analytic.on_new_day()
+        # self._analytic.on_new_day()
 
     def on_new_hour(self) -> None:
         """Handle a new hour event. Cascades to all assets."""
         for asset in self._assets:
             asset.on_new_hour()
 
-        if self._analytic_component.analytic:
-            self._analytic_component.analytic.on_new_hour()
+        # self._analytic.on_new_hour()
 
     def on_new_minute(self) -> None:
         """Handle a new minute event. Cascades to all assets."""
@@ -85,16 +100,14 @@ class PortfolioService(PortfolioInterface):
         for asset in self._assets:
             asset.on_new_month()
 
-        if self._analytic_component.analytic:
-            self._analytic_component.analytic.on_new_month()
+        # self._analytic.on_new_month()
 
     def on_new_week(self) -> None:
         """Handle a new week event. Cascades to all assets."""
         for asset in self._assets:
             asset.on_new_week()
 
-        if self._analytic_component.analytic:
-            self._analytic_component.analytic.on_new_week()
+        # self._analytic.on_new_week()
 
     def on_tick(self, ticks: Dict[str, TickModel]) -> None:
         """Process tick data for all assets.
@@ -108,15 +121,21 @@ class PortfolioService(PortfolioInterface):
             tick = ticks.get(asset.symbol)
 
             if tick:
-                asset.on_tick(tick)
-
-                if self._analytic_component.analytic:
-                    self._analytic_component.analytic.on_tick(tick)
-
                 last_tick = tick
+                asset.on_tick(tick)
 
         if last_tick:
             self._check_timeframe_transitions(last_tick)
+
+    def on_transaction(self, order: OrderModel) -> None:
+        """Handle a transaction event. Cascades to the matching asset and analytics."""
+        for asset in self._assets:
+            if order.asset != asset:
+                continue
+
+            asset.on_transaction(order)
+
+        # self._analytic.on_transaction(order)
 
     def setup(self, **kwargs: Any) -> None:
         """Configure the portfolio name and/or runtime parameters.
@@ -150,22 +169,46 @@ class PortfolioService(PortfolioInterface):
         if len(self._name) == 0:
             raise ValueError("Name is required")
 
-        self._backtest = kwargs.get("backtest", False)
         self._backtest_id = kwargs.get("backtest_id")
         self._commands_queue = commands_queue
         self._events_queue = events_queue
 
         for asset in self._assets:
             asset.allocation = self._allocation / len(self._assets)
-            asset.setup(portfolio=self, **kwargs)
 
-        self._analytic_component.setup_analytic(
+        self._gateway = GatewayComponent(
             portfolio_id=self._id,
             assets=self._assets,
-            backtest=self._backtest,
             backtest_id=self._backtest_id,
             commands_queue=self._commands_queue,
         )
+
+        self._orderbooks = OrderbookComponent(
+            portfolio_id=self._id,
+            assets=self._assets,
+            gateways=self._gateway.gateways,
+            on_transaction=self.on_transaction,
+            backtest_id=self._backtest_id,
+            commands_queue=self._commands_queue,
+        )
+
+        for asset in self._assets:
+            orderbook = self._orderbooks.get(asset.symbol)
+            gateway = self._gateway.get(asset.gateway_name)
+
+            asset.setup(
+                portfolio=self,
+                orderbook=orderbook,
+                gateway=gateway,
+                **kwargs,
+            )
+
+        # self._analytic = AnalyticComponent(
+        #     portfolio_id=self._id,
+        #     assets=self._assets,
+        #     backtest_id=self._backtest_id,
+        #     commands_queue=self._commands_queue,
+        # )
 
     def _check_timeframe_transitions(self, tick: TickModel) -> None:
         """Check for timeframe transitions and trigger appropriate events."""

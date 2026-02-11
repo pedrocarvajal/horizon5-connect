@@ -62,6 +62,7 @@ class GatewayAccountModel(BaseModel):
         margin: Margin used for open positions. Must be >= 0.
         exposure: Total exposure (notional value of open positions). Must be >= 0.
         pnl: Profit and Loss (realized + unrealized).
+        leverage: Account leverage multiplier. Must be >= 1.
         response: Raw broker-specific account data for additional information.
     """
 
@@ -102,6 +103,11 @@ class GatewayAccountModel(BaseModel):
     pnl: float = Field(
         default=0.0,
         description="Profit and Loss (realized + unrealized)",
+    )
+    leverage: int = Field(
+        default=1,
+        ge=1,
+        description="Account leverage multiplier",
     )
     response: Optional[Any] = Field(
         default=None,

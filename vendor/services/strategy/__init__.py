@@ -17,9 +17,7 @@ from vendor.interfaces.strategy import StrategyInterface
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
-from vendor.services.analytic import StrategyAnalytic
 from vendor.services.logging import LoggingService
-from vendor.services.orderbook import OrderbookService
 
 
 class StrategyService(StrategyInterface):
@@ -40,7 +38,6 @@ class StrategyService(StrategyInterface):
     Attributes:
         _id: Unique identifier for the strategy.
         _name: Name of the strategy (typically set by child classes).
-        _backtest: Whether running in backtest mode.
         _backtest_id: Optional backtest identifier.
         _asset: Reference to the asset service managing this strategy.
         _leverage: Leverage multiplier for trading.
@@ -82,7 +79,6 @@ class StrategyService(StrategyInterface):
         """
         self._log = LoggingService()
 
-        self._backtest = False
         self._backtest_id = None
         self._backtest_expectation = None
         self._backtest_quality_method = QualityMethod.FQS
@@ -99,31 +95,47 @@ class StrategyService(StrategyInterface):
         self._name = kwargs.get("name", getattr(self, "_name", ""))
         self._leverage = kwargs.get("leverage", 1)
         self._allocation = 0
+        self._trade_history: List[OrderModel] = []
 
     def on_end(self) -> Optional[Dict[str, Any]]:
         """
         Handle the end of strategy execution.
 
         In backtest mode, closes all open orders before finalizing analytics.
-        Always calls the analytics service to finalize tracking and generate
-        the final report.
 
         Returns:
-            Dictionary containing the analytics report, or None.
+            Dictionary containing the strategy report, or None.
         """
         if self._orderbook is None:
             return None
 
-        if self._analytic is None:
-            return None
-
-        if self._backtest:
-            self._log.info("Backtest mode detected, closing all orders.")
-
+        if self.backtest:
             for order in self._orderbook.orders:
-                self._orderbook.close(order)
+                if order.strategy_id == self._id:
+                    self._orderbook.close(order)
 
-        return self._analytic.on_end()
+        closed_orders = self._trade_history
+        winning = [o for o in closed_orders if o.profit > 0]
+        losing = [o for o in closed_orders if o.profit <= 0]
+        total_profit = sum(o.profit for o in closed_orders)
+        gross_profit = sum(o.profit for o in winning)
+        gross_loss = sum(o.profit for o in losing)
+        avg_win = gross_profit / len(winning) if winning else 0
+        avg_loss = gross_loss / len(losing) if losing else 0
+
+        return {
+            "strategy_id": self._id,
+            "total_trades": len(closed_orders),
+            "winning_trades": len(winning),
+            "losing_trades": len(losing),
+            "win_rate": round(len(winning) / len(closed_orders) * 100, 2) if closed_orders else 0,
+            "total_profit": round(total_profit, 2),
+            "gross_profit": round(gross_profit, 2),
+            "gross_loss": round(gross_loss, 2),
+            "average_win": round(avg_win, 2),
+            "average_loss": round(avg_loss, 2),
+            "profit_factor": round(abs(gross_profit / gross_loss), 2) if gross_loss != 0 else 0,
+        }
 
     def on_new_day(self) -> None:
         """
@@ -135,8 +147,8 @@ class StrategyService(StrategyInterface):
         if self._orderbook is None:
             return
 
-        if self._analytic is None:
-            return
+        # if self._analytic is None:
+        #     return
 
         if self._tick is None:
             return
@@ -148,7 +160,7 @@ class StrategyService(StrategyInterface):
         self._log.setup_prefix(f"({date_str})[{self._asset.symbol}|{self._name}]")
 
         self._orderbook.clean()
-        self._analytic.on_new_day()
+        # self._analytic.on_new_day()
 
     def on_new_hour(self) -> None:
         """
@@ -157,10 +169,10 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new hour timeframe.
         Updates analytics for the new hour period.
         """
-        if self._analytic is None:
-            return
+        # if self._analytic is None:
+        #     return
 
-        self._analytic.on_new_hour()
+        # self._analytic.on_new_hour()
 
     def on_new_month(self) -> None:
         """
@@ -169,10 +181,10 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new month timeframe.
         Updates analytics for the new month period.
         """
-        if self._analytic is None:
-            return
+        # if self._analytic is None:
+        #     return
 
-        self._analytic.on_new_month()
+        # self._analytic.on_new_month()
 
     def on_new_week(self) -> None:
         """
@@ -181,17 +193,16 @@ class StrategyService(StrategyInterface):
         Called automatically when transitioning to a new week timeframe.
         Updates analytics for the new week period.
         """
-        if self._analytic is None:
-            return
+        # if self._analytic is None:
+        #     return
 
-        self._analytic.on_new_week()
+        # self._analytic.on_new_week()
 
     def on_tick(self, tick: TickModel) -> None:
         """
         Handle a new market tick event.
 
-        Updates the current tick, refreshes the orderbook, updates analytics,
-        and processes all candle services.
+        Updates the current tick, updates analytics, and processes all candle services.
 
         Args:
             tick: The current market tick data.
@@ -199,12 +210,11 @@ class StrategyService(StrategyInterface):
         if self._orderbook is None:
             return
 
-        if self._analytic is None:
-            return
+        # if self._analytic is None:
+        #     return
 
         self._tick = tick
-        self._orderbook.refresh(tick)
-        self._analytic.on_tick(tick)
+        # self._analytic.on_tick(tick)
 
         for candle in self._candles.values():
             candle.on_tick(tick)
@@ -219,10 +229,8 @@ class StrategyService(StrategyInterface):
         Args:
             order: The order model representing the transaction.
         """
-        if self._analytic is None:
-            return
-
-        self._analytic.on_transaction(order)
+        if order.status.is_closed():
+            self._trade_history.append(order)
 
     def open_order(
         self,
@@ -275,8 +283,8 @@ class StrategyService(StrategyInterface):
         order.strategy_id = self._id
         order.portfolio = self._portfolio
         order.asset = self._asset
-        order.gateway = self._asset.gateway
-        order.backtest = self._backtest
+        order.gateway = self._asset.gateway.gateway
+        order.backtest = self.backtest
         order.backtest_id = self._backtest_id
         order.symbol = self._asset.symbol
         order.leverage = self._orderbook.leverage
@@ -299,6 +307,7 @@ class StrategyService(StrategyInterface):
                 asset: AssetService instance managing this strategy (required).
                 backtest: Whether running in backtest mode (default: False).
                 backtest_id: Backtest identifier (required if backtest is True).
+                orderbook: Orderbook instance (required).
                 portfolio: Portfolio instance (required).
                 commands_queue: Queue for sending commands (required).
                 events_queue: Queue for receiving events (required).
@@ -306,6 +315,7 @@ class StrategyService(StrategyInterface):
         asset = kwargs.get("asset")
         backtest = kwargs.get("backtest", False)
         backtest_id = kwargs.get("backtest_id")
+        orderbook = kwargs.get("orderbook")
         portfolio = kwargs.get("portfolio")
         allocation = kwargs.get("allocation", 0)
         commands_queue = kwargs.get("commands_queue")
@@ -320,7 +330,7 @@ class StrategyService(StrategyInterface):
         if events_queue is None:
             raise ValueError("Events queue is required")
 
-        if backtest and not backtest_id:
+        if backtest_id is None and backtest:
             raise ValueError("Backtest ID is required")
 
         if not self._id:
@@ -332,51 +342,29 @@ class StrategyService(StrategyInterface):
         if self._leverage <= 0:
             raise ValueError("Leverage must be greater than 0")
 
+        if orderbook is None:
+            raise ValueError("Orderbook is required")
+
         self._asset = asset
         self._allocation = allocation
-        self._backtest = backtest
         self._backtest_id = backtest_id
         self._commands_queue = commands_queue
         self._events_queue = events_queue
+        self._orderbook = orderbook
         self._portfolio = portfolio
 
         if hasattr(asset, "leverage"):
             self._leverage = asset.leverage
 
-        self._setup_orderbook(asset)
-        self._setup_analytic(asset)
+        self._setup_analytic()
 
         self._log.setup_prefix(f"[{asset.symbol}|{self._name}]")
         self._log.success("Setup finished.", allocation=self._allocation)
 
-    def _setup_orderbook(self, asset: AssetInterface) -> None:
-        """Initialize the orderbook service."""
-        self._orderbook = OrderbookService(
-            backtest=self._backtest,
-            backtest_id=self._backtest_id,
-            balance=self._allocation,
-            allocation=self._allocation,
-            leverage=self._leverage,
-            gateway=asset.gateway,
-            on_transaction=self.on_transaction,
-        )
-
-    def _setup_analytic(self, asset: AssetInterface) -> None:
+    def _setup_analytic(self) -> None:
         """Initialize the strategy analytics service."""
         if not self._orderbook:
             raise ValueError("Orderbook is required")
-
-        self._analytic = StrategyAnalytic(
-            strategy_id=self._id,
-            orderbook=self._orderbook,
-            backtest=self._backtest,
-            backtest_id=self._backtest_id if self._backtest else None,
-            quality_method=self._backtest_quality_method,
-            backtest_expectation=self._backtest_expectation,
-            commands_queue=self._commands_queue,
-            asset_id=asset.symbol,
-            portfolio_id=self._portfolio.id if self._portfolio else None,
-        )
 
     @property
     def analytic(self) -> AnalyticInterface:
@@ -457,3 +445,8 @@ class StrategyService(StrategyInterface):
     def leverage(self) -> int:
         """Return the leverage multiplier for this strategy."""
         return self._leverage
+
+    @property
+    def trade_history(self) -> List[OrderModel]:
+        """Return list of all closed trades."""
+        return self._trade_history

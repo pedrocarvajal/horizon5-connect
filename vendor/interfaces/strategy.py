@@ -18,7 +18,7 @@ class StrategyInterface(ABC):
     _id: str
     _name: str
     _allocation: float
-    _backtest: bool
+    _backtest_id: Optional[str]
     _analytic: Optional["AnalyticInterface"]
     _asset: Optional["AssetInterface"]
     _orderbook: Optional["OrderbookInterface"]
@@ -87,7 +87,7 @@ class StrategyInterface(ABC):
     @property
     def backtest(self) -> bool:
         """Return whether strategy is running in backtest mode."""
-        return self._backtest
+        return self._backtest_id is not None
 
     @property
     @abstractmethod
@@ -147,4 +147,10 @@ class StrategyInterface(ABC):
     @abstractmethod
     def orders(self) -> List[OrderModel]:
         """Return all orders for this strategy."""
+        pass
+
+    @property
+    @abstractmethod
+    def trade_history(self) -> List[OrderModel]:
+        """Return list of all closed trades."""
         pass

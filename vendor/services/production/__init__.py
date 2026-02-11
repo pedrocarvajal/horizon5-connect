@@ -89,20 +89,17 @@ class ProductionService(ProductionInterface):
         if not self._portfolio or not self._commands_queue or not self._events_queue:
             raise ValueError("Service not properly setup")
 
+        self._portfolio.setup(
+            backtest=False,
+            backtest_id=None,
+            commands_queue=self._commands_queue,
+            events_queue=self._events_queue,
+        )
+
         self._assets = list(self._portfolio.assets)
 
         if not self._assets:
             raise ValueError("No assets found in portfolio")
-
-        for asset in self._assets:
-            asset.setup(
-                asset=asset,
-                backtest=False,
-                backtest_id=None,
-                portfolio=self._portfolio,
-                commands_queue=self._commands_queue,
-                events_queue=self._events_queue,
-            )
 
         self._log.info("Collecting historical data")
         self._collect_historical()
@@ -170,7 +167,7 @@ class ProductionService(ProductionInterface):
         self,
         asset: AssetInterface,
     ) -> None:
-        gateway = asset.gateway
+        gateway = asset.gateway.gateway
         self._stream_started_at = datetime.datetime.now(tz=TIMEZONE)
 
         async def callback(tick: TickModel) -> None:

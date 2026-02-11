@@ -8,6 +8,7 @@ dependencies = [
     "asyncio>=4.0.0",
     "colorama>=0.4.6",
     "dotenv>=0.9.9",
+    "matplotlib>=3.10.8",
     "polars[pyarrow]>=1.34.0",
     "pydantic>=2.12.3",
     "pymongo>=4.15.3",

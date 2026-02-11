@@ -1,16 +1,16 @@
-"""Orderbook service for order lifecycle and portfolio state management."""
-
 import datetime
 import threading
 from typing import Callable, Dict, List, Optional
 
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
+from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.gateway import GatewayInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
+from vendor.services.gateway.models.gateway_account import GatewayAccountModel
 from vendor.services.logging import LoggingService
 from vendor.services.orderbook.models import OrderSyncResult
 
@@ -22,37 +22,6 @@ SYNC_INTERVAL_SECONDS: int = 60
 
 
 class OrderbookService(OrderbookInterface):
-    """
-    Service for managing order book operations and portfolio state.
-
-    This service manages the lifecycle of orders, tracks portfolio state
-    (balance, margin, exposure), enforces risk management rules (margin calls,
-    stop loss, take profit), and coordinates with the gateway handler for
-    production order execution.
-
-    The service performs:
-    - Order lifecycle management (open, close, refresh)
-    - Margin and balance tracking with leverage support
-    - Risk management (margin calls, liquidation prevention)
-    - Stop loss and take profit enforcement
-    - Integration with gateway handler for production trading
-
-    Attributes:
-        _backtest: Whether running in backtest mode.
-        _backtest_id: Optional backtest identifier.
-        _allocation: Initial capital allocation.
-        _balance: Current available balance.
-        _leverage: Leverage multiplier for trading.
-        _nav: Net asset value.
-        _exposure: Total exposure across open positions.
-        _orders: Dictionary of orders by order ID.
-        _tick: Current market tick data.
-        _on_transaction: Callback function called on order status changes.
-        _margin_call_active: Whether a margin call is currently active.
-        _gateway_handler: Handler service for gateway operations.
-        _log: Logging service instance for logging operations.
-    """
-
     _backtest_id: Optional[str]
     _nav: float
     _exposure: float
@@ -65,35 +34,19 @@ class OrderbookService(OrderbookInterface):
 
     def __init__(
         self,
-        backtest: bool,
         backtest_id: Optional[str],
-        allocation: float,
-        balance: float,
-        leverage: int,
+        asset: AssetInterface,
+        account: GatewayAccountModel,
         gateway: GatewayInterface,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
-        """
-        Initialize the orderbook service.
-
-        Args:
-            backtest: Whether running in backtest mode.
-            backtest_id: Optional backtest identifier.
-            allocation: Initial capital allocation.
-            balance: Initial available balance.
-            leverage: Leverage multiplier for trading.
-            gateway: Gateway service instance for trading operations.
-            on_transaction: Callback function called on order status changes.
-        """
         self._log = LoggingService()
 
-        self._backtest = backtest
         self._backtest_id = backtest_id
-        self._allocation = allocation
-        self._balance = balance
+        self._balance = asset.allocation
         self._orders = {}
         self._open_orders_index = set()
-        self._leverage = leverage if leverage > 0 else 1
+        self._leverage = account.leverage
         self._nav = 0.0
         self._exposure = 0.0
         self._on_transaction = on_transaction
@@ -105,21 +58,10 @@ class OrderbookService(OrderbookInterface):
 
         self._gateway_handler = GatewayHandlerService(
             gateway=gateway,
-            backtest=backtest,
             backtest_id=backtest_id,
         )
 
     def cancel(self, order: OrderModel) -> None:
-        """
-        Cancel an existing order.
-
-        Cancels a pending or open order, releasing the reserved margin back
-        to the balance. In production mode, delegates execution to the gateway
-        handler to cancel the order on the exchange.
-
-        Args:
-            order: OrderModel instance representing the order to cancel.
-        """
         if self._tick is None:
             self._log.error("Tick must be set before cancelling orders.")
             return
@@ -143,7 +85,7 @@ class OrderbookService(OrderbookInterface):
                 )
                 return
 
-            if not self._backtest:
+            if not self.is_backtest:
                 gateway_success = self._gateway_handler.cancel_order(order)
 
                 if not gateway_success:
@@ -163,13 +105,6 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def clean(self) -> None:
-        """
-        Remove closed orders from the orderbook.
-
-        Removes orders with CLOSED status from the internal orders dictionary
-        and ensures the open orders index is synchronized.
-        This helps maintain a clean orderbook and reduces memory usage.
-        """
         with self._orders_lock:
             for order_id in list(self._orders.keys()):
                 if self._orders[order_id].status in [
@@ -179,21 +114,6 @@ class OrderbookService(OrderbookInterface):
                     self._open_orders_index.discard(order_id)
 
     def close(self, order: OrderModel) -> None:
-        """
-        Close an existing order.
-
-        Handles three scenarios based on order execution status:
-        1. Not executed (executed_volume = 0): Cancels the order entirely.
-        2. Partially executed (0 < executed_volume < volume): Cancels the
-           unfilled portion and closes the executed portion.
-        3. Fully executed (executed_volume = volume): Closes the order normally.
-
-        Updates order status to CLOSED, returns margin to balance, and applies
-        profit/loss. In production mode, delegates execution to the gateway handler.
-
-        Args:
-            order: OrderModel instance representing the order to close.
-        """
         if self._tick is None:
             self._log.error("Tick must be set before closing orders.")
             return
@@ -220,7 +140,7 @@ class OrderbookService(OrderbookInterface):
                 total=order.volume,
             )
 
-            if not self._backtest:
+            if not self.is_backtest:
                 cancel_success = self._gateway_handler.cancel_order(order)
 
                 if not cancel_success:
@@ -249,7 +169,7 @@ class OrderbookService(OrderbookInterface):
                 self._orders[order.id] = order
                 self._open_orders_index.discard(order.id)
 
-        if not self._backtest:
+        if not self.is_backtest:
             gateway_success = self._gateway_handler.close_position(order)
 
             if not gateway_success:
@@ -270,16 +190,6 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def open(self, order: OrderModel) -> None:
-        """
-        Open a new order.
-
-        Validates margin requirements, checks for margin calls, and opens the
-        order if conditions are met. In production mode, delegates execution
-        to the gateway handler.
-
-        Args:
-            order: OrderModel instance containing order details.
-        """
         if self._tick is None:
             self._log.error("Tick must be set before opening orders.")
             return
@@ -339,7 +249,7 @@ class OrderbookService(OrderbookInterface):
                 self._orders[order.id] = order
                 self._open_orders_index.add(order.id)
 
-        if not self._backtest:
+        if not self.is_backtest:
             gateway_success = self._gateway_handler.place_order(order)
 
             if not gateway_success:
@@ -360,16 +270,6 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def refresh(self, tick: TickModel) -> None:
-        """
-        Refresh orderbook state with new market tick.
-
-        Updates current tick, checks for margin calls, updates order prices,
-        evaluates stop loss/take profit conditions for all open orders,
-        and periodically syncs with gateway to detect external closures.
-
-        Args:
-            tick: Current market tick data.
-        """
         self._tick = tick
 
         if self.used_margin > 0 and self.margin_level < MARGIN_LIQUIDATION_RATIO:
@@ -419,16 +319,6 @@ class OrderbookService(OrderbookInterface):
         side: Optional[OrderSide] = None,
         status: Optional[OrderStatus] = None,
     ) -> List[OrderModel]:
-        """
-        Filter orders by side and/or status.
-
-        Args:
-            side: Optional order side to filter by (BUY or SELL).
-            status: Optional order status to filter by.
-
-        Returns:
-            List of orders matching the filter criteria.
-        """
         with self._orders_lock:
             return [
                 order
@@ -437,13 +327,6 @@ class OrderbookService(OrderbookInterface):
             ]
 
     def _cancel_order(self, order: OrderModel, reason: str) -> None:
-        """
-        Cancel an order and record it in the orderbook.
-
-        Args:
-            order: OrderModel instance to cancel.
-            reason: Reason for cancellation (for logging).
-        """
         self._log.error(reason)
         order.status = OrderStatus.CANCELLED
         order.executed_volume = 0
@@ -454,13 +337,7 @@ class OrderbookService(OrderbookInterface):
         self._on_transaction(order)
 
     def _sync_orders(self) -> None:
-        """
-        Sync local orders with gateway positions periodically.
-
-        Checks if enough time has passed since last sync, then queries gateway
-        for current positions. Orders that have changed state are processed.
-        """
-        if self._backtest:
+        if self.is_backtest:
             return
 
         if self._tick is None:
@@ -496,16 +373,6 @@ class OrderbookService(OrderbookInterface):
         order_id: str,
         result: OrderSyncResult,
     ) -> None:
-        """
-        Process an order update result from gateway sync.
-
-        Updates order status, releases margin, and triggers callback
-        based on the update result from gateway.
-
-        Args:
-            order_id: ID of the order to update.
-            result: OrderUpdateResult from gateway sync.
-        """
         with self._orders_lock:
             if order_id not in self._orders:
                 return
@@ -545,7 +412,6 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def exposure(self) -> float:
-        """Return total market exposure from open positions."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price)
@@ -555,18 +421,15 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def nav(self) -> float:
-        """Return net asset value (balance + used margin + unrealized PnL)."""
         return self._balance + self.used_margin + self.pnl
 
     @property
     def orders(self) -> List[OrderModel]:
-        """Return all orders in the orderbook."""
         with self._orders_lock:
             return list(self._orders.values())
 
     @property
     def pnl(self) -> float:
-        """Return unrealized profit and loss from open positions."""
         with self._orders_lock:
             return sum(
                 order.profit
@@ -576,7 +439,6 @@ class OrderbookService(OrderbookInterface):
 
     @property
     def used_margin(self) -> float:
-        """Return margin currently used by open positions."""
         with self._orders_lock:
             return sum(
                 (order.volume * order.price) / self._leverage

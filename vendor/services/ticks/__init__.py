@@ -257,7 +257,7 @@ class TicksService(TicksInterface):
             )
 
         try:
-            gateway = asset.gateway
+            gateway = asset.gateway.gateway
             gateway.get_klines(
                 symbol=asset.symbol,
                 timeframe="1m",

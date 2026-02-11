@@ -12,7 +12,7 @@ uv run python backtest.py --portfolio-path <path> --from-date <date> [--to-date 
 
 | Argument | Description |
 |----------|-------------|
-| `--portfolio-path` | Path to portfolio file (e.g., `portfolios/xauusd-test.py`) |
+| `--portfolio-path` | Path to portfolio file (e.g., `portfolios/bitcoin.py`) |
 | `--from-date` | Start date in `YYYY-MM-DD` format |
 
 ### Optional
@@ -25,29 +25,35 @@ uv run python backtest.py --portfolio-path <path> --from-date <date> [--to-date 
 ## Examples
 
 ```bash
-uv run python backtest.py --portfolio-path portfolios/xauusd-test.py --from-date 2022-01-01
+uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2023-02-11
 
-uv run python backtest.py --portfolio-path portfolios/gbpusd-test.py --from-date 2021-06-01 --to-date 2024-01-01
+uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2023-02-11 --to-date 2026-02-11
 
-uv run python backtest.py --portfolio-path portfolios/eurusd-test.py --from-date 2022-01-01 --restore-ticks true
+uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2023-02-11 --restore-ticks true
 ```
 
 ## Analyzing Results
 
-The backtest outputs a report with key metrics:
+The backtest outputs a report to console and generates files at `storage/backtests/{backtest_id}/`:
+
+- **summary.txt**: Text report with all metrics
+- **orders_{strategy_id}.csv**: CSV with all trade orders per strategy
+- **orders_portfolio.csv**: Consolidated CSV of all trades
+- **performance_{strategy_id}.png**: Equity curve + drawdown chart per strategy
+- **performance_portfolio.png**: Portfolio-level performance chart
+
+### Key Metrics
 
 - **Return %**: Total portfolio return
 - **Max Drawdown %**: Largest peak-to-trough decline
-- **Sharpe Ratio**: Risk-adjusted return measure
 - **Win Rate**: Percentage of profitable trades
+- **Profit Factor**: Gross profit / gross loss ratio
 - **Number of trades**: Total executed trades
-
-Results are sent to Horizon Router API and logged to console.
 
 ## Troubleshooting
 
 | Error | Solution |
 |-------|----------|
-| No enabled assets found | Check portfolio has at least one asset with `enabled=True` |
-| Authentication errors | Run authentication setup first |
+| No enabled assets found | Check portfolio has at least one asset in `assets` list |
+| API credentials required | Non-blocking for backtests, kline data uses public API |
 | Date parsing errors | Use `YYYY-MM-DD` format strictly |

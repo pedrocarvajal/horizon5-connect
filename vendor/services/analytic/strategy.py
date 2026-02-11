@@ -6,7 +6,6 @@ import datetime
 from multiprocessing import Queue
 from typing import Any, Dict, List, Optional, Tuple
 
-from vendor.enums.command import Command
 from vendor.enums.quality_method import QualityMethod
 from vendor.enums.quality_vs_benchmark_method import QualityVsBenchmarkMethod
 from vendor.enums.snapshot_event import SnapshotEvent
@@ -14,7 +13,6 @@ from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.backtest_expectation import BacktestExpectationModel
 from vendor.models.order import OrderModel
 from vendor.models.snapshot import SnapshotModel
-from vendor.providers.horizon_router import HorizonRouterProvider
 from vendor.services.analytic.helpers.get_average_trade_duration import get_average_trade_duration
 from vendor.services.analytic.helpers.get_max_trade_duration import get_max_trade_duration
 from vendor.services.analytic.helpers.get_overnight_metrics import get_overnight_metrics
@@ -61,7 +59,6 @@ class StrategyAnalytic(AnalyticWrapper):
         self,
         strategy_id: str,
         orderbook: OrderbookInterface,
-        backtest: bool = False,
         backtest_id: Optional[str] = None,
         quality_method: QualityMethod = QualityMethod.FQS,
         quality_vs_benchmark_method: QualityVsBenchmarkMethod = QualityVsBenchmarkMethod.FQS_BENCHMARK,
@@ -75,8 +72,7 @@ class StrategyAnalytic(AnalyticWrapper):
         Args:
             strategy_id: Identifier of the strategy being analyzed.
             orderbook: Service for managing orders and portfolio state.
-            backtest: Whether running in backtest mode.
-            backtest_id: Backtest identifier (required if backtest is True).
+            backtest_id: Backtest identifier (None for live mode).
             quality_method: Method for calculating quality score.
             quality_vs_benchmark_method: Method for calculating quality vs benchmark score.
             backtest_expectation: Expected metric ranges for quality calculation.
@@ -86,19 +82,14 @@ class StrategyAnalytic(AnalyticWrapper):
 
         Raises:
             ValueError: If strategy_id is empty.
-            ValueError: If backtest is True but backtest_id is not provided.
         """
         self._log = LoggingService()
 
         if not strategy_id:
             raise ValueError("Strategy ID is required")
 
-        if backtest and not backtest_id:
-            raise ValueError("Backtest ID is required when backtest is True")
-
         self._strategy_id = strategy_id
         self._orderbook = orderbook
-        self._backtest = backtest
         self._backtest_id = backtest_id
         self._quality_method = quality_method
         self._quality_vs_benchmark_method = quality_vs_benchmark_method
@@ -124,7 +115,7 @@ class StrategyAnalytic(AnalyticWrapper):
             portfolio_id=self._portfolio_id,
             asset_id=self._asset_id,
             backtest_id=self._backtest_id,
-            is_backtest=self._backtest,
+            is_backtest=self._backtest_id is not None,
             capital_allocation=self._orderbook.allocation,
             capital_nav=self._orderbook.nav,
             capital_nav_peak=self._orderbook.nav,
@@ -319,19 +310,7 @@ class StrategyAnalytic(AnalyticWrapper):
         Args:
             order: The order model to send.
         """
-        if not self._backtest or not self._commands_queue:
-            return
-
-        order_data = order.to_api_dict()
-        provider = HorizonRouterProvider()
-
-        self._commands_queue.put(
-            {
-                "command": Command.EXECUTE,
-                "function": provider.order_create,
-                "args": {"data": order_data},
-            }
-        )
+        pass
 
     def _calculate_propfirm_metrics(self) -> None:
         """Calculate prop firm compliance metrics and quality score."""

@@ -6,34 +6,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from vendor.helpers.parse_int import parse_int as parse_int_helper
 from vendor.helpers.parse_optional_float import parse_optional_float as parse_optional_float_helper
-from vendor.helpers.parse_percentage import parse_percentage as parse_percentage_helper
 
 
 class GatewaySymbolInfoModel(BaseModel):
     """
     Model representing symbol trading information from a gateway/exchange.
 
-    This model stores comprehensive trading specifications for a symbol including
-    price and quantity precision, min/max constraints, tick/step sizes, margin
-    requirements, and trading status. It captures both standardized symbol data
-    and raw gateway-specific response data for additional information.
+    This model stores comprehensive trading specifications for a symbol based on
+    MetaAPI's MetatraderSymbolSpecification. Includes price and quantity precision,
+    min/max constraints, tick/step sizes, margin requirements, swap rates,
+    trading sessions, and leverage information.
 
-    Attributes:
-        symbol: The symbol of the asset (e.g., "XAUUSD").
-        base_asset: The base asset being traded (e.g., "XAU" in XAUUSD).
-        quote_asset: The quote asset used for pricing (e.g., "USD" in XAUUSD).
-        price_precision: Number of decimal places for price (e.g., 2 for $100.50).
-        quantity_precision: Number of decimal places for quantity (e.g., 3 for 0.001 BTC).
-        min_price: Minimum allowed price (e.g., 0.01).
-        max_price: Maximum allowed price (e.g., 1000000.00).
-        tick_size: Minimum price increment (e.g., 0.10).
-        min_quantity: Minimum order quantity (e.g., 0.001 BTC).
-        max_quantity: Maximum order quantity (e.g., 1000 BTC).
-        step_size: Minimum quantity increment (e.g., 0.001).
-        min_notional: Minimum order value in quote asset (e.g., 100 USDT minimum per order).
-        status: Trading status of the symbol (e.g., "TRADING" or "SUSPENDED").
-        margin_percent: Required margin percentage for leveraged trading (e.g., 5.0 for 5%).
-        response: Raw broker-specific data for additional information.
+    Reference: https://metaapi.cloud/docs/client/models/metatraderSymbolSpecification/
     """
 
     model_config = ConfigDict(
@@ -43,59 +27,63 @@ class GatewaySymbolInfoModel(BaseModel):
 
     symbol: str = Field(
         default="",
-        description="The symbol of the asset, like XAUUSD",
-    )
-    base_asset: str = Field(
-        default="",
-        description="The base asset being traded, like XAU in XAUUSD",
-    )
-    quote_asset: str = Field(
-        default="",
-        description="The quote asset used for pricing, like USD in XAUUSD",
-    )
-    price_precision: int = Field(
-        default=2,
-        description="Number of decimal places for price, like 2 for $100.50",
+        description="Currency pair or index identifier (e.g., XAUUSD)",
     )
     quantity_precision: int = Field(
         default=2,
-        description="Number of decimal places for quantity, like 3 for 0.001 BTC",
+        description="Number of decimal places for quantity/volume",
     )
-    min_price: Optional[float] = Field(
+    point: Optional[float] = Field(
         default=None,
-        description="Minimum allowed price, like 0.01",
+        description="Smallest price unit value",
     )
-    max_price: Optional[float] = Field(
+    pip_size: Optional[float] = Field(
         default=None,
-        description="Maximum allowed price, like 1000000.00",
-    )
-    tick_size: Optional[float] = Field(
-        default=None,
-        description="Minimum price increment, like 0.10",
+        description="Pip value for spot/CFD symbols",
     )
     min_quantity: Optional[float] = Field(
         default=None,
-        description="Minimum order quantity, like 0.001 BTC",
+        description="Minimum tradeable volume (minVolume)",
     )
     max_quantity: Optional[float] = Field(
         default=None,
-        description="Maximum order quantity, like 1000 BTC",
+        description="Maximum tradeable volume (maxVolume)",
     )
     step_size: Optional[float] = Field(
         default=None,
-        description="Minimum quantity increment, like 0.001",
+        description="Volume increment for orders (volumeStep)",
     )
-    min_notional: Optional[float] = Field(
+    contract_size: Optional[float] = Field(
         default=None,
-        description="Minimum order value in quote asset, like 100 USDT minimum per order",
+        description="Lot size in base currency units",
+    )
+    initial_margin: Optional[float] = Field(
+        default=None,
+        description="Required margin for one lot",
+    )
+    maintenance_margin: Optional[float] = Field(
+        default=None,
+        description="Margin needed for position maintenance",
+    )
+    hedged_margin: Optional[float] = Field(
+        default=None,
+        description="Margin for opposing positions",
+    )
+    swap_mode: str = Field(
+        default="POINTS",
+        description="Swap calculation model",
+    )
+    swap_long: Optional[float] = Field(
+        default=None,
+        description="Long position swap rate",
+    )
+    swap_short: Optional[float] = Field(
+        default=None,
+        description="Short position swap rate",
     )
     status: str = Field(
         default="TRADING",
-        description="Trading status of the symbol, like TRADING or SUSPENDED",
-    )
-    margin_percent: Optional[float] = Field(
-        default=None,
-        description="Required margin percentage for leveraged trading, like 5.0 for 5%",
+        description="Trading status of the symbol (TRADING, SUSPENDED)",
     )
     response: Any = Field(
         default=None,
@@ -103,100 +91,29 @@ class GatewaySymbolInfoModel(BaseModel):
     )
 
     @field_validator(
-        "min_price",
-        "max_price",
-        "tick_size",
+        "point",
+        "pip_size",
         "min_quantity",
         "max_quantity",
         "step_size",
-        "min_notional",
+        "contract_size",
+        "initial_margin",
+        "maintenance_margin",
+        "hedged_margin",
+        "swap_long",
+        "swap_short",
         mode="before",
     )
     @classmethod
     def parse_float(cls, value: Any) -> Optional[float]:
-        """
-        Parse and convert value to float for price and quantity constraint fields.
-
-        Converts various input formats (string, int, float) to a float.
-        Returns None if value is None or empty string.
-
-        Args:
-            value: The value to parse. Can be None, empty string, float, int,
-                or string representation of a number.
-
-        Returns:
-            Optional[float]: The parsed float value, or None if value is None
-                or empty string.
-
-        Example:
-            >>> GatewaySymbolInfoModel.parse_float("0.01")
-            0.01
-            >>> GatewaySymbolInfoModel.parse_float(100)
-            100.0
-            >>> GatewaySymbolInfoModel.parse_float(None)
-            None
-        """
+        """Parse and convert value to float."""
         return parse_optional_float_helper(value=value)
 
     @field_validator(
-        "price_precision",
         "quantity_precision",
         mode="before",
     )
     @classmethod
     def parse_int(cls, value: Any) -> int:
-        """
-        Parse and convert value to integer for precision fields.
-
-        Converts various input formats (string, int, float) to an integer.
-        Returns 0 if conversion fails.
-
-        Args:
-            value: The value to parse. Can be None, empty string, float, int,
-                or string representation of a number.
-
-        Returns:
-            int: The parsed integer value, or 0 if conversion fails.
-
-        Example:
-            >>> GatewaySymbolInfoModel.parse_int("2")
-            2
-            >>> GatewaySymbolInfoModel.parse_int(3.5)
-            3
-            >>> GatewaySymbolInfoModel.parse_int(None)
-            0
-        """
+        """Parse and convert value to integer."""
         return parse_int_helper(value=value)
-
-    @field_validator(
-        "margin_percent",
-        mode="before",
-    )
-    @classmethod
-    def parse_percentage(cls, value: Any) -> Optional[float]:
-        """
-        Parse and normalize percentage values for margin percentage field.
-
-        Converts various input formats (string, int, float) to a decimal
-        representation. If the value is greater than 1, it assumes the value
-        is a percentage and divides by 100 to convert to decimal.
-
-        Args:
-            value: The percentage value to parse. Can be None, empty string,
-                float, int, or string representation of a number.
-
-        Returns:
-            Optional[float]: The parsed percentage as a decimal (e.g., 0.05
-                for 5%), or None if value is None or empty string.
-
-        Example:
-            >>> GatewaySymbolInfoModel.parse_percentage("5")
-            0.05
-            >>> GatewaySymbolInfoModel.parse_percentage(5.0)
-            0.05
-            >>> GatewaySymbolInfoModel.parse_percentage(0.05)
-            0.05
-            >>> GatewaySymbolInfoModel.parse_percentage(None)
-            None
-        """
-        return parse_percentage_helper(value=value)

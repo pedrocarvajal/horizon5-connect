@@ -41,7 +41,6 @@ class AssetAnalytic(AnalyticWrapper):
         asset_id: str,
         allocation: float,
         strategies: List[StrategyInterface],
-        backtest: bool = False,
         backtest_id: Optional[str] = None,
         quality_vs_benchmark_method: QualityVsBenchmarkMethod = QualityVsBenchmarkMethod.FQS_BENCHMARK,
         commands_queue: Optional[Queue[Any]] = None,
@@ -53,28 +52,22 @@ class AssetAnalytic(AnalyticWrapper):
             asset_id: Symbol/identifier of the asset being analyzed.
             allocation: Total capital allocation for this asset.
             strategies: List of strategy instances to aggregate metrics from.
-            backtest: Whether running in backtest mode.
-            backtest_id: Backtest identifier (required if backtest is True).
+            backtest_id: Backtest identifier (None for live mode).
             quality_vs_benchmark_method: Method for calculating quality vs benchmark score.
             commands_queue: Queue for sending commands to external services.
             portfolio_id: Identifier of the parent portfolio.
 
         Raises:
             ValueError: If asset_id is empty.
-            ValueError: If backtest is True but backtest_id is None.
         """
         self._log = LoggingService()
 
         if not asset_id:
             raise ValueError("Asset ID is required")
 
-        if backtest and backtest_id is None:
-            raise ValueError("Backtest ID is required when backtest is True")
-
         self._asset_id = asset_id
         self._allocation = allocation
         self._strategies = strategies
-        self._backtest = backtest
         self._backtest_id = backtest_id
         self._quality_vs_benchmark_method = quality_vs_benchmark_method
         self._commands_queue = commands_queue
@@ -91,7 +84,7 @@ class AssetAnalytic(AnalyticWrapper):
             portfolio_id=self._portfolio_id,
             asset_id=self._asset_id,
             backtest_id=self._backtest_id,
-            is_backtest=self._backtest,
+            is_backtest=self._backtest_id is not None,
             capital_allocation=self._allocation,
             capital_nav=self._allocation,
             capital_nav_peak=self._allocation,

@@ -4,27 +4,17 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import sys
 import time
+import uuid
 from multiprocessing import Process, Queue
 from threading import Thread
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from vendor.configs.timezone import TIMEZONE
 from vendor.enums.backtest_event import BacktestEvent
-from vendor.enums.backtest_status import BacktestStatus
 from vendor.helpers.get_portfolio_by_path import get_portfolio_by_path
 from vendor.helpers.parse_date import parse_date
 from vendor.interfaces.logging import LoggingInterface
-from vendor.interfaces.portfolio import PortfolioInterface
-from vendor.models.backtest_settings import (
-    AssetSettingsModel,
-    BacktestSettingsModel,
-    PortfolioSettingsModel,
-    StrategySettingsModel,
-)
-from vendor.providers.horizon_router import HorizonRouterProvider
-from vendor.services.authentication import AuthenticationService
 from vendor.services.backtest import BacktestService
 from vendor.services.commands import CommandService
 from vendor.services.logging import LoggingService
@@ -33,12 +23,10 @@ from vendor.services.logging import LoggingService
 class EventHandler:
     """Handles backtest events from the events queue."""
 
-    _backtest_id: str
     _commands_queue: Queue[Any]
     _events_queue: Queue[Any]
     _portfolio_id: str
 
-    _horizon_router: HorizonRouterProvider
     _log: LoggingInterface
 
     def __init__(
@@ -46,15 +34,12 @@ class EventHandler:
         events_queue: Queue[Any],
         commands_queue: Queue[Any],
         portfolio_id: str,
-        backtest_id: str,
     ) -> None:
         """Initialize the event handler."""
         self._log = LoggingService()
         self._events_queue = events_queue
         self._commands_queue = commands_queue
         self._portfolio_id = portfolio_id
-        self._backtest_id = backtest_id
-        self._horizon_router = HorizonRouterProvider()
 
     def start(self) -> None:
         """Start listening for events."""
@@ -72,19 +57,55 @@ class EventHandler:
 
     def _handle_finished(self, event_data: Dict[str, Any]) -> None:
         report = event_data.get("report", {})
-        report["portfolio_id"] = self._portfolio_id
+        report_path = event_data.get("report_path", "")
 
         self._log.info(
             "Backtest completed",
             portfolio_id=self._portfolio_id,
         )
-        self._log.debug(report)
 
-        self._horizon_router.backtest_update(
-            backtest_id=self._backtest_id,
-            status=BacktestStatus.COMPLETED.value,
-            analytics=report,
-        )
+        self._print_report(report)
+
+        if report_path:
+            self._log.info("Report files saved", path=report_path)
+
+    def _print_report(self, report: Dict[str, Any]) -> None:
+        lines = [
+            "\n" + "=" * 60,
+            f"  BACKTEST REPORT: {report.get('portfolio', 'N/A')}",
+            "=" * 60,
+            f"  Allocation:    ${report.get('allocation', 0):,.2f}",
+            f"  Total Profit:  ${report.get('total_profit', 0):,.2f}",
+            f"  Return:        {report.get('return_pct', 0):.2f}%",
+            f"  Total Trades:  {report.get('total_trades', 0)}",
+        ]
+
+        for asset_report in report.get("assets", []):
+            lines.append(f"\n  --- {asset_report.get('symbol', 'N/A')} ---")
+            lines.append(f"  Allocation:  ${asset_report.get('allocation', 0):,.2f}")
+            lines.append(f"  Balance:     ${asset_report.get('balance', 0):,.2f}")
+            lines.append(f"  NAV:         ${asset_report.get('nav', 0):,.2f}")
+            lines.append(f"  Profit:      ${asset_report.get('total_profit', 0):,.2f}")
+            lines.append(f"  Return:      {asset_report.get('return_pct', 0):.2f}%")
+
+            for strategy_report in asset_report.get("strategies", []):
+                lines.append(f"\n    [{strategy_report.get('strategy_id', 'N/A')}]")
+                lines.append(f"    Trades:        {strategy_report.get('total_trades', 0)}")
+                wins = strategy_report.get("winning_trades", 0)
+                losses = strategy_report.get("losing_trades", 0)
+                lines.append(f"    Win/Loss:      {wins}/{losses}")
+                lines.append(f"    Win Rate:      {strategy_report.get('win_rate', 0):.2f}%")
+                lines.append(f"    Profit:        ${strategy_report.get('total_profit', 0):,.2f}")
+                lines.append(f"    Gross Profit:  ${strategy_report.get('gross_profit', 0):,.2f}")
+                lines.append(f"    Gross Loss:    ${strategy_report.get('gross_loss', 0):,.2f}")
+                lines.append(f"    Avg Win:       ${strategy_report.get('average_win', 0):,.2f}")
+                lines.append(f"    Avg Loss:      ${strategy_report.get('average_loss', 0):,.2f}")
+                lines.append(f"    Profit Factor: {strategy_report.get('profit_factor', 0):.2f}")
+                lines.append(f"    Cancelled:     {strategy_report.get('cancelled_trades', 0)}")
+
+        lines.append("=" * 60 + "\n")
+
+        self._log.info("\n".join(lines))
 
     def _handle_failed(self, event_data: Dict[str, Any]) -> None:
         error = event_data.get("error", "Unknown error")
@@ -93,76 +114,8 @@ class EventHandler:
             error=error,
         )
 
-        self._horizon_router.backtest_update(
-            backtest_id=self._backtest_id,
-            status=BacktestStatus.FAILED.value,
-            analytics={"error": error},
-        )
-
-
-def create_backtest(
-    portfolio_path: str,
-    portfolio: PortfolioInterface,
-    from_date: datetime.datetime,
-    to_date: datetime.datetime,
-) -> Optional[str]:
-    """Create a backtest in the backend and return the backtest_id."""
-    log = LoggingService()
-    horizon_router = HorizonRouterProvider()
-    asset_settings_list: List[AssetSettingsModel] = []
-
-    for asset in portfolio.assets:
-        strategy_settings_list: List[StrategySettingsModel] = []
-
-        for strategy in asset.strategies:
-            strategy_settings = getattr(strategy, "_settings", {})
-            strategy_settings_list.append(
-                StrategySettingsModel(
-                    id=strategy.id,
-                    allocation=strategy.allocation,
-                    leverage=asset.leverage,
-                    settings=strategy_settings,
-                )
-            )
-
-        asset_settings_list.append(
-            AssetSettingsModel(
-                symbol=asset.symbol,
-                gateway=getattr(asset, "_gateway_name", ""),
-                strategies=strategy_settings_list,
-            )
-        )
-
-    portfolio_settings = PortfolioSettingsModel(
-        id=portfolio.id,
-        path=portfolio_path,
-    )
-
-    settings = BacktestSettingsModel(
-        from_date=int(from_date.timestamp()),
-        to_date=int(to_date.timestamp()),
-        portfolio=portfolio_settings,
-        assets=asset_settings_list,
-    )
-
-    response = horizon_router.backtest_create(settings=settings.to_dict())
-    backtest_id: Optional[str] = response.get("data", {}).get("id")
-
-    if backtest_id:
-        log.info(
-            "Backtest created",
-            backtest_id=backtest_id,
-        )
-
-    return backtest_id
-
 
 if __name__ == "__main__":
-    authentication_service = AuthenticationService()
-
-    if not authentication_service.setup():
-        sys.exit(1)
-
     commands_queue: Queue[Any] = Queue()
     events_queue: Queue[Any] = Queue()
 
@@ -219,16 +172,11 @@ if __name__ == "__main__":
 
     log = LoggingService()
 
-    backtest_id = create_backtest(
-        portfolio_path=args.portfolio_path,
-        portfolio=portfolio,
-        from_date=from_date,
-        to_date=to_date,
+    backtest_id = str(uuid.uuid4())
+    log.info(
+        "Backtest created",
+        backtest_id=backtest_id,
     )
-
-    if not backtest_id:
-        log.error("Failed to create backtest")
-        sys.exit(1)
 
     commands_process = Process(
         target=CommandService,
@@ -243,7 +191,6 @@ if __name__ == "__main__":
         events_queue=events_queue,
         commands_queue=commands_queue,
         portfolio_id=portfolio.id,
-        backtest_id=backtest_id,
     )
 
     event_thread = Thread(target=event_handler.start)

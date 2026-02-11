@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from vendor.interfaces.analytic import AnalyticInterface
-    from vendor.interfaces.gateway import GatewayInterface
+    from vendor.interfaces.orderbook import OrderbookInterface
     from vendor.interfaces.portfolio import PortfolioInterface
     from vendor.interfaces.strategy import StrategyInterface
+    from vendor.models.order import OrderModel
 
 from vendor.models.tick import TickModel
 
@@ -16,11 +17,12 @@ class AssetInterface(ABC):
     """Abstract interface (see implementations for details)."""
 
     _symbol: str
+    _gateway_name: str
     _allocation: float
-    _backtest: bool
     _backtest_id: Optional[str]
     _is_historical_filling: bool
     _leverage: int
+    _orderbook: Optional["OrderbookInterface"]
     _portfolio: Optional["PortfolioInterface"]
     _strategies: List["StrategyInterface"]
     _tick: Optional[TickModel]
@@ -67,6 +69,10 @@ class AssetInterface(ABC):
         """Abstract method."""
         pass
 
+    def on_transaction(self, order: "OrderModel") -> None:  # noqa: B027
+        """Handle a transaction event."""
+        pass
+
     @abstractmethod
     def setup(self, **kwargs: Any) -> None:
         """Abstract method."""
@@ -78,6 +84,24 @@ class AssetInterface(ABC):
 
     def stop_historical_filling(self) -> None:  # noqa: B027
         """Abstract method."""
+        pass
+
+    @property
+    @abstractmethod
+    def symbol(self) -> str:
+        """Return the asset symbol."""
+        pass
+
+    @property
+    @abstractmethod
+    def gateway(self) -> Any:
+        """Return the gateway instance for this asset."""
+        pass
+
+    @property
+    @abstractmethod
+    def gateway_name(self) -> str:
+        """Return the gateway name for this asset."""
         pass
 
     @property
@@ -100,12 +124,6 @@ class AssetInterface(ABC):
 
     @property
     @abstractmethod
-    def gateway(self) -> "GatewayInterface":
-        """Return the gateway for this asset."""
-        pass
-
-    @property
-    @abstractmethod
     def is_historical_filling(self) -> bool:
         """Return whether the asset is currently processing historical data."""
         pass
@@ -124,6 +142,12 @@ class AssetInterface(ABC):
 
     @property
     @abstractmethod
+    def orderbook(self) -> Optional["OrderbookInterface"]:
+        """Return the orderbook for this asset."""
+        pass
+
+    @property
+    @abstractmethod
     def portfolio(self) -> Optional["PortfolioInterface"]:
         """Return the portfolio for this asset."""
         pass
@@ -132,12 +156,6 @@ class AssetInterface(ABC):
     @abstractmethod
     def strategies(self) -> List["StrategyInterface"]:
         """Return the strategies for this asset."""
-        pass
-
-    @property
-    @abstractmethod
-    def symbol(self) -> str:
-        """Return the trading symbol."""
         pass
 
     @property

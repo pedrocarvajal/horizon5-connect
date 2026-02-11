@@ -6,7 +6,6 @@ from vendor.configs.gateways import GATEWAYS
 from vendor.interfaces.gateway import GatewayInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.services.gateway.models.gateway_account import GatewayAccountModel
-from vendor.services.gateway.models.gateway_leverage_info import GatewayLeverageInfoModel
 from vendor.services.gateway.models.gateway_order import GatewayOrderModel
 from vendor.services.gateway.models.gateway_position import GatewayPositionModel
 from vendor.services.gateway.models.gateway_symbol_info import GatewaySymbolInfoModel
@@ -32,7 +31,6 @@ class GatewayService(GatewayInterface):
     """
 
     _name: str
-    _backtest: bool
     _gateways: Dict[str, Any]
 
     _gateway: GatewayInterface
@@ -41,7 +39,6 @@ class GatewayService(GatewayInterface):
     def __init__(
         self,
         gateway: str,
-        **kwargs: Any,
     ) -> None:
         """
         Initialize the gateway service.
@@ -59,7 +56,6 @@ class GatewayService(GatewayInterface):
 
         self._gateways = GATEWAYS
         self._name = gateway
-        self._backtest = kwargs.get("backtest", False)
 
         self._setup()
 
@@ -119,23 +115,6 @@ class GatewayService(GatewayInterface):
                 Common arguments include symbol, interval, start_time, end_time, limit.
         """
         self._gateway.get_klines(**kwargs)
-
-    def get_leverage_info(
-        self,
-        **kwargs: Any,
-    ) -> Optional[GatewayLeverageInfoModel]:
-        """
-        Get leverage information from the gateway.
-
-        Args:
-            **kwargs: Keyword arguments passed to the gateway's get_leverage_info method.
-                Typically includes 'symbol' parameter.
-
-        Returns:
-            GatewayLeverageInfoModel instance containing leverage information,
-            or None if the information cannot be retrieved or an error occurs.
-        """
-        return self._gateway.get_leverage_info(**kwargs)
 
     def get_order(
         self,

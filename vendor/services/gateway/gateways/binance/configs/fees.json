@@ -1,0 +1,6 @@
+{
+  "btcusdt": {
+    "maker_commission": 0.0002,
+    "taker_commission": 0.0005
+  }
+}
