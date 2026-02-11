@@ -10,16 +10,16 @@ uv run python backtest.py --portfolio-path <path> --from-date <date> [--to-date 
 
 ### Required
 
-| Argument | Description |
-|----------|-------------|
+| Argument           | Description                                            |
+| ------------------ | ------------------------------------------------------ |
 | `--portfolio-path` | Path to portfolio file (e.g., `portfolios/bitcoin.py`) |
-| `--from-date` | Start date in `YYYY-MM-DD` format |
+| `--from-date`      | Start date in `YYYY-MM-DD` format                      |
 
 ### Optional
 
-| Argument | Description |
-|----------|-------------|
-| `--to-date` | End date in `YYYY-MM-DD` format (defaults to today) |
+| Argument          | Description                                                                  |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `--to-date`       | End date in `YYYY-MM-DD` format (defaults to today)                          |
 | `--restore-ticks` | Set to `true` to force full data cleanup before backtest (10s delay warning) |
 
 ## Examples
@@ -37,9 +37,9 @@ uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 202
 The backtest outputs a report to console and generates files at `storage/backtests/{backtest_id}/`:
 
 - **summary.txt**: Text report with all metrics
-- **orders_{strategy_id}.csv**: CSV with all trade orders per strategy
+- **orders\_{strategy_id}.csv**: CSV with all trade orders per strategy
 - **orders_portfolio.csv**: Consolidated CSV of all trades
-- **performance_{strategy_id}.png**: Equity curve + drawdown chart per strategy
+- **performance\_{strategy_id}.png**: Equity curve + drawdown chart per strategy
 - **performance_portfolio.png**: Portfolio-level performance chart
 
 ### Key Metrics
@@ -52,8 +52,8 @@ The backtest outputs a report to console and generates files at `storage/backtes
 
 ## Troubleshooting
 
-| Error | Solution |
-|-------|----------|
-| No enabled assets found | Check portfolio has at least one asset in `assets` list |
-| API credentials required | Non-blocking for backtests, kline data uses public API |
-| Date parsing errors | Use `YYYY-MM-DD` format strictly |
+| Error                    | Solution                                                |
+| ------------------------ | ------------------------------------------------------- |
+| No enabled assets found  | Check portfolio has at least one asset in `assets` list |
+| API credentials required | Non-blocking for backtests, kline data uses public API  |
+| Date parsing errors      | Use `YYYY-MM-DD` format strictly                        |

@@ -16,7 +16,7 @@ Thank you for your interest in contributing to Horizon Connect! This document pr
 
 ## Code of Conduct
 
-This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to hello@horizon5.tech.
+This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to <hello@horizon5.tech>.
 
 ## Getting Started
 
@@ -364,13 +364,11 @@ uv run python -m pytest --cov=services --cov-report=html
 ### Pull Request Guidelines
 
 1. **Title**: Use conventional commit format
-
    - `feat: Add support for stop-loss orders`
    - `fix: Correct Sharpe ratio calculation`
    - `docs: Update strategy development guide`
 
 2. **Description**: Include:
-
    - What changes were made
    - Why these changes were necessary
    - How to test the changes
@@ -428,7 +426,7 @@ When adding new dependencies:
 
 - **Issues**: Open an issue for bugs or feature requests
 - **Discussions**: Use GitHub Discussions for questions and ideas
-- **Email**: Contact hello@horizon5.tech for private inquiries
+- **Email**: Contact <hello@horizon5.tech> for private inquiries
 
 ### Resources
 

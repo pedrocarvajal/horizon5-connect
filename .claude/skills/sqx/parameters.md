@@ -73,6 +73,20 @@ grep "#define.*_1" file.mq5
 
 **Comment = actual indicator call with parameters.**
 
+### Indicator Source Code
+
+Custom indicators referenced by `iCustom()` have their source at `docs/sqx/indicators/`. Read the corresponding `.mq5` file to understand buffer indexes, calculation logic, and input parameters.
+
+```text
+#define ADX_1 1  //iCustom(NULL,0, "SqADX", ADXPeriod1)
+→ Source: docs/sqx/indicators/SqADX.mq5
+→ Buffers: 0=ADX, 1=+DI, 2=-DI
+
+#define ATR_1 2  //iCustom(NULL, 0, "SqATR", 14)
+→ Source: docs/sqx/indicators/SqATR.mq5
+→ Buffers: 0=ATR value
+```
+
 ### Indicator Initialization
 
 ```bash

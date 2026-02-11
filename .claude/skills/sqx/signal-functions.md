@@ -138,11 +138,11 @@ Expression strings have internal shift embedded:
 - `"sqMonthly(NULL,0,\"High\", 1)"` → adds +1 to shift
 - When shift=1 is passed, actual shift becomes 2
 
-## ADX Buffer Indexes
+## Indicator Buffer Indexes
 
-### Special Attention
+Custom indicator source code is at `docs/sqx/indicators/`. Read the `.mq5` files to verify buffer indexes and calculation logic.
 
-ADX uses different buffers:
+### ADX Buffers (`docs/sqx/indicators/SqADX.mq5`)
 
 | Buffer | Meaning       |
 | ------ | ------------- |

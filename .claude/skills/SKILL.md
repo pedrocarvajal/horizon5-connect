@@ -1,7 +1,6 @@
 ---
 name: horizon5-skills
 description: Skills index for Horizon5 portfolio trading framework
-version: 1.0.0
 user-invocable: false
 ---
 
@@ -11,16 +10,15 @@ Knowledge base for working with the Horizon5 algorithmic trading portfolio.
 
 ## Available Skills
 
-| Skill          | Description                      | When to Use                         |
-| -------------- | -------------------------------- | ----------------------------------- |
-| `sqx/`         | StrategyQuant X EA file analysis | Working with SQX-generated EA files |
-| `formatting/`  | MQL5 code formatting rules       | Writing or reviewing any MQL5 code  |
+| Skill  | Description                      | When to Use                         |
+| ------ | -------------------------------- | ----------------------------------- |
+| `sqx/` | StrategyQuant X EA file analysis | Working with SQX-generated EA files |
 
 ## Skill Domains
 
 ### SQX (StrategyQuant X)
 
-Skills for analyzing and extracting logic from StrategyQuant X generated Expert Advisors.
+Skills for analyzing and extracting logic from StrategyQuant X generated Expert Advisors and converting them to Horizon5 Python strategies.
 
 ```text
 sqx/
@@ -36,15 +34,6 @@ sqx/
 └── verification.md       # Implementation verification
 ```
 
-### Formatting
-
-Code formatting and organization rules derived from the canonical reference files (`Horizon.mq5`, `SEOrderPersistence.mqh`, `Soweto.mqh`).
-
-```text
-formatting/
-└── SKILL.md              # Complete formatting rules
-```
-
 ## Usage
 
-These skills are referenced by agents via `@.claude/skills/`. The `/create-strategy-from` command orchestrates agents that use `sqx/` skills. The `formatting/` skill applies to all MQL5 code writing and review.
+These skills are referenced by agents via @.claude/skills/. The `/create-strategy-from` command orchestrates agents that use `sqx/` skills.

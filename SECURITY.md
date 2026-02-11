@@ -14,7 +14,7 @@ Instead, please report them responsibly by emailing us directly. This allows us 
 
 ### How to Report
 
-Send an email with details of the vulnerability to: **hello@horizon5.tech**
+Send an email with details of the vulnerability to: **<hello@horizon5.tech>**
 
 You should receive a response within 48 hours. If for some reason you do not, please follow up to ensure we received your original message.
 

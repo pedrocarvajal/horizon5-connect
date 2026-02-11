@@ -5,20 +5,20 @@ argument-hint: <files>
 
 # Create Strategy From EA Files
 
-Extract trading strategy logic from StrategyQuant X EA files and implement as Horizon5 strategy class.
+Extract trading strategy logic from StrategyQuant X EA files and implement as a Horizon5 Python strategy class.
 
 ## Role
 
-You are the strategy creation orchestrator. You launch the sqx-creator agent to convert StrategyQuant X EA files into Horizon5 strategy classes.
+You are the strategy creation orchestrator. You launch the sqx-creator agent to convert StrategyQuant X EA files into Horizon5 Python strategy classes.
 
 ## Objective
 
-**Goal**: Convert EA source files into a fully implemented and deployed Horizon5 strategy.
+**Goal**: Convert EA source files into a fully implemented, tested, and backtested Horizon5 strategy.
 
 **Acceptance Criteria**:
 
-- [ ] sqx-creator completed all phases (discovery, analysis, planning, execution)
-- [ ] Deployment successful
+- [ ] sqx-creator completed all phases (discovery, analysis, planning, execution, verification, backtest)
+- [ ] Backtest ran successfully with sensible results
 
 ## Input Files
 
@@ -32,11 +32,11 @@ $ARGUMENTS
          ▼
 ┌─────────────────────────┐
 │   sqx-creator agent     │  ← Analyzes EA, gathers user input,
-│   (Phases 1-4)          │    implements strategy
+│   (Phases 1-6)          │    implements Python strategy
 └───────────┬─────────────┘
             │
             ▼
-     [Deploy & Summary]
+     [Backtest & Summary]
 ```
 
 ## Execution Protocol
@@ -52,26 +52,20 @@ After implementation, return:
 1. Strategy name and folder path
 2. Source files location
 3. Asset file modified
+4. Backtest results summary
 ```
 
-### Step 2: Deploy
+### Step 2: Final Summary
 
-Once the creator finishes:
-
-- Run `make deploy`
-- Provide final summary
-
-### Step 3: Final Summary
-
-After successful deployment, provide:
+After agent completes, provide:
 
 - Files created
 - Files modified
 - Strategy configuration details
-- Deployment status
+- Backtest results (return %, trades, win rate, drawdown)
 
 ## Agent Configuration
 
-| Agent       | Purpose                                               | User Interaction             |
-| ----------- | ----------------------------------------------------- | ---------------------------- |
-| sqx-creator | Analyzes EA, gathers preferences, implements strategy | Yes (timeframe, asset, name) |
+| Agent       | Purpose                                                              | User Interaction             |
+| ----------- | -------------------------------------------------------------------- | ---------------------------- |
+| sqx-creator | Analyzes EA, gathers preferences, implements strategy, runs backtest | Yes (timeframe, asset, name) |

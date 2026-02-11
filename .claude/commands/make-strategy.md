@@ -23,7 +23,7 @@ Before writing any code, you must understand how the framework works:
    - How indicators and `CandleService` are used
    - How to open/close orders with the `orderbook`
 
-2. **Study available indicators**: Review `vendor/indicators/` for built-in indicators:
+2. **Study available indicators**: Review `indicators/` for built-in indicators:
    - `ma` - Moving Average (SMA/EMA)
    - `rsi` - Relative Strength Index
    - `atr` - Average True Range
@@ -36,12 +36,12 @@ Before writing any code, you must understand how the framework works:
 
    If a required indicator doesn't exist, you can create a new one following the existing indicator patterns.
 
-3. **Study a reference asset**: Read `assets/xauusd/__init__.py` to understand:
+3. **Study a reference asset**: Read `assets/btcusdt/__init__.py` to understand:
    - How strategies are linked to an asset
    - The `settings` configuration for each strategy
    - The allocation system
 
-4. **Study the portfolio**: Read `portfolios/low-risk.py` to understand how assets are linked to the portfolio.
+4. **Study the portfolio**: Read `portfolios/bitcoin.py` to understand how assets are linked to the portfolio.
 
 5. **Document your findings**: Before continuing, briefly describe what you understood about the framework and how you plan to apply it to the new strategy.
 
@@ -55,8 +55,8 @@ Before writing any code, you must understand how the framework works:
    - Proceed to step 3
 
    **If the asset does NOT exist:**
-   - Create the new asset folder `assets/<asset_name>/__init__.py` following the structure of `assets/xauusd/__init__.py`
-   - Link the asset in `portfolios/low-risk.py`
+   - Create the new asset folder `assets/<asset_name>/__init__.py` following the structure of `assets/btcusdt/__init__.py`
+   - Link the asset in `portfolios/bitcoin.py`
    - **STOP HERE**: Historical data must be downloaded before continuing. Inform the user:
      ```
      The asset <asset_name> has been created but requires historical data download.
@@ -65,13 +65,14 @@ Before writing any code, you must understand how the framework works:
      ```
    - **Wait for user confirmation** that data download is complete before proceeding
 
-2. **Link to portfolio**: If not already linked, ensure the asset is linked in `portfolios/low-risk.py`.
+2. **Link to portfolio**: If not already linked, ensure the asset is linked in `portfolios/bitcoin.py`.
 
 3. **Create the strategy folder**: Create `strategies/<strategy_name>/__init__.py` with the minimal structure (just the empty class inheriting from `StrategyService`).
 
 4. **Validate**: Run a short backtest to confirm there are no import errors:
+
    ```bash
-   uv run python backtest.py --portfolio-path portfolios/low-risk.py --from-date 2024-01-01
+   uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2024-01-01
    ```
 
    **Note**: If this is a new asset and the backtest fails due to missing data, remind the user that historical data must be downloaded first.
@@ -81,11 +82,13 @@ Before writing any code, you must understand how the framework works:
 Implement the strategy step by step. After each step, add temporary logs and run a backtest to validate:
 
 ### Step 3.1: Initial configuration
+
 - Implement `__init__` with settings and `CandleService` with required indicators
 - Add logs to confirm indicators initialize correctly
 - **Validate**: Run backtest and verify logs
 
 ### Step 3.2: Data processing
+
 - Implement the appropriate lifecycle methods based on your strategy needs:
   - `on_tick` for tick-by-tick strategies
   - `on_new_hour` for hourly evaluation
@@ -96,6 +99,7 @@ Implement the strategy step by step. After each step, add temporary logs and run
 - **Validate**: Run backtest and verify values make sense (not NaN, within expected ranges)
 
 ### Step 3.3: Entry logic
+
 - Implement entry conditions and the method to open positions
 - Add detailed logs: current price, indicator value, generated signal, calculated volume
 - **Validate**: Run backtest and verify:
@@ -104,6 +108,7 @@ Implement the strategy step by step. After each step, add temporary logs and run
   - Do the numbers add up mathematically?
 
 ### Step 3.4: Exit logic
+
 - Implement exit conditions (TP, SL, or close signals)
 - Add logs for each close: reason, entry price, exit price, profit
 - **Validate**: Run backtest and verify:
@@ -111,6 +116,7 @@ Implement the strategy step by step. After each step, add temporary logs and run
   - Is the profit calculation correct?
 
 ### Step 3.5: State management
+
 - Implement `on_transaction` to handle order state
 - Verify state updates correctly (position open/closed)
 - **Validate**: Run complete 1-year backtest
@@ -118,8 +124,9 @@ Implement the strategy step by step. After each step, add temporary logs and run
 ## PHASE 4: Complete validation
 
 1. **1-year backtest**: Run with sufficient history:
+
    ```bash
-   uv run python backtest.py --portfolio-path portfolios/low-risk.py --from-date 2024-01-01
+   uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2024-01-01
    ```
 
 2. **Results analysis**: Review logs and metrics:
@@ -132,8 +139,9 @@ Implement the strategy step by step. After each step, add temporary logs and run
 ## PHASE 5: Extended backtest and cleanup
 
 1. **Full backtest**: When confident, run the complete backtest:
+
    ```bash
-   uv run python backtest.py --portfolio-path portfolios/low-risk.py --from-date 2019-01-01
+   uv run python backtest.py --portfolio-path portfolios/bitcoin.py --from-date 2019-01-01
    ```
 
 2. **Log cleanup**: Remove redundant debug logs and keep only critical ones needed for production/backtest monitoring:

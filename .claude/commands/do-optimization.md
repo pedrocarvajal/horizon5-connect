@@ -14,6 +14,7 @@ Optimize strategy configuration settings through systematic backtesting iteratio
   - `<strategy>`: Strategy class name (e.g., `DonchianBreakoutStrategy`, `RSIBollingerBreakoutStrategy`)
 
 **Examples:**
+
 - `/do-optimization btcusdt DonchianBreakoutStrategy`
 - `/do-optimization btcusdt TurtleTradingStrategy`
 
@@ -43,27 +44,36 @@ Create `TRACKING-<ASSET>.md` at project root with structure:
 # Optimization: <ASSET> - <STRATEGY>
 
 ## Objective
+
 Find optimal configuration for <STRATEGY> on <ASSET> with:
+
 - Maximum drawdown: 30%
 - Target: Highest return within drawdown constraint
 
 ## Strategy Understanding
+
 [To be filled after analysis]
 
 ## Parameter Ranges
+
 | Parameter | Min | Max | Step | Current |
-|-----------|-----|-----|------|---------|
+| --------- | --- | --- | ---- | ------- |
+
 [To be filled after analysis]
 
 ## Iteration Log
-| # | Date | Parameters Changed | Return % | Drawdown % | Profit Factor | Notes |
-|---|------|-------------------|----------|------------|---------------|-------|
+
+| #   | Date | Parameters Changed | Return % | Drawdown % | Profit Factor | Notes |
+| --- | ---- | ------------------ | -------- | ---------- | ------------- | ----- |
+
 [Iterations recorded here]
 
 ## Best Configuration
+
 [To be updated when found]
 
 ## Out-of-Sample Validation
+
 [Final validation results]
 ```
 
@@ -86,6 +96,7 @@ Before optimizing, deeply understand the strategy:
 
 **Inform user:**
 "Strategy Analysis Complete:
+
 - Logic: [summary]
 - Key parameters: [list with current values]
 - Expected behavior: [when it wins/loses]"
@@ -153,6 +164,7 @@ For each iteration:
    - Revert if results worsened
 
 **Guidelines:**
+
 - Change ONE parameter at a time for clear causation
 - If drawdown exceeds 30%, revert immediately
 - Keep iterations focused and documented

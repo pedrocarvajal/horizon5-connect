@@ -1,7 +1,6 @@
 ---
 name: sqx
 description: Skills for analyzing StrategyQuant X generated Expert Advisors
-version: 1.1.0
 user-invocable: false
 ---
 
@@ -69,6 +68,25 @@ What do you need?
     ├─> Shift mechanics   → buffer-mechanics.md
     └─> Audit checklist   → verification.md
 ```
+
+## Indicator Source Code
+
+SQX custom indicator implementations (`.mq5`) are available at `docs/sqx/indicators/`.
+
+These files contain the calculation logic for indicators referenced via `iCustom()` in EA files (e.g., `SqADX`, `SqATR`, `SqCCI`). Use them to understand buffer indexes, calculation formulas, and parameter meanings.
+
+| Indicator       | Source File                                | Buffers                                           |
+| --------------- | ------------------------------------------ | ------------------------------------------------- |
+| ADX             | `docs/sqx/indicators/SqADX.mq5`            | 0=ADX, 1=+DI, 2=-DI                               |
+| ATR             | `docs/sqx/indicators/SqATR.mq5`            | 0=ATR value                                       |
+| CCI             | `docs/sqx/indicators/SqCCI.mq5`            | 0=CCI value                                       |
+| Stochastic      | `docs/sqx/indicators/SqStochastic.mq5`     | 0=%K, 1=%D                                        |
+| Keltner Channel | `docs/sqx/indicators/SqKeltnerChannel.mq5` | 0=Upper, 1=Middle, 2=Lower                        |
+| Parabolic SAR   | `docs/sqx/indicators/SqParabolicSAR.mq5`   | 0=SAR value                                       |
+| SuperTrend      | `docs/sqx/indicators/SqSuperTrend.mq5`     | 0=SuperTrend line                                 |
+| Ichimoku        | `docs/sqx/indicators/SqIchimoku.mq5`       | 0=Tenkan, 1=Kijun, 2=SenkouA, 3=SenkouB, 4=Chikou |
+
+Full list: `docs/sqx/indicators/`
 
 ## Critical Knowledge
 
