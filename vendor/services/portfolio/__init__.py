@@ -186,7 +186,6 @@ class PortfolioService(PortfolioInterface):
         self._orderbooks = OrderbookComponent(
             portfolio_id=self._id,
             assets=self._assets,
-            gateways=self._gateway.gateways,
             on_transaction=self.on_transaction,
             backtest_id=self._backtest_id,
             commands_queue=self._commands_queue,

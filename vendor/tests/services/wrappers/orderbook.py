@@ -24,13 +24,11 @@ class OrderbookWrapper(unittest.TestCase):
     def __init__(self, method_name: str = "runTest") -> None:
         """Initialize test case."""
         super().__init__(method_name)
-        self._gateway: Mock = Mock()
         self._transactions: List[OrderModel] = []
         self._orderbook: OrderbookService = None  # type: ignore[assignment]
 
     def setUp(self) -> None:
         """Set up test fixtures."""
-        self._gateway = Mock()
         self._transactions = []
         self._orderbook = self._create_orderbook()
 
@@ -41,13 +39,10 @@ class OrderbookWrapper(unittest.TestCase):
     ) -> OrderbookService:
         asset = Mock()
         asset.allocation = balance
-        account = Mock()
-        account.leverage = leverage
+        asset.leverage = leverage
         return OrderbookService(
             backtest_id="test-orderbook-123",
             asset=asset,
-            account=account,
-            gateway=self._gateway,
             on_transaction=self._on_transaction_callback,
         )
 

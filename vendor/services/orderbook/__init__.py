@@ -1,30 +1,23 @@
 """Orderbook service for managing order lifecycle and margin."""
 
-import datetime
 import threading
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.interfaces.asset import AssetInterface
-from vendor.interfaces.gateway import GatewayInterface
 from vendor.interfaces.logging import LoggingInterface
 from vendor.interfaces.orderbook import OrderbookInterface
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
-from vendor.services.gateway.models.gateway_account import GatewayAccountModel
 from vendor.services.logging import LoggingService
-from vendor.services.orderbook.models import OrderSyncResult
-
-from .gateway import GatewayHandlerService
 
 MARGIN_LIQUIDATION_RATIO: float = 0.001
 MARGIN_RECOVERY_RATIO: float = 0.05
-SYNC_INTERVAL_SECONDS: int = 60
 
 
 class OrderbookService(OrderbookInterface):
-    """Manage order lifecycle, margin, and gateway synchronization."""
+    """Manage order lifecycle and margin for backtest simulation."""
 
     _backtest_id: Optional[str]
     _nav: float
@@ -34,24 +27,21 @@ class OrderbookService(OrderbookInterface):
     _log: LoggingInterface
     _balance_lock: threading.Lock
     _orders_lock: threading.Lock
-    _last_sync_time: Optional[datetime.datetime]
 
     def __init__(
         self,
         backtest_id: Optional[str],
         asset: AssetInterface,
-        account: GatewayAccountModel,
-        gateway: GatewayInterface,
         on_transaction: Callable[[OrderModel], None],
     ) -> None:
-        """Initialize orderbook with asset allocation and gateway handler."""
+        """Initialize orderbook with asset allocation and leverage."""
         self._log = LoggingService()
 
         self._backtest_id = backtest_id
         self._balance = asset.allocation
         self._orders = {}
         self._open_orders_index = set()
-        self._leverage = account.leverage
+        self._leverage = asset.leverage
         self._nav = 0.0
         self._exposure = 0.0
         self._on_transaction = on_transaction
@@ -59,12 +49,6 @@ class OrderbookService(OrderbookInterface):
         self._tick = None
         self._balance_lock = threading.Lock()
         self._orders_lock = threading.Lock()
-        self._last_sync_time = None
-
-        self._gateway_handler = GatewayHandlerService(
-            gateway=gateway,
-            backtest_id=backtest_id,
-        )
 
     def cancel(self, order: OrderModel) -> None:
         """Cancel an opening or open order and release its margin."""
@@ -90,15 +74,6 @@ class OrderbookService(OrderbookInterface):
                     order_id=order.id,
                 )
                 return
-
-            if not self.is_backtest:
-                gateway_success = self._gateway_handler.cancel_order(order)
-
-                if not gateway_success:
-                    self._log.critical(
-                        f"Failed to cancel order {order.id} on gateway. Order remains {order.status.value}."
-                    )
-                    return
 
             order.status = OrderStatus.CANCELLED
             order.executed_volume = 0
@@ -148,15 +123,6 @@ class OrderbookService(OrderbookInterface):
                 total=order.volume,
             )
 
-            if not self.is_backtest:
-                cancel_success = self._gateway_handler.cancel_order(order)
-
-                if not cancel_success:
-                    self._log.warning(
-                        "Failed to cancel unfilled portion, proceeding to close anyway",
-                        order_id=order.id,
-                    )
-
             with self._balance_lock:
                 self._balance += margin_to_free
 
@@ -176,24 +142,6 @@ class OrderbookService(OrderbookInterface):
             with self._orders_lock:
                 self._orders[order.id] = order
                 self._open_orders_index.discard(order.id)
-
-        if not self.is_backtest:
-            gateway_success = self._gateway_handler.close_position(order)
-
-            if not gateway_success:
-                with self._balance_lock:
-                    self._balance -= margin_used
-                    self._balance -= profit
-
-                    with self._orders_lock:
-                        self._open_orders_index.add(order.id)
-
-                order.status = OrderStatus.OPEN
-
-                self._log.critical(
-                    f"Failed to close order {order.id} on gateway. Reverted balance changes. Order remains OPEN."
-                )
-                return
 
         self._on_transaction(order)
 
@@ -258,28 +206,10 @@ class OrderbookService(OrderbookInterface):
                 self._orders[order.id] = order
                 self._open_orders_index.add(order.id)
 
-        if not self.is_backtest:
-            gateway_success = self._gateway_handler.place_order(order)
-
-            if not gateway_success:
-                with self._balance_lock:
-                    self._balance += required_margin
-
-                    with self._orders_lock:
-                        self._open_orders_index.discard(order.id)
-
-                order.status = OrderStatus.CANCELLED
-                order.executed_volume = 0
-
-                self._log.critical(
-                    f"Failed to open order {order.id} on gateway. Reverted balance change: +{required_margin:.2f}"
-                )
-                return
-
         self._on_transaction(order)
 
     def refresh(self, tick: TickModel) -> None:
-        """Update tick, check margin levels, and sync open orders."""
+        """Update tick and check margin levels for open orders."""
         self._tick = tick
 
         if self.used_margin > 0 and self.margin_level < MARGIN_LIQUIDATION_RATIO:
@@ -304,8 +234,6 @@ class OrderbookService(OrderbookInterface):
                 "Margin call resolved, new operations allowed",
                 margin_level=f"{self.margin_level:.2f}",
             )
-
-        self._sync_orders()
 
         with self._orders_lock:
             open_order_ids = list(self._open_orders_index)
@@ -344,80 +272,6 @@ class OrderbookService(OrderbookInterface):
 
         with self._orders_lock:
             self._orders[order.id] = order
-
-        self._on_transaction(order)
-
-    def _sync_orders(self) -> None:
-        if self.is_backtest:
-            return
-
-        if self._tick is None:
-            return
-
-        current_time = self._tick.date
-
-        if self._last_sync_time is not None:
-            elapsed = (current_time - self._last_sync_time).total_seconds()
-
-            if elapsed < SYNC_INTERVAL_SECONDS:
-                return
-
-        self._last_sync_time = current_time
-
-        with self._orders_lock:
-            open_orders: Dict[str, OrderModel] = {
-                order_id: self._orders[order_id]
-                for order_id in self._open_orders_index
-                if order_id in self._orders and self._orders[order_id].status.is_open()
-            }
-
-        if not open_orders:
-            return
-
-        update_results = self._gateway_handler.sync_orders(open_orders)
-
-        for order_id, result in update_results.items():
-            self._process_order_update(order_id, result)
-
-    def _process_order_update(
-        self,
-        order_id: str,
-        result: OrderSyncResult,
-    ) -> None:
-        with self._orders_lock:
-            if order_id not in self._orders:
-                return
-
-            order = self._orders[order_id]
-
-        if not order.status.is_open():
-            return
-
-        if result.exists:
-            return
-
-        margin_used = (order.executed_volume * order.price) / self._leverage
-
-        order.status = result.status
-        order.close_price = result.close_price
-
-        if self._tick:
-            order.updated_at = self._tick.date
-
-        with self._balance_lock:
-            self._balance += margin_used
-            self._balance += result.profit
-
-            with self._orders_lock:
-                self._orders[order.id] = order
-                self._open_orders_index.discard(order.id)
-
-        self._log.info(
-            "Order closed due to external intervention",
-            order_id=order.id,
-            close_price=result.close_price,
-            profit=result.profit,
-        )
 
         self._on_transaction(order)
 

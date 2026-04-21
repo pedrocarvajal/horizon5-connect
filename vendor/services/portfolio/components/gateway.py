@@ -10,20 +10,18 @@ from pydantic import BaseModel, ConfigDict
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.gateway import GatewayInterface
 from vendor.services.gateway import GatewayService
-from vendor.services.gateway.models.gateway_account import GatewayAccountModel
 
 
 class Gateway(BaseModel):
-    """Gateway configuration for a specific broker/exchange."""
+    """Gateway wrapper holding the exchange data client."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    info: Optional[GatewayAccountModel]
     gateway: GatewayInterface
 
 
 class GatewayComponent:
-    """Component managing gateway connections and orderbooks for portfolio assets."""
+    """Component managing gateway connections for portfolio assets."""
 
     _portfolio_id: str
     _backtest_id: Optional[str]
@@ -43,7 +41,7 @@ class GatewayComponent:
         Args:
             portfolio_id: Identifier of the portfolio.
             assets: List of assets to create gateways for.
-            backtest_id: Backtest identifier (None for live mode).
+            backtest_id: Backtest identifier.
             commands_queue: Queue for commands.
         """
         self._portfolio_id = portfolio_id
@@ -57,18 +55,10 @@ class GatewayComponent:
 
             self._gateways[gateway_name] = Gateway(
                 gateway=gateway_service,
-                info=gateway_service.get_account(),
             )
 
     def get(self, gateway: str) -> Gateway | None:
-        """Retrieve a gateway by its identifier.
-
-        Args:
-            gateway: The gateway identifier to look up.
-
-        Returns:
-            The Gateway instance if found, None otherwise.
-        """
+        """Retrieve a gateway by its identifier."""
         return self._gateways.get(gateway)
 
     @property

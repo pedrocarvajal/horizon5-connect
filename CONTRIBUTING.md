@@ -102,10 +102,9 @@ horizon5-connect/
 
 ### Key Services
 
-- **GatewayService**: Exchange/broker connectivity
+- **GatewayService**: Exchange data connectivity for historical klines
 - **StrategyService**: Trading strategy execution
 - **BacktestService**: Historical strategy testing
-- **ProductionService**: Live trading execution
 - **AnalyticService**: Performance metrics and reporting
 - **PortfolioService**: Multi-asset portfolio management
 

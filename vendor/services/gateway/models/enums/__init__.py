@@ -1,1 +1,0 @@
-"""Gateway model enums package."""

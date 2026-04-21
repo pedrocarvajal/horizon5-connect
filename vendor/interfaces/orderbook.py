@@ -1,15 +1,12 @@
 """Orderbook interface for order and portfolio state management."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from vendor.enums.order_side import OrderSide
 from vendor.enums.order_status import OrderStatus
 from vendor.models.order import OrderModel
 from vendor.models.tick import TickModel
-
-if TYPE_CHECKING:
-    from vendor.interfaces.gateway_handler import GatewayHandlerInterface
 
 
 class OrderbookInterface(ABC):
@@ -22,7 +19,6 @@ class OrderbookInterface(ABC):
     _leverage: int
     _margin_call_active: bool
     _open_orders_index: Set[str]
-    _gateway_handler: "GatewayHandlerInterface"
 
     @abstractmethod
     def refresh(self, tick: TickModel) -> None:
@@ -120,11 +116,6 @@ class OrderbookInterface(ABC):
         if self.used_margin == 0:
             return float("inf")
         return self.equity / self.used_margin
-
-    @property
-    def gateway_handler(self) -> "GatewayHandlerInterface":
-        """Return gateway handler service."""
-        return self._gateway_handler
 
     @property
     def is_backtest(self) -> bool:

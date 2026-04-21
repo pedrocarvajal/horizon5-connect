@@ -15,7 +15,6 @@ from vendor.enums.order_type import OrderType
 from vendor.interfaces.asset import AssetInterface
 from vendor.interfaces.portfolio import PortfolioInterface
 from vendor.models.tick import TickModel
-from vendor.services.gateway.models.gateway_trade import GatewayTradeModel
 from vendor.services.logging import LoggingService
 
 
@@ -62,7 +61,7 @@ class OrderModel(BaseModel):
     commission: float = Field(default=0.0, ge=0)
     commission_percentage: float = Field(default=0.0, ge=0)
 
-    trades: List[GatewayTradeModel] = Field(default_factory=lambda: [])
+    trades: List[Any] = Field(default_factory=lambda: [])
     logs: List[Dict[str, Any]] = Field(default_factory=lambda: [])
     variables: Dict[str, Any] = Field(default_factory=dict)
 
@@ -221,7 +220,6 @@ class OrderModel(BaseModel):
         """Generate exchange-compatible client order ID.
 
         Format: {PREFIX}_{SYMBOL}_{ID} (e.g., HRZ_XAUUSD_abc123)
-        MetaAPI requires pattern: ${strategyId}_${positionId}_${orderId}
         """
         id_suffix = self.id.split("-")[-1][:8]
         symbol_part = self.symbol[:6] if self.symbol else "UNK"
